@@ -16,13 +16,15 @@ class Provider:
         self.calls = []
         self.empty, self.fail = empty, fail
 
-    def analyze(self, incident, start, end):
+    def analyze(self, incident, start, end, display_bounds=None):
         self.calls.append((incident, start, end))
         if self.fail:
             raise RuntimeError("private credential contents must never reach the client")
         return dict(scene_count=0 if self.empty else 4, acquisition_start="2025-07-01T01:00:00Z",
                     acquisition_end="2025-07-28T01:00:00Z", ndvi_mean=None if self.empty else 0.63,
                     valid_coverage_pct=0 if self.empty else 73.2,
+                    display=dict(bounds=display_bounds, study_bounds=[95, -4.5, 119.5, 7.5],
+                                 scene_count=0 if self.empty else 4, acquisition_start=start, acquisition_end=end),
                     tiles={} if self.empty else {k: f"https://earthengine.googleapis.com/v1/projects/p/maps/{k}/tiles/{{z}}/{{x}}/{{y}}"
                                                 for k in ("rgb", "ndvi")})
 
@@ -144,7 +146,8 @@ def test_real_sdk_graph_masks_clouds_and_reports_empty_pixels(module, monkeypatc
     def compute(value):
         computations.append(value.serialize())
         if len(computations) == 1:
-            return {"count": 2, "first": 1751328000000, "last": 1753660800000}
+            metadata = {"count": 2, "first": 1751328000000, "last": 1753660800000}
+            return {"analysis": metadata, "display": {**metadata, "count": 7}}
         return {"ndvi": 0.6 if clear else None, "valid_fraction": 0.75 if clear else 0}
     def create_map(params):
         maps.append(params["image"].serialize())
@@ -154,7 +157,8 @@ def test_real_sdk_graph_masks_clouds_and_reports_empty_pixels(module, monkeypatc
     provider = module.EarthEngineProvider("offline-test")
     provider.ee = ee
     try:
-        result = provider.analyze(INCIDENT, "2025-06-29T05:30:00Z", INCIDENT["observed_at"])
+        result = provider.analyze(INCIDENT, "2025-06-29T05:30:00Z", INCIDENT["observed_at"],
+                                  display_bounds=[112, 3, 114, 4])
         graph = " ".join(computations + maps)
         assert module.SENTINEL in graph and module.CLOUD_SCORE in graph
         assert "cs_cdf" in graph and "Image.updateMask" in graph
@@ -162,8 +166,17 @@ def test_real_sdk_graph_masks_clouds_and_reports_empty_pixels(module, monkeypatc
         assert "B8" in computations[-1] and "B4" in computations[-1]
         assert "2025-07-29T05:30:00Z" in graph
         assert result["valid_coverage_pct"] == (75 if clear else 0)
-        assert len(result["tiles"]) == (2 if clear else 0)
-        assert len(maps) == (2 if clear else 0)
+        assert result["scene_count"] == 2 and result["display"]["scene_count"] == 7
+        assert result["display"]["bounds"] == [112, 3, 114, 4]
+        assert "GeometryConstructors.Rectangle" in maps[0] and '"geodesic": {"constantValue": false}' in maps[0]
+        assert "5000" not in graph
+        # Statistics expression never includes the viewport rectangle: it filters
+        # and clips independently to the 1 km incident buffer at 20 m resolution.
+        assert "Geometry.buffer" in computations[-1] and '"distance": {"constantValue": 1000}' in computations[-1]
+        assert "GeometryConstructors.Rectangle" not in computations[-1]
+        assert '"scale": {"constantValue": 20}' in computations[-1]
+        assert len(result["tiles"]) == 2
+        assert len(maps) == 2
     finally:
         ee.Reset()
 
@@ -196,7 +209,7 @@ def test_provider_cold_initialization_sets_deadline_after_transport_exists(modul
         assert provider.initialize() is ee
         state = ee.data._get_state()
         assert state.requests_session is not None
-        assert state.deadline_ms == 20000 and state.max_retries == 0
+        assert state.deadline_ms == 60000 and state.max_retries == 0
     finally:
         ee.Reset()
 
@@ -219,3 +232,174 @@ def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolate
         provider.fetch_tile = fail
         response = client.get(path)
         assert response.status_code == 503 and "OAuth" not in response.text
+
+
+@pytest.mark.parametrize('image,mime', [(b'\xff\xd8\xff\xe0jpeg', 'image/jpeg'),(b'not an image', None)])
+def test_tile_endpoint_matches_actual_image_format(module, isolated_db, monkeypatch, image, mime):
+    from app.main import app
+    from fastapi.testclient import TestClient
+    provider = Provider()
+    provider.fetch_tile = lambda url: image
+    s = module.EarthEngineService('p', provider)
+    monkeypatch.setattr(module, 'service', lambda: s)
+    with TestClient(app) as c:
+        layer = c.get('/api/earth-engine/INC-20250729-A').json()['layers'][0]
+        response = c.get(layer['tile_url'].format(z=8,x=0,y=0))
+        assert response.status_code == (200 if mime else 503)
+        if mime:
+            assert response.headers['content-type'] == mime
+
+
+@pytest.mark.parametrize('bbox', [
+    'nan,0,110,1', '95,0,inf,1', '95,0,110', '95,0,110,1,2',
+    '110,0,95,1', '95,1,110,0', '95,0,95,1', '-181,0,110,1',
+    '95,-91,110,1', '0,0,10,1', '119.5,0,120,1',
+])
+def test_viewport_rejects_invalid_or_nonintersecting_bounds(module, bbox):
+    with pytest.raises(ValueError):
+        module.EarthEngineService('p', Provider()).describe(INCIDENT, 30, bbox=bbox)
+
+
+def test_viewport_clips_to_study_and_separates_cache_identity(module):
+    class Extents(Provider):
+        def analyze(self, incident, start, end, display_bounds=None):
+            self.bounds = display_bounds
+            return super().analyze(incident, start, end, display_bounds)
+    p = Extents()
+    s = module.EarthEngineService('p', p)
+    clipped = s.describe(INCIDENT, 30, bbox='94,-5,120,8')
+    assert clipped['bounds'] == [95, -4.5, 119.5, 7.5]
+    assert p.bounds == clipped['bounds']
+    assert clipped['display']['bounds'] == clipped['bounds']
+    assert clipped['analysis_region'] == {'center': [113, 3.5], 'radius_m': 1000}
+    assert s.describe(INCIDENT, 30, bbox='95,-4.5,119.5,7.5') == clipped
+    assert len(p.calls) == 1
+    assert s.describe(INCIDENT, 30, bbox='112,3,114,4')['bounds'] == [112,3,114,4]
+    assert len(p.calls) == 2
+    s.describe(INCIDENT, 30, bbox='112,3,114,4', mode='compare')
+    assert len(p.calls) == 4
+    with pytest.raises(ValueError):
+        s.describe(INCIDENT, 30, mode='future')
+
+
+def test_compare_windows_are_retrospective_and_context_never_calls_after(module):
+    from datetime import datetime, timezone
+    p = Provider()
+    s = module.EarthEngineService('p', p, utcnow=lambda: datetime(2025, 8, 1, tzinfo=timezone.utc))
+    before = s.describe(INCIDENT, 30)
+    assert len(p.calls) == 1 and 'comparison' not in before
+    result = s.describe(INCIDENT, 30, mode='compare')
+    assert result['comparison']['status'] == 'ready'
+    assert result['comparison']['window'] == {'start': INCIDENT['observed_at'], 'end': '2025-08-01T00:00:00Z', 'days': 30}
+    assert p.calls[-1][1:] == (INCIDENT['observed_at'], '2025-08-01T00:00:00Z')
+    assert {layer['id'] for layer in result['layers']} == {'rgb','ndvi','rgb_after','ndvi_after'}
+    assert result['analysis']['ndvi_mean'] == .63
+    assert result['comparison']['analysis']['ndvi_mean'] == .63
+
+
+@pytest.mark.parametrize('after', ['empty', 'fail'])
+def test_after_failure_preserves_before_imagery(module, after):
+    class After(Provider):
+        def analyze(self, incident, start, end, display_bounds=None):
+            self.empty = start == incident['observed_at'] and after == 'empty'
+            self.fail = start == incident['observed_at'] and after == 'fail'
+            return super().analyze(incident, start, end, display_bounds)
+    result = module.EarthEngineService('p', After()).describe(INCIDENT, 30, mode='compare')
+    assert result['status'] == 'ready' and result['available']
+    assert len(result['layers']) == 2
+    assert result['comparison']['status'] == ('no_data' if after == 'empty' else 'unavailable')
+    assert result['comparison']['reason'] and 'private' not in str(result)
+
+
+def test_future_incident_has_explicit_empty_after_window(module):
+    from datetime import datetime, timezone
+    p = Provider()
+    result = module.EarthEngineService('p', p, utcnow=lambda: datetime(2025,7,29,5,30,tzinfo=timezone.utc)).describe(INCIDENT, 14, mode='compare')
+    assert result['comparison']['status'] == 'no_data'
+    assert 'post-incident' in result['comparison']['reason']
+    assert len(p.calls) == 1 and len(result['layers']) == 2
+
+
+def test_no_before_does_not_query_or_publish_comparison(module):
+    p = Provider(empty=True)
+    result = module.EarthEngineService('p', p).describe(INCIDENT, 14, mode='compare')
+    assert result['status'] == 'no_data' and result['comparison']['status'] == 'no_data'
+    assert len(p.calls) == 1 and not result['layers']
+
+
+def test_api_validates_viewport_and_mode(module, isolated_db, monkeypatch):
+    from app.main import app
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(module, 'service', lambda: module.EarthEngineService('p', Provider()))
+    with TestClient(app) as c:
+        path = '/api/earth-engine/INC-20250729-A'
+        for query in ('bbox=nan,0,110,1', 'bbox=0,0,10,1', 'mode=future'):
+            assert c.get(f'{path}?{query}').status_code == 422
+        result = c.get(f'{path}?bbox=112,3,114,4&mode=compare').json()
+        assert result['bounds'] == [112,3,114,4] and 'comparison' in result
+
+
+def test_compare_full_window_stops_at_requested_horizon(module):
+    from datetime import datetime, timezone
+    p = Provider()
+    s = module.EarthEngineService('p', p, utcnow=lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
+    result = s.describe(INCIDENT, 14, mode='compare')
+    assert result['comparison']['window']['end'] == '2025-08-12T05:30:00Z'
+    assert p.calls[1][1:] == (INCIDENT['observed_at'], '2025-08-12T05:30:00Z')
+
+
+def test_cache_regenerates_when_after_handle_is_evicted(module):
+    p = Provider()
+    s = module.EarthEngineService('p', p)
+    first = s.describe(INCIDENT, 30, mode='compare')
+    after_handle = next(layer for layer in first['layers'] if layer['id'] == 'rgb_after')['tile_url'].split('/')[4]
+    del s.tiles[after_handle]
+    refreshed = s.describe(INCIDENT, 30, mode='compare')
+    assert len(p.calls) == 4 and refreshed['layers'][0]['tile_url'] != first['layers'][0]['tile_url']
+    for layer in refreshed['layers']:
+        assert s.tile_url(layer['tile_url'].split('/')[4], 8, 0, 0)
+
+
+def test_tile_cache_preserves_recently_used_handles(module):
+    s = module.EarthEngineService('p', Provider())
+    url = 'https://earthengine.googleapis.com/v1/projects/p/maps/m/tiles/{z}/{x}/{y}'
+    first = s.register_tile(url).split('/')[4]
+    for _ in range(127):
+        s.register_tile(url)
+    s.tile_url(first, 8, 0, 0)
+    s.register_tile(url)
+    assert s.tile_url(first, 8, 0, 0)
+    assert len(s.tiles) == 128
+
+
+def test_existing_tiles_remain_available_during_viewport_computation(module):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    entered, release = Event(), Event()
+    class Slow(Provider):
+        def analyze(self, *args, **kwargs):
+            entered.set()
+            assert release.wait(3)
+            return super().analyze(*args, **kwargs)
+    service = module.EarthEngineService('p', Slow())
+    handle = service.register_tile('https://earthengine.googleapis.com/v1/projects/p/maps/m/tiles/{z}/{x}/{y}').split('/')[4]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        generation = pool.submit(service.describe, INCIDENT, 30)
+        assert entered.wait(1)
+        lookup = pool.submit(service.tile_url, handle, 8, 0, 0)
+        try:
+            assert lookup.result(timeout=.2).endswith('/tiles/8/0/0')
+        finally:
+            release.set()
+        assert generation.result()['status'] == 'ready'
+
+
+@pytest.mark.parametrize('bad_path', [
+    '/v1/projects/p/maps/m/extra/tiles/{z}/{x}/{y}',
+    '/v1/projects/p/maps/../tiles/{z}/{x}/{y}',
+    '/v1/projects/p/maps/m/tiles/{z}/{x}/{y}?token=private',
+    '/v1/projects/p/maps/m/tiles/{z}/{x}/{y}#fragment',
+])
+def test_tile_registration_requires_exact_sdk_resource_path(module, bad_path):
+    with pytest.raises(ValueError):
+        module.EarthEngineService('p', Provider()).register_tile('https://earthengine.googleapis.com' + bad_path)

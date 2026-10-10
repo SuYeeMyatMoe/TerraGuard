@@ -291,21 +291,47 @@ export interface GeoContext {
   boundary_status: string;
 }
 
+export interface EarthEngineAnalysis {
+  scene_count: number;
+  acquisition_start: string | null;
+  acquisition_end: string | null;
+  ndvi_mean: number | null;
+  valid_coverage_pct: number;
+}
+export interface EarthEngineDisplay {
+  bounds: [number, number, number, number];
+  study_bounds: [number, number, number, number];
+  scene_count: number;
+  acquisition_start: string | null;
+  acquisition_end: string | null;
+}
 export interface EarthEngineImagery {
-  status: "not_configured" | "select_incident" | "ready" | "no_data" | "unavailable";
+  status:
+    | "not_configured"
+    | "select_incident"
+    | "ready"
+    | "no_data"
+    | "unavailable";
   available: boolean;
   incident_id: string | null;
   reason: string | null;
   window: { start: string; end: string; days: number } | null;
   bounds: [number, number, number, number] | null;
-  layers: { id: "rgb" | "ndvi"; tile_url: string; attribution: string }[];
-  analysis: {
-    scene_count: number;
-    acquisition_start: string | null;
-    acquisition_end: string | null;
-    ndvi_mean: number | null;
-    valid_coverage_pct: number;
-  } | null;
+  layers: {
+    id: "rgb" | "ndvi" | "rgb_after" | "ndvi_after";
+    tile_url: string;
+    attribution: string;
+  }[];
+  analysis: EarthEngineAnalysis | null;
+  display?: EarthEngineDisplay | null;
+  analysis_region?: { center: [number, number]; radius_m: number };
+  comparison?: {
+    status: "ready" | "no_data" | "unavailable";
+    reason: string | null;
+    window: { start: string; end: string; days: number };
+    analysis: EarthEngineAnalysis | null;
+    display: EarthEngineDisplay | null;
+  };
   generated_at?: string;
   refresh_after_seconds?: number;
   method?: string;

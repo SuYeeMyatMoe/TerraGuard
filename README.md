@@ -7,7 +7,7 @@ TerraGuard is a two-page MVP:
 
 - `/`: landing page.
 - `/simulation`: Forest Command Center with two modes:
-  - **Earth View**: real coordinates, protected areas and past-24 h detections, with dated Sentinel-2 RGB/NDVI layers from Earth Engine when configured.
+  - **Earth View**: real coordinates, protected areas and past-24 h detections, with viewport Sentinel-2 RGB/NDVI, roads/place labels, retrospective before/after comparison, independent layer controls and distance/area measurement from Earth Engine when configured.
   - **3D Simulation**: React Three Fiber forest, driven by a Python cellular automaton.
 
 The flow is: select incident → 48 h prediction → AI briefing → simulate → compare First-alert vs AI-priority → approve action → field brief → notification.

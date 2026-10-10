@@ -13,8 +13,8 @@ Pydantic contracts live in `backend/app/schemas.py`. `frontend/src/lib/types.ts`
 | GET | `/api/evaluation` | Provenance, audit, baseline vs RF (val/test, PR curve, reliability), policy backtest |
 | GET | `/api/geospatial/{id}` | Earth Engine context (or `available:false` with a reason) + protected-area GeoJSON with boundary status |
 | GET | `/api/earth-engine` | Earth View connection configuration state; no upstream request |
-| GET | `/api/earth-engine/{id}?days=30` | Dated Sentinel-2 RGB/NDVI layers and vegetation statistics; days must be 14, 30 or 60 |
-| GET | `/api/earth-engine/tiles/{handle}/{z}/{x}/{y}` | Authenticated raster proxy for a server-issued handle; PNG, 410 if expired, 422 invalid coordinates, 503 upstream failure |
+| GET | `/api/earth-engine/{id}?days=30` | Viewport Sentinel-2 RGB/NDVI and separate 1 km statistics; days=14/30/60; optional bbox=west,south,east,north and mode=context|compare |
+| GET | `/api/earth-engine/tiles/{handle}/{z}/{x}/{y}` | Authenticated raster proxy for a server-issued handle; PNG/JPEG with matching MIME type, 410 if expired, 422 invalid coordinates, 503 upstream failure |
 | POST | `/api/ai/explain` | OpenAI incident briefing (validated, cached by evidence hash; deterministic fallback) |
 | POST | `/api/ai/field-brief` | Grafilab English field brief (validated; deterministic fallback) |
 
@@ -26,4 +26,4 @@ Operational reads and decisions use backend-only Supabase. The action response a
 
 An action, its status update, and any named assignment commit together in one Postgres RPC. GET `/api/actions` returns the most recent 50 actions by descending ID. Database outages produce HTTP 503 with `{"detail":"Operational records are unavailable. Please try again."}`; there is no local operational fallback. A timeout can occur after a commit, so check the audit log before retrying a decision. Brief caching remains local SQLite. See [Supabase setup](SUPABASE.md).
 
-Earth View imagery is separate from extracted geospatial context. Metadata states are explicit: ready, no_data, not_configured or unavailable. Requests use a historical UTC window ending at the incident timestamp; statistics/layers are supplementary and never model inputs. Append `&refresh=true` to recreate cached map handles. See [Earth Engine setup and contracts](EARTH_ENGINE.md).
+Earth View imagery is separate from extracted geospatial context. Metadata states are explicit: ready, no_data, not_configured or unavailable. Requests use a historical UTC window ending at the incident timestamp; statistics/layers are supplementary and never model inputs. Comparison adds retrospective rgb_after/ndvi_after layers and separate dates/statistics, preserving before imagery if after fails. Bbox is validated and clipped to study bounds. Append `&refresh=true` to recreate cached map handles. See [Earth Engine setup and contracts](EARTH_ENGINE.md).

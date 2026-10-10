@@ -13,7 +13,7 @@ exports.loadModule = function loadModule(relative, replacements = {}, globals = 
   vm.runInNewContext(code, {
     exports: output,
     require: (id) => Object.hasOwn(replacements, id) ? replacements[id] : require(id),
-    setTimeout, clearTimeout, AbortController, console, ...globals,
+    setTimeout, clearTimeout, AbortController, URLSearchParams, console, ...globals,
   }, { filename });
   return output;
 };

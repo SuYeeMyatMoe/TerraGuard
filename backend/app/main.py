@@ -123,17 +123,28 @@ def earth_engine_tile(handle: str, z: int, x: int, y: int):
         image = service.provider.fetch_tile(url)
     except Exception:
         raise HTTPException(503, "Satellite tile is unavailable. Refresh the imagery.")
-    return Response(content=image, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
+    # Earth Engine can optimize an opaque RGB tile as JPEG.
+    if image.startswith(b'\x89PNG\r\n\x1a\n'):
+        mime = 'image/png'
+    elif image.startswith(b'\xff\xd8\xff'):
+        mime = 'image/jpeg'
+    else:
+        raise HTTPException(503, "Satellite tile is unavailable. Refresh the imagery.")
+    return Response(content=image, media_type=mime, headers={"Cache-Control": "private, max-age=300"})
 
 
 @app.get("/api/earth-engine/{incident_id}")
-def earth_engine_imagery(incident_id: str, days: int = Query(30, ge=14, le=60), refresh: bool = False):
+def earth_engine_imagery(incident_id: str, days: int = Query(30, ge=14, le=60), refresh: bool = False,
+                         bbox: str | None = None, mode: str = "context"):
     _known(incident_id)
     if days not in (14, 30, 60):
         raise HTTPException(422, "Choose a 14, 30 or 60 day window.")
     # Imagery remains available even if operational storage is down.
     incident = store().incident(incident_id, statuses={})
-    return earth_engine.service().describe(incident, days, refresh)
+    try:
+        return earth_engine.service().describe(incident, days, refresh, bbox=bbox, mode=mode)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
 
 
 @app.post("/api/ai/explain")
