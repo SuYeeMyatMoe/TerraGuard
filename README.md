@@ -60,6 +60,7 @@ To use Supabase:
    - Part 2 adds the decision-snapshot columns.
    - Part 3 enables RLS with no browser policies.
    - Part 4 makes `actions` append-only.
+   - Part 5 enables `CONTINUE_MONITORING` and `ESCALATE_COORDINATION` decisions.
 2. Put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (the service-role key) in `backend/.env`. Never put the key in the Next.js app.
 3. Restart the backend. `/api/health` reports `record_backend: "supabase"`.
 
