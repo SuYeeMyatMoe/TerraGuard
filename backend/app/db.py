@@ -1,4 +1,8 @@
-"""Persistence facade: Supabase operational records and a local SQLite AI cache."""
+"""Local AI cache and compatibility facade for the independent legacy RPC client.
+
+Current application operational records use app.records. Cache initialization must
+not require the legacy Supabase backend to be configured.
+"""
 from __future__ import annotations
 
 import json
@@ -27,7 +31,6 @@ def _conn() -> sqlite3.Connection:
 
 
 def init() -> None:
-    _operations()  # Validate backend configuration before serving requests.
     with _conn() as c:
         c.executescript("""
         CREATE TABLE IF NOT EXISTS ai_briefs (

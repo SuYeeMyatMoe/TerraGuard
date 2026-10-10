@@ -2,28 +2,27 @@
   "rule": "Select historical replay scenarios with a fixed, outcome-blind rule.\n\nRule (documented in docs/DATA.md):\n  1. Consider test-period days (UTC) only, so the served model never saw these labels.\n  2. Within a day, walk candidates in observation order and keep each one that is >= 50 km from those\n     already kept, until three incidents are selected.\n  3. Rank qualifying days by the number of candidates observed that day; keep the top 5.\n  4. The default scenario is the highest-ranked day on which the first-alert and AI-priority policies would\n     send the single available team to DIFFERENT incidents (when they agree there is nothing to compare),\n     preferring days spanning both Malaysia and Indonesia. This uses the policies' decisions only.\nLabels and simulation outcomes play no part in the selection. All qualifying days are written to\nscenario_days.json and evaluated in ml.policy_backtest.",
   "scenarios": [
     {
-      "scenario_id": "SCN-20250723",
-      "day": "2025-07-23",
-      "replay_time_utc": "2025-07-23T05:55:00+00:00",
-      "candidates_that_day": 44,
+      "scenario_id": "SCN-20250924",
+      "day": "2025-09-24",
+      "replay_time_utc": "2025-09-24T05:18:00+00:00",
+      "candidates_that_day": 3926,
       "countries": [
-        "Indonesia",
-        "Malaysia"
+        "Indonesia"
       ],
       "incidents": [
         {
-          "incident_id": "INC-20250723-A",
-          "candidate_id": "CND-018033",
+          "incident_id": "INC-20250924-A",
+          "candidate_id": "CND-321661",
           "arrival_order": 1
         },
         {
-          "incident_id": "INC-20250723-B",
-          "candidate_id": "CND-018034",
+          "incident_id": "INC-20250924-B",
+          "candidate_id": "CND-321662",
           "arrival_order": 2
         },
         {
-          "incident_id": "INC-20250723-C",
-          "candidate_id": "CND-018036",
+          "incident_id": "INC-20250924-C",
+          "candidate_id": "CND-321664",
           "arrival_order": 3
         }
       ],
@@ -31,120 +30,117 @@
       "default": false
     },
     {
-      "scenario_id": "SCN-20250722",
-      "day": "2025-07-22",
-      "replay_time_utc": "2025-07-22T05:40:00+00:00",
-      "candidates_that_day": 42,
+      "scenario_id": "SCN-20250828",
+      "day": "2025-08-28",
+      "replay_time_utc": "2025-08-28T05:26:00+00:00",
+      "candidates_that_day": 2991,
       "countries": [
-        "Indonesia",
-        "Malaysia"
+        "Indonesia"
       ],
       "incidents": [
         {
-          "incident_id": "INC-20250722-A",
-          "candidate_id": "CND-017991",
+          "incident_id": "INC-20250828-A",
+          "candidate_id": "CND-307665",
           "arrival_order": 1
         },
         {
-          "incident_id": "INC-20250722-B",
-          "candidate_id": "CND-017992",
+          "incident_id": "INC-20250828-B",
+          "candidate_id": "CND-307666",
           "arrival_order": 2
         },
         {
-          "incident_id": "INC-20250722-C",
-          "candidate_id": "CND-017994",
+          "incident_id": "INC-20250828-C",
+          "candidate_id": "CND-307667",
           "arrival_order": 3
         }
       ],
-      "policies_disagree": false,
+      "policies_disagree": true,
       "default": false
     },
     {
-      "scenario_id": "SCN-20250729",
-      "day": "2025-07-29",
-      "replay_time_utc": "2025-07-29T05:30:00+00:00",
-      "candidates_that_day": 39,
+      "scenario_id": "SCN-20250923",
+      "day": "2025-09-23",
+      "replay_time_utc": "2025-09-23T05:16:00+00:00",
+      "candidates_that_day": 2649,
+      "countries": [
+        "Indonesia"
+      ],
+      "incidents": [
+        {
+          "incident_id": "INC-20250923-A",
+          "candidate_id": "CND-319012",
+          "arrival_order": 1
+        },
+        {
+          "incident_id": "INC-20250923-B",
+          "candidate_id": "CND-319013",
+          "arrival_order": 2
+        },
+        {
+          "incident_id": "INC-20250923-C",
+          "candidate_id": "CND-319014",
+          "arrival_order": 3
+        }
+      ],
+      "policies_disagree": true,
+      "default": false
+    },
+    {
+      "scenario_id": "SCN-20250922",
+      "day": "2025-09-22",
+      "replay_time_utc": "2025-09-22T05:34:00+00:00",
+      "candidates_that_day": 2246,
+      "countries": [
+        "Indonesia"
+      ],
+      "incidents": [
+        {
+          "incident_id": "INC-20250922-A",
+          "candidate_id": "CND-316766",
+          "arrival_order": 1
+        },
+        {
+          "incident_id": "INC-20250922-B",
+          "candidate_id": "CND-316767",
+          "arrival_order": 2
+        },
+        {
+          "incident_id": "INC-20250922-C",
+          "candidate_id": "CND-316770",
+          "arrival_order": 3
+        }
+      ],
+      "policies_disagree": true,
+      "default": false
+    },
+    {
+      "scenario_id": "SCN-20250626",
+      "day": "2025-06-26",
+      "replay_time_utc": "2025-06-26T06:24:00+00:00",
+      "candidates_that_day": 297,
       "countries": [
         "Indonesia",
         "Malaysia"
       ],
       "incidents": [
         {
-          "incident_id": "INC-20250729-A",
-          "candidate_id": "CND-018238",
+          "incident_id": "INC-20250626-A",
+          "candidate_id": "CND-274264",
           "arrival_order": 1
         },
         {
-          "incident_id": "INC-20250729-B",
-          "candidate_id": "CND-018239",
+          "incident_id": "INC-20250626-B",
+          "candidate_id": "CND-274265",
           "arrival_order": 2
         },
         {
-          "incident_id": "INC-20250729-C",
-          "candidate_id": "CND-018240",
+          "incident_id": "INC-20250626-C",
+          "candidate_id": "CND-274266",
           "arrival_order": 3
         }
       ],
       "policies_disagree": true,
       "default": true
-    },
-    {
-      "scenario_id": "SCN-20250211",
-      "day": "2025-02-11",
-      "replay_time_utc": "2025-02-11T05:57:00+00:00",
-      "candidates_that_day": 38,
-      "countries": [
-        "Indonesia",
-        "Malaysia"
-      ],
-      "incidents": [
-        {
-          "incident_id": "INC-20250211-A",
-          "candidate_id": "CND-016398",
-          "arrival_order": 1
-        },
-        {
-          "incident_id": "INC-20250211-B",
-          "candidate_id": "CND-016399",
-          "arrival_order": 2
-        },
-        {
-          "incident_id": "INC-20250211-C",
-          "candidate_id": "CND-016400",
-          "arrival_order": 3
-        }
-      ],
-      "policies_disagree": true,
-      "default": false
-    },
-    {
-      "scenario_id": "SCN-20250719",
-      "day": "2025-07-19",
-      "replay_time_utc": "2025-07-19T05:58:00+00:00",
-      "candidates_that_day": 36,
-      "countries": [
-        "Indonesia",
-        "Malaysia"
-      ],
-      "incidents": [
-        {
-          "incident_id": "INC-20250719-A",
-          "candidate_id": "CND-017897",
-          "arrival_order": 1
-        },
-        {
-          "incident_id": "INC-20250719-B",
-          "candidate_id": "CND-017898",
-          "arrival_order": 2
-        },
-        {
-          "incident_id": "INC-20250719-C",
-          "candidate_id": "CND-017899",
-          "arrival_order": 3
-        }
-      ],
-      "policies_disagree": true,
-      "default": false
     }
   ]
 }

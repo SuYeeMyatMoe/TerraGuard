@@ -1,77 +1,79 @@
 {
-  "raw_rows": 26895,
+  "raw_rows": 570840,
   "dropped_missing_core": 0,
   "exact_duplicates_removed": 0,
-  "acquisition_passes": 8859,
+  "acquisition_passes": 7109,
   "satellites": [
     "N",
     "N20"
   ],
-  "detections_after_cleaning": 26895,
-  "incident_candidates": 19895,
-  "tracks": 10283,
+  "detections_after_cleaning": 570840,
+  "incident_candidates": 343111,
+  "tracks": 162290,
   "label_status": {
-    "negative": 11533,
-    "positive": 8074,
-    "uncertain": 269,
-    "censored": 19
+    "negative": 223496,
+    "positive": 117627,
+    "uncertain": 1913,
+    "censored": 75
   },
-  "purged_boundary": 128,
-  "dropped_cross_split_track": 0,
+  "purged_boundary": 1810,
+  "dropped_cross_split_track": 33,
   "splits": {
     "train": {
-      "n": 11831,
-      "positives": 5666,
-      "positive_rate": 0.4789
+      "n": 189332,
+      "positives": 75845,
+      "positive_rate": 0.4006
     },
     "val": {
-      "n": 3862,
-      "positives": 1699,
-      "positive_rate": 0.4399
+      "n": 64565,
+      "positives": 17423,
+      "positive_rate": 0.2699
     },
     "test": {
-      "n": 3786,
-      "positives": 707,
-      "positive_rate": 0.1867
+      "n": 85387,
+      "positives": 23851,
+      "positive_rate": 0.2793
     }
   },
   "missing_values": {
-    "temperature_2m_max": 316,
-    "relative_humidity_2m_min": 316,
-    "precip_3d": 316,
-    "precip_7d": 316,
-    "days_since_rain": 316,
-    "wind_speed_10m_max": 316,
-    "et0_fao_evapotranspiration": 316
+    "temperature_2m_max": 35467,
+    "relative_humidity_2m_min": 35467,
+    "precip_3d": 35467,
+    "precip_7d": 35467,
+    "days_since_rain": 35467,
+    "wind_speed_10m_max": 35467,
+    "et0_fao_evapotranspiration": 35467
   },
-  "weather_tiles_cached": 37,
+  "weather_tiles_cached": 53,
   "coverage_by_country": {
-    "Indonesia": 15787,
-    "Malaysia": 4108
+    "Indonesia": 287450,
+    "Malaysia": 55661
   },
   "coverage_by_region": {
-    "South Sumatra": 4129,
-    "West Kalimantan": 3191,
-    "Central Kalimantan": 2445,
-    "South Kalimantan": 2382,
-    "Jambi": 1443,
-    "Riau": 1402,
-    "Sarawak": 916,
-    "Selangor": 864,
-    "Sarawak (Miri)": 728,
-    "Sabah": 709,
-    "East Kalimantan": 666,
-    "Pahang": 534,
-    "Johor": 318,
-    "North Kalimantan": 55,
-    "West Sumatra": 49,
-    "Terengganu": 31,
-    "North Sumatra": 25,
-    "Perak": 8
+    "West Kalimantan": 73295,
+    "South Sumatra": 47165,
+    "South Kalimantan": 37662,
+    "Central Kalimantan": 34564,
+    "East Kalimantan": 29227,
+    "Jambi": 19131,
+    "North Sumatra": 11876,
+    "Sarawak": 11710,
+    "West Sumatra": 10255,
+    "North Kalimantan": 9757,
+    "Sarawak (Miri)": 9636,
+    "Terengganu": 8786,
+    "Riau": 7981,
+    "Sabah": 6932,
+    "Aceh": 6537,
+    "Johor": 4800,
+    "Pahang": 4613,
+    "Kedah": 4193,
+    "Selangor": 3807,
+    "Perak": 1184
   },
   "period": [
-    "2023-01-01 04:17:00+00:00",
-    "2025-12-31 07:17:00+00:00"
+    "2023-01-01 05:08:00+00:00",
+    "2025-12-31 18:35:00+00:00"
   ],
   "feasibility_gate": {
     "passed": true,

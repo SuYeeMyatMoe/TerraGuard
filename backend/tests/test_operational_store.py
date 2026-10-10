@@ -113,7 +113,7 @@ def test_reset_cannot_delete_cloud_history(isolated_db):
 def test_team_name_cannot_be_silently_discarded_on_non_assignment():
     from app.schemas import ActionRequest
     with pytest.raises(ValueError):
-        ActionRequest(action="REQUEST_RECHECK", team_name="Alpha")
+        ActionRequest(action="REQUEST_RECHECK", reason="review", team_name="Alpha")
 
 
 def test_legacy_anon_key_is_rejected():

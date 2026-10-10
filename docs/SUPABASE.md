@@ -1,5 +1,7 @@
 # Operational persistence in Supabase
 
+> Integration note (2026-10-10): current decision and crew endpoints use `app.records` and `backend/supabase/schema.sql`, as documented in the README. This document describes the earlier strict RPC adapter retained for compatibility; its migration does not replace the current decision-snapshot schema.
+
 FastAPI is the only Supabase client. The frontend continues to call `/api/*` through the existing Next.js proxy; it has no Supabase dependency or credentials.
 
 | Record | Storage |

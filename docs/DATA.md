@@ -6,11 +6,13 @@
 | Study area | Malaysia (Peninsular, Sarawak, Sabah) + Indonesia (Sumatra/Riau, Kalimantan); bbox 95.0,-4.5 → 119.5,7.5 |
 | Period | 2023-01-01 → 2025-12-31 |
 | Hotspots | `ml/fetch_firms.py`, in priority order: FIRMS area API (`VIIRS_SNPP_SP`, `VIIRS_NOAA20_SP`, then NRT) → manual CSVs in `data/raw/firms_manual/` → **synthetic fallback** |
-| Current snapshot | **SYNTHETIC**. Generated in the FIRMS VIIRS 375 m schema (seed 20251010) and conditioned on real Open-Meteo weather in all 13 fire-prone zones. Written to `data/processed/provenance.json` and flagged in the UI |
+| Current snapshot | **REAL**: NASA FIRMS area API (`NASA_FIRMS_API`), VIIRS 375 m, S-NPP + NOAA-20, 570,840 detections, downloaded 2026-10-10. Recorded in `data/processed/provenance.json` and shown in the UI |
 | Weather | Open-Meteo archive API, daily, 1° tiles (no key). Features use the **previous UTC day** |
 | Protected areas | 12 curated parks/reserves stored as centroid + radius: **approximate boundaries**. They become verified WDPA polygons once Earth Engine is configured |
 
-The synthetic generator exists so the pipeline and demo run without credentials. It is not evidence about real fires. With a FIRMS MAP_KEY the same pipeline runs unchanged.
+A seeded synthetic generator remains in `ml/fetch_firms.py` as a fallback so the pipeline and demo run without credentials. It is used only when there is no FIRMS key and no manual CSV, it is labelled `SYNTHETIC` in `provenance.json` and the UI, and it is not evidence about real fires. The current results below do **not** use it.
+
+Hotspot detections are not confirmed fires. A VIIRS detection is a thermal anomaly seen by a satellite, and the label below measures further satellite detections, not fire spread or damage.
 
 ## Incident construction (`ml/incidents.py`)
 1. Normalise `acq_date` + `acq_time` to UTC and drop exact duplicates.
@@ -30,9 +32,11 @@ Cluster pixels, FRP max/mean/sum, I4 brightness, confidence mix, day/night, scan
 ## Splits and leakage controls
 | Split | Period | Candidates | Positive rate |
 |---|---|---|---|
-| train | 2023-01 → 2024-06 | 11,831 | 47.9% |
-| val | 2024-07 → 2024-12 | 3,862 | 44.0% |
-| test | 2025 | 3,786 | 18.7% |
+| train | 2023-01 → 2024-06 | 189,332 | 40.1% |
+| val | 2024-07 → 2024-12 | 64,565 | 27.0% |
+| test | 2025 | 85,387 | 27.9% |
+
+343,111 incident candidates in total; 1,913 uncertain and 75 censored candidates are excluded, as are 1,810 purged at split boundaries and 33 whose track crossed splits. About 35,000 candidates have no weather record and carry the missing-weather flag.
 
 - Train candidates whose 48 h label window crosses the validation start are purged, and likewise at the test boundary.
 - The first 7 days of validation and test are purged, covering the longest feature window.
@@ -42,18 +46,20 @@ Cluster pixels, FRP max/mean/sum, I4 brightness, confidence mix, day/night, scan
 
 Feasibility gate (≥ 200 positives and ≥ 200 negatives per split): **passed**.
 
-## Model results: held-out 2025 test (synthetic data)
+## Model results: held-out 2025 test (real NASA FIRMS data)
 | Metric | Historical-frequency baseline | Random Forest |
 |---|---|---|
-| PR-AUC | 0.401 | **0.727** |
-| Precision @ threshold | 44.0% | **73.6%** |
-| Recall @ threshold | 9.3% | **50.1%** |
-| F1 | 0.154 | **0.596** |
-| False-positive rate | **2.7%** | 4.1% |
-| Precision@5 per day | 18.1% | **24.2%** |
-| Brier | 0.147 | **0.081** |
+| PR-AUC | 0.535 | **0.623** |
+| Precision @ threshold | 52.2% | **58.3%** |
+| Recall @ threshold | 46.1% | **55.4%** |
+| F1 | 0.490 | **0.568** |
+| False-positive rate | **16.3%** | 15.4% |
+| Precision@5 per day | 72.7% | **74.4%** |
+| Brier | 0.186 | **0.164** |
 
-Threshold rule: maximise validation F1 subject to FPR ≤ 15%. The RF is served because it beats the baseline on validation PR-AUC (0.839 vs 0.671).
+Threshold rule: maximise validation F1 subject to FPR ≤ 15%. The RF is served because it beats the baseline on validation PR-AUC (0.584 vs 0.494). The test false-positive rates (16.3% and 15.4%) are slightly above the 15% target set on validation, which shows a small shift between the two periods.
+
+The improvement over the baseline is real but modest. Treat the model as a decision aid for ranking competing incidents, not as a standalone forecast.
 
 ## Scenario selection (`ml/build_scenarios.py`)
 - Only test-period days are used.
@@ -61,11 +67,12 @@ Threshold rule: maximise validation F1 subject to FPR ≤ 15%. The RF is served 
 - Days are ranked by candidate count and the top 5 are kept.
 - The default is the top day on which the two policies would send the team to **different** incidents (preferring days covering both countries). The pick uses decisions, never outcomes.
 
-## Policy backtest (`ml/policy_backtest.py`), 357 test days, one team
+## Policy backtest (`ml/policy_backtest.py`), 361 test days, one team
 | | AI-priority | First-alert | Random |
 |---|---|---|---|
-| Chosen incident showed follow-up within 48 h (real labels) | **14.5%** | 6.2% | 6.6% |
+| Chosen incident showed follow-up within 48 h (real labels) | **32.8%** | 16.4% | 17.5% |
 
-- Difference: 95% bootstrap CI +5.4 to +11.6 percentage points.
-- On disagreement days: 15.0% vs 2.6%.
-- Hypothetical simulation: mean loss index 21.8 vs 23.0. The difference of 1.2 has a 95% CI of −0.01 to 2.46, so it is **inconclusive**.
+- Difference (AI-priority minus first-alert): 95% bootstrap CI +11.9 to +21.1 percentage points.
+- The two policies choose different incidents on 248 of the 361 days. On those days: 34.0% vs 10.1% (CI +17.4 to +30.4 points, n = 247 with known labels).
+- Follow-up detection is a proxy for persistent activity, not confirmed damage.
+- Hypothetical simulation (8 seeds per day): mean loss index 26.8 (first-alert) vs 25.9 (AI-priority). The difference of 0.82 has a 95% CI of −0.89 to 2.48, so it is **inconclusive**. AI-priority had lower loss on 136 days, first-alert on 111, and 114 were tied.

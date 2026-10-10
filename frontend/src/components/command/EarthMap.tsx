@@ -7,6 +7,7 @@ import type { FeatureCollection } from "geojson";
 import { api } from "@/lib/api";
 import { shortId } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { crewRoute, replayBounds } from "@/lib/crew-map";
 import {
   afterStyleReady,
   rasterInsertionPoint,
@@ -93,9 +94,15 @@ function setSource(map: maplibregl.Map, id: string, data: FeatureCollection) {
   else map.addSource(id, { type: "geojson", data });
 }
 function ensureVectors(map: maplibregl.Map) {
-  for (const id of ["pas", "ctx", "analysis", "measure"])
+  for (const id of ["pas", "ctx", "crew", "analysis", "measure"])
     if (!map.getSource(id)) setSource(map, id, EMPTY);
   const layers: maplibregl.LayerSpecification[] = [
+    {
+      id: "crew-line",
+      type: "line",
+      source: "crew",
+      paint: { "line-color": "#06b6d4", "line-width": 3, "line-dasharray": [1.5, 1.2] },
+    },
     {
       id: "pas-fill",
       type: "fill",
@@ -306,6 +313,10 @@ export function EarthMap(props: Props) {
       const p = map.project([inc.lon, inc.lat]);
       result[inc.id] = [p.x, p.y];
     });
+    if (data.team) {
+      const base = map.project([data.team.base_lon, data.team.base_lat]);
+      result["crew-base"] = [base.x, base.y];
+    }
     setPositions((previous) => Object.keys(result).every((id) => previous[id] &&
       Math.abs(previous[id][0] - result[id][0]) < 0.5 && Math.abs(previous[id][1] - result[id][1]) < 0.5)
       ? previous : result);
@@ -519,6 +530,7 @@ export function EarthMap(props: Props) {
             geometry: { type: "Point", coordinates: [h.lon, h.lat] },
           })),
         });
+        setSource(map, "crew", crewRoute(data?.incidents ?? [], data?.team));
         const inc = data?.incidents.find((i) => i.id === selectedId);
         setSource(
           map,
@@ -548,6 +560,8 @@ export function EarthMap(props: Props) {
                 ? undefined
                 : l.id.startsWith("pas-")
                   ? v.protected
+                  : l.id === "crew-line"
+                    ? v.incidents
                   : l.id === "ctx-dots"
                     ? v.hotspots
                     : l.id.startsWith("analysis-")
@@ -589,6 +603,7 @@ export function EarthMap(props: Props) {
     ready,
   ]);
 
+  const overviewBoundsKey = JSON.stringify(replayBounds(data?.incidents ?? [], data?.team));
   const selectedIncident = data?.incidents.find((i) => i.id === selectedId);
   const selectedLon = selectedIncident?.lon,
     selectedLat = selectedIncident?.lat;
@@ -603,7 +618,14 @@ export function EarthMap(props: Props) {
         duration: 900,
         essential: true,
       });
-  }, [selectedId, selectedLon, selectedLat]);
+    else {
+      const overviewBounds = JSON.parse(overviewBoundsKey) as [Position, Position] | null;
+      if (overviewBounds) map.fitBounds(overviewBounds, {
+        padding: { top: 90, bottom: 230, left: 300, right: 420 },
+        duration: 900,
+      });
+    }
+  }, [selectedId, selectedLon, selectedLat, overviewBoundsKey]);
   const comparing = props.compare && props.visibility.historical;
   return (
     <>
@@ -631,6 +653,15 @@ export function EarthMap(props: Props) {
         />
       )}
       <div className="pointer-events-none absolute inset-0 z-[3] overflow-hidden">
+        {props.visibility.incidents && data?.team && positions["crew-base"] && (
+          <div
+            title={`${data.team.name} · ${data.team.base}`}
+            className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border-2 border-cyan-200 bg-white px-2 py-1 text-[11px] font-bold text-cyan-700 shadow-lg"
+            style={{ left: positions["crew-base"][0], top: positions["crew-base"][1] }}
+          >
+            Crew base · {data.team.base.split(",")[0]}{data.team.status === "available" ? " · available" : ""}
+          </div>
+        )}
         {props.visibility.incidents &&
           data?.incidents.map((inc) => {
             const p = positions[inc.id],
@@ -640,14 +671,14 @@ export function EarthMap(props: Props) {
             return (
               <button
                 key={inc.id}
-                aria-label={`${inc.id} ${inc.region}`}
+                aria-label={`${inc.id} ${inc.region}${inc.attendance === "assigned" ? " · crew assigned" : inc.attendance === "unattended" ? " · waiting, no crew" : ""}`}
                 disabled={props.measurement.drawing}
                 onClick={() => select(inc.id)}
                 className="pointer-events-auto absolute flex -translate-x-1/2 -translate-y-full flex-col items-center disabled:pointer-events-none"
                 style={{ left: p[0], top: p[1] }}
               >
                 <span
-                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-white px-2 py-1 text-[12px] font-semibold shadow-lg ${inc.id === selectedId ? "border-blue-600" : "border-slate-200"}`}
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-white px-2 py-1 text-[12px] font-semibold shadow-lg ${inc.id === selectedId ? "ring-2 ring-blue-600 ring-offset-2" : ""} ${inc.attendance === "unattended" ? "border-2 border-amber-500" : inc.attendance === "assigned" ? "border-2 border-cyan-500" : inc.id === selectedId ? "border-blue-600" : "border-slate-200"}`}
                 >
                   <b
                     className="grid h-5 w-5 place-items-center rounded-full text-white"
@@ -659,6 +690,8 @@ export function EarthMap(props: Props) {
                   <span className="font-normal text-slate-500">
                     {inc.region}
                   </span>
+                  {inc.attendance === "assigned" && <span className="rounded-full bg-cyan-100 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-700">CREW</span>}
+                  {inc.attendance === "unattended" && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-700">WAITING · NO CREW</span>}
                 </span>
                 <span className="h-2.5 w-0.5" style={{ background: color }} />
                 <span

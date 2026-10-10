@@ -117,19 +117,19 @@ def test_tile_url_cannot_be_arbitrary_or_outside_grid(module):
             s.tile_url(handle, *coords)
 
 
-def test_api_is_independent_of_database_and_validates_window(module, isolated_db, monkeypatch):
+def test_api_is_independent_of_database_and_validates_window(module, isolated_db, monkeypatch, current_incident_id):
     from app.main import app
-    from app import db
+    from app import records
     from fastapi.testclient import TestClient
     monkeypatch.setattr(module, "service", lambda: module.EarthEngineService(project=""))
     def down():
         raise RuntimeError("database must not be used for imagery")
-    monkeypatch.setattr(db, "status_map", down)
+    monkeypatch.setattr(records.get(), "status_map", down)
     with TestClient(app) as c:
         assert c.get("/api/earth-engine").json()["status"] == "not_configured"
-        assert c.get("/api/earth-engine/INC-20250729-A").json()["status"] == "not_configured"
+        assert c.get(f"/api/earth-engine/{current_incident_id}").json()["status"] == "not_configured"
         assert c.get("/api/earth-engine/unknown").status_code == 404
-        assert c.get("/api/earth-engine/INC-20250729-A?days=999").status_code == 422
+        assert c.get(f"/api/earth-engine/{current_incident_id}?days=999").status_code == 422
         assert c.get("/api/earth-engine/tiles/unknown/8/0/0").status_code == 410
 
 
@@ -228,7 +228,7 @@ def test_provider_cold_initialization_sets_deadline_after_transport_exists(modul
         ee.Reset()
 
 
-def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolated_db, monkeypatch):
+def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolated_db, monkeypatch, current_incident_id):
     from app.main import app
     from fastapi.testclient import TestClient
     provider = Provider()
@@ -237,7 +237,7 @@ def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolate
     s = module.EarthEngineService(project="p", provider=provider)
     monkeypatch.setattr(module, "service", lambda: s)
     with TestClient(app) as client:
-        result = client.get("/api/earth-engine/INC-20250729-A").json()
+        result = client.get(f"/api/earth-engine/{current_incident_id}").json()
         path = result["layers"][0]["tile_url"].format(z=8, x=0, y=0)
         response = client.get(path)
         assert response.content == image and response.headers["content-type"] == "image/png"
@@ -250,7 +250,7 @@ def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolate
 
 
 @pytest.mark.parametrize('image,mime', [(b'\xff\xd8\xff\xe0jpeg', 'image/jpeg'),(b'not an image', None)])
-def test_tile_endpoint_matches_actual_image_format(module, isolated_db, monkeypatch, image, mime):
+def test_tile_endpoint_matches_actual_image_format(module, isolated_db, monkeypatch, image, mime, current_incident_id):
     from app.main import app
     from fastapi.testclient import TestClient
     provider = Provider()
@@ -258,7 +258,7 @@ def test_tile_endpoint_matches_actual_image_format(module, isolated_db, monkeypa
     s = module.EarthEngineService('p', provider)
     monkeypatch.setattr(module, 'service', lambda: s)
     with TestClient(app) as c:
-        layer = c.get('/api/earth-engine/INC-20250729-A').json()['layers'][0]
+        layer = c.get(f'/api/earth-engine/{current_incident_id}').json()['layers'][0]
         response = c.get(layer['tile_url'].format(z=8,x=0,y=0))
         assert response.status_code == (200 if mime else 503)
         if mime:
@@ -342,12 +342,12 @@ def test_no_before_does_not_query_or_publish_comparison(module):
     assert len(p.calls) == 1 and not result['layers']
 
 
-def test_api_validates_viewport_and_mode(module, isolated_db, monkeypatch):
+def test_api_validates_viewport_and_mode(module, isolated_db, monkeypatch, current_incident_id):
     from app.main import app
     from fastapi.testclient import TestClient
     monkeypatch.setattr(module, 'service', lambda: module.EarthEngineService('p', Provider()))
     with TestClient(app) as c:
-        path = '/api/earth-engine/INC-20250729-A'
+        path = f'/api/earth-engine/{current_incident_id}'
         for query in ('bbox=nan,0,110,1', 'bbox=110,0,95,1', 'mode=future'):
             assert c.get(f'{path}?{query}').status_code == 422
         result = c.get(f'{path}?bbox=112,3,114,4&mode=compare').json()

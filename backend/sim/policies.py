@@ -18,22 +18,26 @@ from .metrics import compare, encode_frames, summarise
 POLICIES = ("none", "first_alert", "ai_priority")
 
 
-def allocate(policy: str, arrival_order: list[str], ai_order: list[str], teams: int) -> list[str]:
+def allocate(policy: str, arrival_order: list[str], ai_order: list[str], teams: int,
+             coordinator: str | None = None) -> list[str]:
     if policy == "none" or teams <= 0:
         return []
+    if policy == "coordinator":
+        return [coordinator] if coordinator else []
     order = arrival_order if policy == "first_alert" else ai_order
     return order[:teams]
 
 
 def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order: list[str], teams: int,
-                      response_delay: int, steps: int, seed: int, n_seeds: int) -> dict:
+                      response_delay: int, steps: int, seed: int, n_seeds: int, coordinator: str | None = None) -> dict:
     ids = [p.incident_id for p in plots]
     P = len(plots)
     rng = np.random.default_rng(seed)
     rand = rng.random((n_seeds, steps, P, plots[0].fuel.shape[0], plots[0].fuel.shape[1]), dtype=np.float32)
     results = {}
-    for policy in POLICIES:
-        assigned = allocate(policy, arrival_order, ai_order, teams)
+    policies = POLICIES + (("coordinator",) if coordinator else ())
+    for policy in policies:
+        assigned = allocate(policy, arrival_order, ai_order, teams, coordinator)
         arrivals = np.array([response_delay if i in assigned else np.inf for i in ids])
         teams_at = np.array([1 if i in assigned else 0 for i in ids])
         out = run(plots, arrivals, teams_at, steps, rand, keep_frames=True)

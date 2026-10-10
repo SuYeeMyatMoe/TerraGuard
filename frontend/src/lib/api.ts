@@ -1,5 +1,6 @@
 import type {
   ActionRecord,
+  ActionResponse,
   ActionType,
   AIResult,
   Evaluation,
@@ -10,6 +11,7 @@ import type {
   IncidentBriefing,
   IncidentsResponse,
   Prediction,
+  RecordBackend,
   SimulateRequest,
   SimulateResponse,
 } from "./types";
@@ -73,24 +75,15 @@ const post = <T>(path: string, body: unknown, timeoutMs?: number) =>
 export const api = {
   health: () => call<Health>("/api/health"),
   incidents: (scenario?: string) =>
-    call<IncidentsResponse>(
-      `/api/incidents${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ""}`,
+    call<IncidentsResponse>(`/api/incidents${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ""}`),
+  predict: (incident_id: string, teams: number) => post<Prediction>("/api/predict", { incident_id, teams }),
+  simulate: (req: SimulateRequest) => post<SimulateResponse>("/api/simulate", req, 60000),
+  action: (incident_id: string, action: ActionType, reason: string, teams = 1) =>
+    post<ActionResponse>(`/api/incidents/${encodeURIComponent(incident_id)}/action`, { action, reason, teams }),
+  actions: (scenario?: string, includeArchived = false) =>
+    call<{ actions: ActionRecord[]; record_backend: RecordBackend }>(
+      `/api/actions?${new URLSearchParams({ ...(scenario ? { scenario } : {}), include_archived: String(includeArchived) })}`,
     ),
-  predict: (incident_id: string, teams: number) =>
-    post<Prediction>("/api/predict", { incident_id, teams }),
-  simulate: (req: SimulateRequest) =>
-    post<SimulateResponse>("/api/simulate", req, 60000),
-  action: (
-    incident_id: string,
-    action: ActionType,
-    reason?: string,
-    teams = 1,
-  ) =>
-    post<{ action: ActionRecord; incident_status: string }>(
-      `/api/incidents/${encodeURIComponent(incident_id)}/action`,
-      { action, reason, teams },
-    ),
-  actions: () => call<{ actions: ActionRecord[] }>("/api/actions"),
   evaluation: () => call<Evaluation>("/api/evaluation"),
   geospatial: (incident_id: string) =>
     call<GeoContext>(`/api/geospatial/${encodeURIComponent(incident_id)}`),
@@ -116,15 +109,7 @@ export const api = {
     );
   },
   explain: (incident_id: string, teams: number, simulation?: unknown) =>
-    post<AIResult<IncidentBriefing>>(
-      "/api/ai/explain",
-      { incident_id, teams, simulation },
-      70000,
-    ),
-  fieldBrief: (incident_id: string, teams: number, action_id?: number) =>
-    post<AIResult<FieldBrief>>(
-      "/api/ai/field-brief",
-      { incident_id, teams, action_id },
-      70000,
-    ),
+    post<AIResult<IncidentBriefing>>("/api/ai/explain", { incident_id, teams, simulation }, 70000),
+  fieldBrief: (incident_id: string, teams: number, action_id?: number, stored_in?: string) =>
+    post<AIResult<FieldBrief>>("/api/ai/field-brief", { incident_id, teams, action_id, stored_in }, 70000),
 };

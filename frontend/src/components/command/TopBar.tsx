@@ -1,17 +1,11 @@
 "use client";
 
-import { Bell, BookOpen, Box, ChevronDown, Database, Globe2, History, RefreshCw } from "lucide-react";
+import { BookOpen, Box, ChevronDown, ClipboardList, Database, Globe2, History } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Logo, Segmented } from "@/components/ui";
 import { utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
-
-const ACTION_TEXT: Record<string, string> = {
-  ASSIGN_INSPECTION: "Inspection assigned",
-  REQUEST_RECHECK: "Recheck requested",
-  DISMISS: "Dismissed",
-};
 
 export function TopBar() {
   const data = useStore((s) => s.data);
@@ -19,14 +13,9 @@ export function TopBar() {
   const setView = useStore((s) => s.setView);
   const load = useStore((s) => s.load);
   const actions = useStore((s) => s.actions);
-  const actionsLoading = useStore((s) => s.actionsLoading);
-  const actionsError = useStore((s) => s.actionsError);
-  const loadActions = useStore((s) => s.loadActions);
   const setMethodology = useStore((s) => s.setMethodology);
-  const [bellOpen, setBellOpen] = useState(false);
+  const setRecordOpen = useStore((s) => s.setRecordOpen);
   const [scenOpen, setScenOpen] = useState(false);
-  const [seen, setSeen] = useState(0);
-  const unread = Math.max(actions.length - seen, 0);
   const prov = data?.provenance;
 
   return (
@@ -46,7 +35,7 @@ export function TopBar() {
           onChange={setView}
           options={[
             { value: "earth", label: (<><Globe2 size={15} /> Earth View</>), title: "Worldwide imagery and historical incident analysis" },
-            { value: "sim", label: (<><Box size={15} /> 3D Simulation</>), title: "Hypothetical forest scenario" },
+            { value: "sim", label: (<><Box size={15} /> Test the response (3D)</>), title: "Hypothetical forest scenario for testing where the crew goes" },
           ]}
         />
       </div>
@@ -103,54 +92,19 @@ export function TopBar() {
         </span>
       )}
 
-      <Dropdown
-        open={bellOpen}
-        setOpen={(v) => {
-          setBellOpen(v);
-          if (v) setSeen(actions.length);
-        }}
-        align="right"
-        button={
-          <span className="relative grid h-9 w-9 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[#f1f5f9]" aria-label="Notifications">
-            <Bell size={18} />
-            {unread > 0 && (
-              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--red)] px-1 text-[10px] font-bold text-white">
-                {unread}
-              </span>
-            )}
-          </span>
-        }
+      <button
+        className="relative flex h-9 items-center gap-2 rounded-[10px] border border-[var(--line)] bg-white px-3 text-[12.5px] font-semibold hover:border-[#cdd8e5]"
+        onClick={() => setRecordOpen(true)}
+        title="Decision record: who got the crew, who waited, and why"
       >
-        <div className="w-[340px]">
-          <div className="border-b border-[var(--line)] px-4 py-3">
-            <div className="text-[13.5px] font-bold">Decision log</div>
-            <div className="text-[11.5px] text-[var(--ink-2)]">Every coordinator action is saved with a timestamp.</div>
-          </div>
-          <div className="scroll-thin max-h-[340px] overflow-y-auto p-1.5">
-            {actionsLoading && <div role="status" className="px-3 py-4 text-[12.5px] text-[var(--ink-2)]">Loading decision log…</div>}
-            {actionsError && <div role="alert" className="rounded-lg bg-red-50 px-3 py-3 text-[12.5px] text-red-700">
-              <p>Could not load the decision log. {actionsError}</p>
-              <button className="btn btn-ghost mt-2 h-8" disabled={actionsLoading} onClick={() => loadActions()}><RefreshCw size={13} /> Retry</button>
-            </div>}
-            {!actionsLoading && !actionsError && actions.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-[var(--ink-2)]">No decisions recorded yet.</div>}
-            {actions.map((a) => (
-              <div key={a.id} className="rounded-lg px-3 py-2 hover:bg-[#f6f8fb]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12.5px] font-semibold">{ACTION_TEXT[a.action]}</span>
-                  <span className="text-[11px] text-[var(--ink-3)] tnum">
-                    {new Date(a.created_at).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-                <div className="text-[11.5px] text-[var(--ink-2)]">
-                  {a.incident_id}
-                  {a.recommendation_at_time ? ` · model recommended ${a.recommendation_at_time.toLowerCase()}` : ""}
-                  {a.reason ? ` · “${a.reason}”` : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Dropdown>
+        <ClipboardList size={16} className="text-[var(--ink-2)]" />
+        <span className="hidden lg:inline">Decision record</span>
+        {actions.length > 0 && (
+          <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--blue)] px-1.5 text-[10.5px] font-bold text-white tnum">
+            {actions.length}
+          </span>
+        )}
+      </button>
       <button className="btn btn-ghost h-9 px-2.5" onClick={() => setMethodology(true)} title="Methodology & evaluation">
         <BookOpen size={17} />
         <span className="hidden 2xl:inline">Methodology</span>

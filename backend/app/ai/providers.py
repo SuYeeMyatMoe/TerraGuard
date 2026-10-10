@@ -34,13 +34,15 @@ SECTION = {"type": "object", "properties": {"text": {"type": "string"},
 BRIEFING_SCHEMA = _strict({
     "type": "object",
     "properties": {
-        "summary": json.loads(json.dumps(SECTION)),
-        "why_matters": json.loads(json.dumps(SECTION)),
-        "prediction_interpretation": json.loads(json.dumps(SECTION)),
+        "incident_summary": json.loads(json.dumps(SECTION)),
+        "why_prediction": json.loads(json.dumps(SECTION)),
+        "why_priority": json.loads(json.dumps(SECTION)),
+        "comparison_with_next_incident": json.loads(json.dumps(SECTION)),
+        "uncertainties": json.loads(json.dumps(SECTION)),
+        "what_would_improve_confidence": json.loads(json.dumps(SECTION)),
         "recommended_next_step": {"type": "object", "properties": {
             "text": {"type": "string"}, "evidence_ids": {"type": "array", "items": {"type": "string"}},
             "recommendation": {"type": "string", "enum": ["INSPECT", "RECHECK", "MONITOR"]}}},
-        "uncertainty": json.loads(json.dumps(SECTION)),
     },
 })
 FIELD_BRIEF_SCHEMA = _strict({

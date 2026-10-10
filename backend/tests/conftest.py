@@ -51,3 +51,18 @@ def isolated_db(tmp_path, monkeypatch, operational_store):
     monkeypatch.setattr(db, "DB_PATH", tmp_path / "terraguard.db")
     monkeypatch.setattr(db, "_operations", lambda: operational_store[0])
     db.init()
+
+
+@pytest.fixture(autouse=True)
+def isolated_records_and_cache(tmp_path, monkeypatch):
+    """Every test uses temporary operational records and a separate briefing cache."""
+    from app import db, records
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "brief_cache.db")
+    monkeypatch.setattr(records, "_records", records.Records(records.SqliteStore(tmp_path / "records.db")))
+    db.init()
+
+
+@pytest.fixture
+def current_incident_id():
+    from app.service import store
+    return store().scenario()["incidents"][0]["incident_id"]

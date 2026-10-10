@@ -1,0 +1,13 @@
+/* Individual scale preserves existing transforms, including centered CTA positioning. */
+.terra-dust-cursor {position:fixed;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;contain:strict}
+@media(hover:none),(pointer:coarse),(prefers-reduced-motion:reduce){.terra-dust-cursor{display:none}}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :where(a[href], button, [role="button"], [role="link"], [data-cursor="interactive"], summary) {
+    transition-property: scale;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(.2,.7,.2,1);
+  }
+  :where(a[href], button, [role="button"], [role="link"], [data-cursor="interactive"], summary):hover:not(:disabled):not([aria-disabled="true"]):not([data-cursor="none"]) {
+    scale: 1.06;
+  }
+}

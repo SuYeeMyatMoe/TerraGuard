@@ -19,15 +19,27 @@ def _tree_pos_prob(tree) -> np.ndarray:
     return v[:, 1]
 
 
+_PROB_CACHE: dict[int, list[np.ndarray]] = {}
+
+
+def _tree_probs(rf) -> list[np.ndarray]:
+    """Per-node positive-class probability for every tree, computed once per loaded model."""
+    key = id(rf)
+    if key not in _PROB_CACHE:
+        _PROB_CACHE[key] = [_tree_pos_prob(est) for est in rf.estimators_]
+    return _PROB_CACHE[key]
+
+
 def path_contributions(rf, x: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
     """Return (bias, contributions[n_features], per_tree_probabilities)."""
+    # sklearn routes samples with float32 features; do the same so paths (and probabilities) match predict_proba
+    x = np.asarray(x, dtype=np.float32).astype(np.float64)
     n_feat = x.shape[0]
     contrib = np.zeros(n_feat)
     bias = 0.0
     per_tree = []
-    for est in rf.estimators_:
+    for est, prob in zip(rf.estimators_, _tree_probs(rf)):
         t = est.tree_
-        prob = _tree_pos_prob(est)
         node = 0
         bias += prob[0]
         while t.children_left[node] != -1:
@@ -96,4 +108,9 @@ def explain(bundle: dict, row: pd.Series, top: int = 4) -> dict:
         "factors": factors,
         "missing_features": missing,
         "ood_features": ood,
+        # full additive decomposition (probability units): bias + sum(contributions) == probability
+        "bias": float(bias),
+        "contributions": {f: float(c) for f, c in zip(feats, contrib)},
+        "values": {f: float(v) for f, v in zip(feats, x)},
+        "raw_probability": float(bias + contrib.sum()),
     }

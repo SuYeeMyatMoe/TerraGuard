@@ -383,7 +383,8 @@ export function EarthView() {
           </summary>
           <p className="mt-2 text-[10px] text-slate-600">
             Orange: inspect · blue: recheck · gray: monitor · amber: prior 24 h
-            hotspots · green: protected boundaries · blue ring: 1 km statistics.
+            hotspots · green: protected boundaries · blue ring: 1 km statistics. Cyan:
+            crew base and allocation line · amber badge: waiting without a crew.
           </p>
           <p className="mt-2 text-[10px] text-slate-500">
             Global basemap: Esri World Imagery (mixed acquisition dates; not the

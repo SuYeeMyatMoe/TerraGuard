@@ -4,6 +4,7 @@ Run:  .venv/Scripts/python -m uvicorn app.main:app --port 8010 --reload
 """
 from __future__ import annotations
 import asyncio
+import sqlite3
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
@@ -11,10 +12,10 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from . import db, geospatial, earth_engine
+from . import geospatial, records, earth_engine
 from .ai import service as ai
 from .ai.providers import grafilab_ready, openai_model, openai_ready
-from .schemas import (ActionRequest, ActionResponse, ExplainRequest, FieldBriefRequest, IncidentsResponse,
+from .schemas import (ActionRequest, ActionResponse, ActionsResponse, ExplainRequest, FieldBriefRequest, IncidentsResponse,
                       PredictRequest, PredictResponse, SimulateRequest, SimulateResponse)
 from .service import store
 from .operational_store import OperationalStoreError
@@ -50,14 +51,19 @@ def _known(incident_id: str) -> None:
 @app.get("/api/health")
 def health():
     s = store()
+    record_store = None
+    try:
+        record_store = records.get()
+        rec = record_store.health()
+    except (records.RecordError, OperationalStoreError, sqlite3.Error):
+        rec = {"backend": record_store.backend if record_store is not None else "unavailable", "available": False}
     result = {"status": "ok", "model": s.bundle["version"], "served_model": s.bundle["chosen"],
             "data_source": s.prov["source"], "is_synthetic": s.prov["is_synthetic"],
+            "record_backend": rec["backend"], "supabase": rec,
             "providers": {"openai": openai_ready(), "openai_model": openai_model() if openai_ready() else None,
                           "grafilab": grafilab_ready()},
             "earth_engine": geospatial._gee() is not None}
-    try:
-        db.check_ready()
-    except OperationalStoreError:
+    if not rec.get("available", True) or rec.get("supabase_reachable") is False:
         result.update(status="degraded", operational_database={"status": "unavailable"})
         return JSONResponse(status_code=503, content=result)
     result["operational_database"] = {"status": "ready"}
@@ -89,18 +95,17 @@ async def simulate(req: SimulateRequest):
 @app.post("/api/incidents/{incident_id}/action", response_model=ActionResponse)
 def action(incident_id: str, req: ActionRequest):
     _known(incident_id)
-    if req.action == "DISMISS" and not (req.reason and req.reason.strip()):
-        raise HTTPException(422, "Dismissing an incident requires a reason.")
-    s = store()
-    scenario, _ = s.inc_index[incident_id]
-    rec = s.predict(incident_id, req.teams)["priority"]["recommendation"]
-    row = db.record_action(scenario["scenario_id"], incident_id, req.action, req.reason, rec, req.team_name)
-    return {"action": row, "incident_status": db.STATUS_TEXT[req.action]}
+    if not req.reason.strip():
+        raise HTTPException(422, "Every decision needs a reason for the record.")
+    try:
+        return store().decide(incident_id, req.action, req.reason.strip(), req.teams, req.team_name)
+    except records.RecordError as e:
+        raise HTTPException(502, f"Decision could not be recorded: {e}")
 
 
-@app.get("/api/actions")
-def actions():
-    return {"actions": db.list_actions()}
+@app.get("/api/actions", response_model=ActionsResponse)
+def actions(scenario: str | None = None, include_archived: bool = False):
+    return store().actions(scenario, include_archived)
 
 
 @app.get("/api/evaluation")
@@ -112,7 +117,7 @@ def evaluation():
 @app.get("/api/geospatial/{incident_id}")
 def geo(incident_id: str):
     _known(incident_id)
-    return geospatial.context(store().incident(incident_id, statuses={}))
+    return geospatial.context(store().incident(incident_id, att={}))
 
 
 @app.get("/api/earth-engine")
@@ -148,7 +153,7 @@ def earth_engine_imagery(incident_id: str, days: int = Query(30, ge=14, le=60), 
     if days not in (14, 30, 60):
         raise HTTPException(422, "Choose a 14, 30 or 60 day window.")
     # Imagery remains available even if operational storage is down.
-    incident = store().incident(incident_id, statuses={})
+    incident = store().incident(incident_id, att={})
     try:
         result = earth_engine.service().describe(incident, days, refresh, bbox=bbox, mode=mode, background=async_load)
         return JSONResponse(result, headers={"Cache-Control": "no-store"})
@@ -165,4 +170,4 @@ async def explain(req: ExplainRequest):
 @app.post("/api/ai/field-brief")
 async def field_brief(req: FieldBriefRequest):
     _known(req.incident_id)
-    return await run_in_threadpool(ai.field_brief, store(), req.incident_id, req.teams, req.action_id)
+    return await run_in_threadpool(ai.field_brief, store(), req.incident_id, req.teams, req.action_id, req.stored_in)
