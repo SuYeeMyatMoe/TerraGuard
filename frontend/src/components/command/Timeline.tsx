@@ -57,7 +57,7 @@ export function Timeline() {
   const hours = (step * mps) / 60;
 
   return (
-    <div className="panel-float flex items-stretch gap-5 px-4 py-3">
+    <div className="timeline-panel panel-float flex flex-col items-stretch gap-4 px-3 py-3 lg:flex-row lg:gap-5 lg:px-4">
       {/* transport */}
       <div className="flex shrink-0 flex-col justify-between gap-2">
         <div className="flex items-center gap-1.5">
@@ -95,8 +95,8 @@ export function Timeline() {
 
       {/* progress */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-[13.5px] font-bold">Fire progression</span>
             <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[11px] font-semibold text-[var(--ink-2)]">Hypothetical test</span>
           </div>
@@ -113,7 +113,7 @@ export function Timeline() {
               const done = i <= activeIdx && m.at !== Infinity;
               const Icon = m.icon;
               return (
-                <div key={m.key} className="flex w-24 flex-col items-center first:items-start last:items-end">
+                <div key={m.key} className="flex w-1/4 min-w-0 flex-col items-center lg:w-24 first:items-start last:items-end">
                   <span className={`grid h-7 w-7 place-items-center rounded-full ring-4 ring-white transition ${done ? (i === activeIdx ? "bg-[var(--blue)] text-white" : "bg-[var(--blue-50)] text-[var(--blue)]") : "bg-[#eef2f7] text-[var(--ink-3)]"}`}>
                     <Icon size={13} />
                   </span>
@@ -150,7 +150,7 @@ export function Timeline() {
 
 function Count({ color, label, v }: { color: string; label: string; v: number }) {
   return (
-    <div className="flex items-center gap-2 text-[12px]">
+    <div className="flex flex-wrap items-center gap-2 text-[12px]">
       <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
       <span className="text-[var(--ink-2)]">{label}</span>
       <b className="ml-auto tnum">{v}</b>

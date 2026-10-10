@@ -58,7 +58,7 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
 }) {
   return (
-    <div className="inline-flex rounded-[11px] bg-[#eef2f7] p-[3px]" role="tablist">
+    <div className="inline-flex max-w-full flex-wrap rounded-[11px] bg-[#eef2f7] p-[3px]" role="tablist">
       {options.map((o) => (
         <button
           key={o.value}
