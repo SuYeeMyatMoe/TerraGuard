@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Loader2, RotateCw, Satellite } from "lucide-react";
+import { ChevronDown, Loader2, Satellite } from "lucide-react";
 import type { ImagerySnapshot } from "@/lib/earth-engine";
 import { useId, useState, type ReactNode } from "react";
 import type { RasterState } from "./EarthMap";
@@ -50,7 +50,6 @@ export function EarthEnginePanel({
   setDays,
   opacity,
   setOpacity,
-  retry,
   tileError,
   overview = false,
   children,
@@ -86,7 +85,7 @@ export function EarthEnginePanel({
   const ready = data?.status === "ready";
   const display = data?.display ?? analysis;
   const date = (v: string | null | undefined) => (v ? v.slice(0, 10) : "—");
-  // Problems are summarised by the status chip only; the reason stays available as a tooltip.
+  // Only loading and ready states get a chip; when imagery is unavailable the panel simply shows the basemap.
   const problem =
     friendlyImageryError(state.error) ??
     friendlyImageryError(analysisError) ??
@@ -97,7 +96,7 @@ export function EarthEnginePanel({
     ? { text: "Loading", cls: "bg-[var(--blue-50)] text-[var(--blue-700)]", dot: "bg-[var(--blue)] animate-pulse" }
     : ready && !problem
       ? { text: "Imagery ready", cls: "bg-[var(--green-50)] text-[var(--green-700)]", dot: "bg-[var(--green)]" }
-      : { text: "Basemap only", cls: "bg-slate-100 text-slate-600", dot: "bg-slate-400" };
+      : null;
   const subtitle = anchor
     ? `${anchor.replace(/^INC-\d{8}-/, "Incident ")} · ${days} d before`
     : "Worldwide true colour";
@@ -116,24 +115,12 @@ export function EarthEnginePanel({
           <div className="whitespace-nowrap text-[13.5px] font-bold leading-tight">Satellite imagery</div>
           <div className="truncate text-[11px] text-[var(--ink-3)]">{subtitle}</div>
         </div>
-        <span
-          className={`hidden shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-2 text-[10.5px] font-bold lg:inline-flex ${chip.cls} ${(!ready || !!problem) && !state.loading ? "pr-0.5" : "pr-2"}`}
-          title={problem ?? undefined}
-          role="status"
-        >
-          {state.loading ? <Loader2 size={10} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />}
-          {chip.text}
-          {(!ready || !!problem) && !state.loading && (
-            <button
-              type="button"
-              onClick={retry}
-              aria-label="Retry loading satellite imagery"
-              className="grid h-5 w-5 place-items-center rounded-full hover:bg-white/80"
-            >
-              <RotateCw size={10} />
-            </button>
-          )}
-        </span>
+        {chip && (
+          <span className={`hidden shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-bold lg:inline-flex ${chip.cls}`} role="status">
+            {state.loading ? <Loader2 size={10} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />}
+            {chip.text}
+          </span>
+        )}
         <button
           type="button"
           className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 lg:hidden"

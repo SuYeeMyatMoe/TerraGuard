@@ -77,6 +77,9 @@ interface State {
   load: (scenario?: string) => Promise<void>;
   loadActions: (scenario?: string) => Promise<void>;
   select: (id: string | null) => void;
+  /** Select an incident because the user clicked it: the 3D overview camera moves in on that plot. */
+  focusIncident: (id: string) => void;
+  focusRequest: number;
   setView: (v: View) => void;
   setParam: (k: "responseDelay" | "burnDuration" | "steps", v: number) => void;
   setOverride: (id: string, o: IncidentOverride) => void;
@@ -113,12 +116,13 @@ interface State {
 
 let toastId = 0;
 let actionsRequestId = 0;
+let reportRequestId = 0;
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
 
 // Report requests are shared by key, so a prefetch during playback is reused when the report opens.
 const reportRequests = new Map<string, Promise<IncidentReports>>();
-function fetchReport(s: Pick<State, "responseDelay" | "steps" | "seed" | "nSeeds" | "overrides">, id: string): Promise<IncidentReports> {
-  const body = { response_delay: s.responseDelay, steps: s.steps, seed: s.seed, n_seeds: s.nSeeds, per_incident: s.overrides };
+function fetchReport(s: Pick<State, "responseDelay" | "burnDuration" | "steps" | "seed" | "nSeeds" | "overrides">, id: string): Promise<IncidentReports> {
+  const body = { response_delay: s.responseDelay, burn_duration_steps: s.burnDuration, steps: s.steps, seed: s.seed, n_seeds: s.nSeeds, per_incident: s.overrides };
   const key = `${id}|${JSON.stringify(body)}`;
   let request = reportRequests.get(key);
   if (!request) {
@@ -229,6 +233,8 @@ export const useStore = create<State>((set, get) => ({
   },
 
   select: (id) => set({ selectedId: id, pickingIgnition: false }),
+  focusRequest: 0,
+  focusIncident: (id) => set((s) => ({ selectedId: id, pickingIgnition: false, focusRequest: s.focusRequest + 1 })),
   setView: (v) => {
     set({ view: v, pickingIgnition: false });
     // the 3D test runs on demand: first visit, or after a decision changed the crew's assignment
@@ -296,16 +302,13 @@ export const useStore = create<State>((set, get) => ({
     const s = get();
     const id = incidentId ?? s.selectedId ?? s.sim?.ai_order[0] ?? s.data?.incidents[0]?.id ?? null;
     if (!id) return;
-    if (s.report.data?.incident_id === id && !s.simStale) {
-      set({ consequence: null, report: { ...s.report, open: true, tab } });
-      return;
-    }
+    const requestId = ++reportRequestId;
     set({ consequence: null, report: { open: true, loading: true, incidentId: id, data: null, error: null, tab } });
     try {
       const data = await fetchReport(s, id);
-      if (get().report.incidentId === id) set((st) => ({ report: { ...st.report, loading: false, data } }));
+      if (requestId === reportRequestId) set((st) => ({ report: { ...st.report, loading: false, data } }));
     } catch (e) {
-      set((st) => ({ report: { ...st.report, loading: false, error: errMsg(e) } }));
+      if (requestId === reportRequestId) set((st) => ({ report: { ...st.report, loading: false, error: errMsg(e) } }));
     }
   },
   setReportTab: (tab) => set((st) => ({ report: { ...st.report, tab } })),

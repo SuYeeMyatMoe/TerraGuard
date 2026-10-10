@@ -33,7 +33,7 @@ export function IntelligencePanel() {
 function IncidentList() {
   const data = useStore((s) => s.data)!;
   const predictions = useStore((s) => s.predictions);
-  const select = useStore((s) => s.select);
+  const focusIncident = useStore((s) => s.focusIncident);
   const team = data.team;
   const sorted = [...data.incidents].sort(
     (a, b) => (predictions[a.id]?.priority.rank ?? 9) - (predictions[b.id]?.priority.rank ?? 9),
@@ -59,7 +59,7 @@ function IncidentList() {
           return (
             <button
               key={inc.id}
-              onClick={() => select(inc.id)}
+              onClick={() => focusIncident(inc.id)}
               className={`group flex w-full items-start gap-3 rounded-[12px] border bg-white p-3 text-left transition hover:shadow-[0_4px_14px_rgba(37,99,235,0.08)] ${
                 inc.attendance === "assigned" ? "border-[#a5e9f5]" : inc.attendance === "unattended" ? "border-amber-200" : "border-[var(--line)] hover:border-[var(--blue-200)]"
               }`}

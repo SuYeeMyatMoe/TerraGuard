@@ -36,7 +36,7 @@
 
 /* Palette and typography follow the homepage; the updated studio owns layout. */
 .forest-command.simulation-theme { background:var(--bg); color:var(--ink); }
-.simulation-theme > header { background:var(--bg); }
+.forest-command.simulation-theme .command-header { background:var(--bg); }
 .simulation-theme h1,.simulation-theme h2,.simulation-theme .panel-heading {
   font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.035em;
 }

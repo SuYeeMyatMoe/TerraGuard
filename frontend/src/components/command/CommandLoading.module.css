@@ -1,0 +1,17 @@
+.screen { position:fixed; inset:0; z-index:200; display:grid; place-items:center; overflow:auto; padding:32px 20px; background:#f0eee3; color:#263317; }
+.content { width:min(100%,480px); text-align:center; }
+.brand { margin-bottom:48px; font-size:20px; font-weight:750; letter-spacing:-.6px; }
+.brand span { color:#7c942a; }
+.emblem { position:relative; display:grid; place-items:center; width:96px; height:96px; margin:0 auto 32px; border-radius:50%; background:#e5e9d5; color:#365004; }
+.ring { position:absolute; inset:-6px; border:2px solid #d6ddbe; border-top-color:#7c942a; border-right-color:#7c942a; border-radius:50%; animation:turn 1.2s linear infinite; }
+.failed { color:#925e06; background:#fcf2df; }
+.eyebrow { color:#6b725c; font-size:10px; letter-spacing:2px; font-weight:700; }
+.content h1 { margin:12px 0; font-size:clamp(24px,4vw,32px); line-height:1.25; font-weight:500; letter-spacing:-1px; }
+.detail { margin-top:12px; font-size:13px; line-height:1.65; color:#6b725c; overflow-wrap:anywhere; }
+.hint { margin-top:28px; font-size:11px; color:#878c78; }
+.actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:24px; }
+.actions button { border:1px solid #d1d9b5; border-radius:9px; padding:10px 18px; font-size:13px; font-weight:600; cursor:pointer; }
+.actions button:first-child { background:#365004; color:#fffef9; }
+.actions button:focus-visible { outline:2px solid #7c942a; outline-offset:3px; }
+@keyframes turn { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .ring { animation:none; } }
