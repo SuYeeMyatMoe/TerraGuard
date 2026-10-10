@@ -1,0 +1,3572 @@
+[
+  {
+    "day": "2025-07-23",
+    "n_candidates": 44,
+    "candidate_ids": [
+      "CND-018033",
+      "CND-018034",
+      "CND-018036"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-22",
+    "n_candidates": 42,
+    "candidate_ids": [
+      "CND-017991",
+      "CND-017992",
+      "CND-017994"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-29",
+    "n_candidates": 39,
+    "candidate_ids": [
+      "CND-018238",
+      "CND-018239",
+      "CND-018240"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-11",
+    "n_candidates": 38,
+    "candidate_ids": [
+      "CND-016398",
+      "CND-016399",
+      "CND-016400"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-19",
+    "n_candidates": 36,
+    "candidate_ids": [
+      "CND-017897",
+      "CND-017898",
+      "CND-017899"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-28",
+    "n_candidates": 35,
+    "candidate_ids": [
+      "CND-018203",
+      "CND-018204",
+      "CND-018205"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-24",
+    "n_candidates": 33,
+    "candidate_ids": [
+      "CND-018077",
+      "CND-018078",
+      "CND-018079"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-21",
+    "n_candidates": 32,
+    "candidate_ids": [
+      "CND-017959",
+      "CND-017960",
+      "CND-017961"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-12",
+    "n_candidates": 31,
+    "candidate_ids": [
+      "CND-016436",
+      "CND-016437",
+      "CND-016438"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-25",
+    "n_candidates": 31,
+    "candidate_ids": [
+      "CND-018110",
+      "CND-018111",
+      "CND-018112"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-26",
+    "n_candidates": 31,
+    "candidate_ids": [
+      "CND-018141",
+      "CND-018142",
+      "CND-018143"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-27",
+    "n_candidates": 31,
+    "candidate_ids": [
+      "CND-018172",
+      "CND-018174",
+      "CND-018175"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-09",
+    "n_candidates": 30,
+    "candidate_ids": [
+      "CND-016340",
+      "CND-016341",
+      "CND-016343"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-30",
+    "n_candidates": 29,
+    "candidate_ids": [
+      "CND-018277",
+      "CND-018278",
+      "CND-018279"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-10",
+    "n_candidates": 28,
+    "candidate_ids": [
+      "CND-016370",
+      "CND-016371",
+      "CND-016372"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-25",
+    "n_candidates": 28,
+    "candidate_ids": [
+      "CND-019002",
+      "CND-019003",
+      "CND-019004"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-23",
+    "n_candidates": 27,
+    "candidate_ids": [
+      "CND-018959",
+      "CND-018960",
+      "CND-018963"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-08",
+    "n_candidates": 26,
+    "candidate_ids": [
+      "CND-016314",
+      "CND-016315",
+      "CND-016316"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-20",
+    "n_candidates": 26,
+    "candidate_ids": [
+      "CND-017933",
+      "CND-017934",
+      "CND-017935"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-13",
+    "n_candidates": 23,
+    "candidate_ids": [
+      "CND-016467",
+      "CND-016469",
+      "CND-016470"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-10",
+    "n_candidates": 23,
+    "candidate_ids": [
+      "CND-017765",
+      "CND-017766",
+      "CND-017767"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-18",
+    "n_candidates": 23,
+    "candidate_ids": [
+      "CND-017874",
+      "CND-017876",
+      "CND-017877"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-22",
+    "n_candidates": 23,
+    "candidate_ids": [
+      "CND-018936",
+      "CND-018937",
+      "CND-018938"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-17",
+    "n_candidates": 22,
+    "candidate_ids": [
+      "CND-017852",
+      "CND-017853",
+      "CND-017854"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-05",
+    "n_candidates": 22,
+    "candidate_ids": [
+      "CND-018361",
+      "CND-018362",
+      "CND-018363"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-01",
+    "n_candidates": 22,
+    "candidate_ids": [
+      "CND-019086",
+      "CND-019088",
+      "CND-019089"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-07",
+    "n_candidates": 21,
+    "candidate_ids": [
+      "CND-016293",
+      "CND-016294",
+      "CND-016295"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-14",
+    "n_candidates": 21,
+    "candidate_ids": [
+      "CND-017466",
+      "CND-017467",
+      "CND-017468"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-14",
+    "n_candidates": 20,
+    "candidate_ids": [
+      "CND-016490",
+      "CND-016491",
+      "CND-016492"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-24",
+    "n_candidates": 20,
+    "candidate_ids": [
+      "CND-018600",
+      "CND-018601",
+      "CND-018603"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-12",
+    "n_candidates": 20,
+    "candidate_ids": [
+      "CND-019226",
+      "CND-019227",
+      "CND-019228"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-30",
+    "n_candidates": 20,
+    "candidate_ids": [
+      "CND-019422",
+      "CND-019423",
+      "CND-019424"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-11",
+    "n_candidates": 19,
+    "candidate_ids": [
+      "CND-017416",
+      "CND-017418",
+      "CND-017419"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-09",
+    "n_candidates": 19,
+    "candidate_ids": [
+      "CND-017746",
+      "CND-017747",
+      "CND-017748"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-23",
+    "n_candidates": 19,
+    "candidate_ids": [
+      "CND-018581",
+      "CND-018582",
+      "CND-018583"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-20",
+    "n_candidates": 18,
+    "candidate_ids": [
+      "CND-016566",
+      "CND-016567",
+      "CND-016568"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-13",
+    "n_candidates": 18,
+    "candidate_ids": [
+      "CND-017448",
+      "CND-017449",
+      "CND-017450"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-06",
+    "n_candidates": 18,
+    "candidate_ids": [
+      "CND-018383",
+      "CND-018384",
+      "CND-018385"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-21",
+    "n_candidates": 18,
+    "candidate_ids": [
+      "CND-018918",
+      "CND-018920",
+      "CND-018921"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-08",
+    "n_candidates": 17,
+    "candidate_ids": [
+      "CND-017729",
+      "CND-017730",
+      "CND-017731"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-26",
+    "n_candidates": 17,
+    "candidate_ids": [
+      "CND-019030",
+      "CND-019031",
+      "CND-019032"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-11",
+    "n_candidates": 17,
+    "candidate_ids": [
+      "CND-019209",
+      "CND-019210",
+      "CND-019211"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-06",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-016277",
+      "CND-016278",
+      "CND-016279"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-15",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-016510",
+      "CND-016511",
+      "CND-016512"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-25",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-017587",
+      "CND-017588",
+      "CND-017589"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-11",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018447",
+      "CND-018448",
+      "CND-018449"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-21",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018549",
+      "CND-018550",
+      "CND-018551"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-22",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018565",
+      "CND-018566",
+      "CND-018567"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-29",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018670",
+      "CND-018671",
+      "CND-018672"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-30",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018686",
+      "CND-018687",
+      "CND-018689"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-07",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018771",
+      "CND-018772",
+      "CND-018773"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-13",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018829",
+      "CND-018830",
+      "CND-018831"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-24",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-018986",
+      "CND-018987",
+      "CND-018988"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-02",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-019108",
+      "CND-019111",
+      "CND-019112"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-13",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-019246",
+      "CND-019247",
+      "CND-019248"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-24",
+    "n_candidates": 16,
+    "candidate_ids": [
+      "CND-019350",
+      "CND-019351",
+      "CND-019352"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-03-14",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-016738",
+      "CND-016739",
+      "CND-016740"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-01",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-017317",
+      "CND-017318",
+      "CND-017319"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-08",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-017387",
+      "CND-017388",
+      "CND-017389"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-15",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-017487",
+      "CND-017488",
+      "CND-017489"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-06",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-017702",
+      "CND-017703",
+      "CND-017704"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-26",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-018631",
+      "CND-018632",
+      "CND-018633"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-10",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-018799",
+      "CND-018800",
+      "CND-018801"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-09",
+    "n_candidates": 15,
+    "candidate_ids": [
+      "CND-019181",
+      "CND-019182",
+      "CND-019183"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-24",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-017573",
+      "CND-017574",
+      "CND-017575"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-01",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-017644",
+      "CND-017645",
+      "CND-017646"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-04",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-017674",
+      "CND-017675",
+      "CND-017676"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-05",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-017688",
+      "CND-017689",
+      "CND-017690"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-04",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-018740",
+      "CND-018742",
+      "CND-018743"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-09-14",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-018845",
+      "CND-018846",
+      "CND-018847"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-09-27",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-019047",
+      "CND-019048",
+      "CND-019049"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-08",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-019167",
+      "CND-019168",
+      "CND-019169"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-25",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-019366",
+      "CND-019367",
+      "CND-019368"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-29",
+    "n_candidates": 14,
+    "candidate_ids": [
+      "CND-019408",
+      "CND-019409",
+      "CND-019410"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-07",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-017131",
+      "CND-017132",
+      "CND-017133"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-02",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-017332",
+      "CND-017333",
+      "CND-017334"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-12",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-017435",
+      "CND-017436",
+      "CND-017437"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-27",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-017613",
+      "CND-017614",
+      "CND-017615"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-11",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-017788",
+      "CND-017789",
+      "CND-017790"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-04",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-018348",
+      "CND-018349",
+      "CND-018350"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-08",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-018413",
+      "CND-018414",
+      "CND-018415"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-27",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-018646",
+      "CND-018647",
+      "CND-018648"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-18",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-018882",
+      "CND-018883",
+      "CND-018884"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-10",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-019196",
+      "CND-019197",
+      "CND-019198"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-22",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-019331",
+      "CND-019332",
+      "CND-019333"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-21",
+    "n_candidates": 13,
+    "candidate_ids": [
+      "CND-019612",
+      "CND-019613",
+      "CND-019614"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-01-10",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-016060",
+      "CND-016061",
+      "CND-016062"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-01-15",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-016099",
+      "CND-016100",
+      "CND-016101"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-22",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-016155",
+      "CND-016156",
+      "CND-016157"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-03",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-016243",
+      "CND-016244",
+      "CND-016245"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-16",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-016526",
+      "CND-016527",
+      "CND-016528"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-28",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-016832",
+      "CND-016834",
+      "CND-016835"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-03-30",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-016855",
+      "CND-016856",
+      "CND-016857"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-04",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-017350",
+      "CND-017351",
+      "CND-017352"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-16",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-017502",
+      "CND-017503",
+      "CND-017504"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-23",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-017561",
+      "CND-017562",
+      "CND-017563"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-02",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-017658",
+      "CND-017659",
+      "CND-017660"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-07",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-017717",
+      "CND-017718",
+      "CND-017719"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-12",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-017801",
+      "CND-017802",
+      "CND-017803"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-31",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-018306",
+      "CND-018307",
+      "CND-018308"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-01",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-018318",
+      "CND-018319",
+      "CND-018320"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-07",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-018401",
+      "CND-018402",
+      "CND-018403"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-09",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-018426",
+      "CND-018427",
+      "CND-018428"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-05",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-018754",
+      "CND-018755",
+      "CND-018756"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-19",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-018895",
+      "CND-018896",
+      "CND-018897"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-06",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-019149",
+      "CND-019150",
+      "CND-019152"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-15",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-019266",
+      "CND-019267",
+      "CND-019268"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-31",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-019442",
+      "CND-019443",
+      "CND-019444"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-01",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-019454",
+      "CND-019455",
+      "CND-019456"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-12-28",
+    "n_candidates": 12,
+    "candidate_ids": [
+      "CND-019858",
+      "CND-019859",
+      "CND-019860"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-01-05",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016019",
+      "CND-016020",
+      "CND-016021"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-20",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016135",
+      "CND-016136",
+      "CND-016137"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-02",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016232",
+      "CND-016233",
+      "CND-016234"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-04",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016255",
+      "CND-016256",
+      "CND-016257"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-05",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016266",
+      "CND-016267",
+      "CND-016269"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-12",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016716",
+      "CND-016717",
+      "CND-016718"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-13",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016727",
+      "CND-016728",
+      "CND-016729"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-29",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-016844",
+      "CND-016845",
+      "CND-016846"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-26",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-017278",
+      "CND-017279",
+      "CND-017280"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-06",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-017368",
+      "CND-017369",
+      "CND-017370"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-17",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-017514",
+      "CND-017515",
+      "CND-017516"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-14",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-017819",
+      "CND-017820",
+      "CND-017821"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-15",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-017830",
+      "CND-017831",
+      "CND-017832"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-16",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-017841",
+      "CND-017842",
+      "CND-017843"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-14",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-018480",
+      "CND-018481",
+      "CND-018482"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-17",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-018510",
+      "CND-018511",
+      "CND-018512"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-20",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-018538",
+      "CND-018539",
+      "CND-018540"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-25",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-018620",
+      "CND-018621",
+      "CND-018622"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-28",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-018659",
+      "CND-018660",
+      "CND-018661"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-09-03",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-018729",
+      "CND-018730",
+      "CND-018731"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-20",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-018907",
+      "CND-018908",
+      "CND-018909"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-09-29",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019067",
+      "CND-019068",
+      "CND-019069"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-05",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019138",
+      "CND-019139",
+      "CND-019140"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-17",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019284",
+      "CND-019285",
+      "CND-019286"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-20",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019313",
+      "CND-019314",
+      "CND-019315"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-05",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019483",
+      "CND-019484",
+      "CND-019485"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-20",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019601",
+      "CND-019602",
+      "CND-019603"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-02",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019693",
+      "CND-019694",
+      "CND-019695"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-26",
+    "n_candidates": 11,
+    "candidate_ids": [
+      "CND-019841",
+      "CND-019842",
+      "CND-019843"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-07",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-016035",
+      "CND-016036",
+      "CND-016037"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-08",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-016045",
+      "CND-016046",
+      "CND-016047"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-19",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-016556",
+      "CND-016557",
+      "CND-016558"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-01",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-016876",
+      "CND-016877",
+      "CND-016878"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-03",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-016891",
+      "CND-016893",
+      "CND-016894"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-12",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-016947",
+      "CND-016948",
+      "CND-016949"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-14",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-016965",
+      "CND-016966",
+      "CND-016967"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-19",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017002",
+      "CND-017003",
+      "CND-017004"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-20",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017012",
+      "CND-017013",
+      "CND-017014"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-21",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017022",
+      "CND-017023",
+      "CND-017024"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-28",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017071",
+      "CND-017072",
+      "CND-017073"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-16",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017202",
+      "CND-017203",
+      "CND-017204"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-22",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017248",
+      "CND-017249",
+      "CND-017250"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-09",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017402",
+      "CND-017404",
+      "CND-017405"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-26",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-017603",
+      "CND-017604",
+      "CND-017605"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-15",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-018491",
+      "CND-018492",
+      "CND-018493"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-19",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-018528",
+      "CND-018529",
+      "CND-018530"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-02",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-018719",
+      "CND-018720",
+      "CND-018721"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-19",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019303",
+      "CND-019304",
+      "CND-019305"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-26",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019380",
+      "CND-019381",
+      "CND-019382"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-28",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019398",
+      "CND-019399",
+      "CND-019400"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-08",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019511",
+      "CND-019512",
+      "CND-019513"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-22",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019625",
+      "CND-019626",
+      "CND-019627"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-24",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019637",
+      "CND-019638",
+      "CND-019639"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-28",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019664",
+      "CND-019665",
+      "CND-019666"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-23",
+    "n_candidates": 10,
+    "candidate_ids": [
+      "CND-019820",
+      "CND-019821",
+      "CND-019822"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-11",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016072",
+      "CND-016073",
+      "CND-016074"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-21",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016146",
+      "CND-016147",
+      "CND-016148"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-17",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016538",
+      "CND-016539",
+      "CND-016540"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-18",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016547",
+      "CND-016548",
+      "CND-016549"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-06",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016665",
+      "CND-016666",
+      "CND-016667"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-07",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016674",
+      "CND-016675",
+      "CND-016676"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-08",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016683",
+      "CND-016684",
+      "CND-016685"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-10",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016700",
+      "CND-016701",
+      "CND-016702"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-31",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016867",
+      "CND-016868",
+      "CND-016869"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-04",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016901",
+      "CND-016902",
+      "CND-016903"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-16",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-016983",
+      "CND-016984",
+      "CND-016985"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-04",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-017108",
+      "CND-017109",
+      "CND-017110"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-08",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-017144",
+      "CND-017145",
+      "CND-017146"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-10",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-017157",
+      "CND-017158",
+      "CND-017159"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-12",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-017174",
+      "CND-017175",
+      "CND-017176"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-19",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-017223",
+      "CND-017224",
+      "CND-017225"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-20",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-017232",
+      "CND-017233",
+      "CND-017234"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-23",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-017258",
+      "CND-017259",
+      "CND-017260"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-02",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018330",
+      "CND-018331",
+      "CND-018332"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-03",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018339",
+      "CND-018340",
+      "CND-018341"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-10",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018438",
+      "CND-018439",
+      "CND-018440"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-13",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018471",
+      "CND-018473",
+      "CND-018474"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-16",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018501",
+      "CND-018502",
+      "CND-018505"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-31",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018702",
+      "CND-018703",
+      "CND-018704"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-12",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018820",
+      "CND-018821",
+      "CND-018822"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-16",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-018865",
+      "CND-018866",
+      "CND-018867"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-06",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-019494",
+      "CND-019495",
+      "CND-019496"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-15",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-019566",
+      "CND-019567",
+      "CND-019568"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-17",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-019581",
+      "CND-019582",
+      "CND-019583"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-25",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-019647",
+      "CND-019648",
+      "CND-019649"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-12-06",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-019723",
+      "CND-019724",
+      "CND-019725"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-14",
+    "n_candidates": 9,
+    "candidate_ids": [
+      "CND-019767",
+      "CND-019768",
+      "CND-019769"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-03",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016006",
+      "CND-016007",
+      "CND-016008"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-13",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016087",
+      "CND-016088",
+      "CND-016090"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-24",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016172",
+      "CND-016173",
+      "CND-016174"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-01-26",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016186",
+      "CND-016187",
+      "CND-016188"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-29",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016204",
+      "CND-016205",
+      "CND-016206"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-01",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016224",
+      "CND-016225",
+      "CND-016226"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-21",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016584",
+      "CND-016585",
+      "CND-016586"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-22",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016592",
+      "CND-016593",
+      "CND-016594"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-28",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016623",
+      "CND-016624",
+      "CND-016626"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-05",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016657",
+      "CND-016658",
+      "CND-016659"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-03-09",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016692",
+      "CND-016693",
+      "CND-016694"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-22",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016793",
+      "CND-016794",
+      "CND-016795"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-03-24",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016806",
+      "CND-016807",
+      "CND-016808"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-05",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016910",
+      "CND-016911",
+      "CND-016912"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-13",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016957",
+      "CND-016958",
+      "CND-016959"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-15",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-016975",
+      "CND-016976",
+      "CND-016977"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-24",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017045",
+      "CND-017046",
+      "CND-017047"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-27",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017063",
+      "CND-017064",
+      "CND-017065"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-11",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017166",
+      "CND-017167",
+      "CND-017168"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-29",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017293",
+      "CND-017294",
+      "CND-017295"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-30",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017301",
+      "CND-017302",
+      "CND-017303"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-31",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017309",
+      "CND-017310",
+      "CND-017311"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-07",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017379",
+      "CND-017380",
+      "CND-017381"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-18",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017525",
+      "CND-017526",
+      "CND-017527"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-22",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017553",
+      "CND-017554",
+      "CND-017556"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-30",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-017636",
+      "CND-017637",
+      "CND-017638"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-08-12",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-018463",
+      "CND-018464",
+      "CND-018465"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-01",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-018711",
+      "CND-018712",
+      "CND-018713"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-09-17",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-018874",
+      "CND-018875",
+      "CND-018876"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-30",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019078",
+      "CND-019079",
+      "CND-019080"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-18",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019295",
+      "CND-019296",
+      "CND-019297"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-27",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019390",
+      "CND-019391",
+      "CND-019392"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-07",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019503",
+      "CND-019504",
+      "CND-019505"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-09",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019521",
+      "CND-019522",
+      "CND-019523"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-12",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019542",
+      "CND-019543",
+      "CND-019544"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-13",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019550",
+      "CND-019551",
+      "CND-019552"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-14",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019558",
+      "CND-019559",
+      "CND-019560"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-30",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019679",
+      "CND-019680",
+      "CND-019681"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-11",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019750",
+      "CND-019751",
+      "CND-019752"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-20",
+    "n_candidates": 8,
+    "candidate_ids": [
+      "CND-019804",
+      "CND-019805",
+      "CND-019806"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-01",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-015996",
+      "CND-015997",
+      "CND-015998"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-01-19",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016128",
+      "CND-016129",
+      "CND-016130"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-25",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016609",
+      "CND-016610",
+      "CND-016611"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-02-26",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016616",
+      "CND-016617",
+      "CND-016618"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-02",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016637",
+      "CND-016638",
+      "CND-016639"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-03",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016644",
+      "CND-016645",
+      "CND-016646"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-11",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016709",
+      "CND-016710",
+      "CND-016711"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-15",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016753",
+      "CND-016754",
+      "CND-016758"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-03-18",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016771",
+      "CND-016772",
+      "CND-016773"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-03-19",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016778",
+      "CND-016779",
+      "CND-016780"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-26",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016819",
+      "CND-016820",
+      "CND-016821"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-07",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-016922",
+      "CND-016923",
+      "CND-016924"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-23",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017038",
+      "CND-017039",
+      "CND-017040"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-25",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017053",
+      "CND-017054",
+      "CND-017055"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-30",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017087",
+      "CND-017088",
+      "CND-017089"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-05",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017117",
+      "CND-017118",
+      "CND-017119"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-06",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017124",
+      "CND-017125",
+      "CND-017126"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-15",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017195",
+      "CND-017196",
+      "CND-017197"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-21",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017241",
+      "CND-017242",
+      "CND-017243"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-25",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017271",
+      "CND-017272",
+      "CND-017273"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-20",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017539",
+      "CND-017540",
+      "CND-017541"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-21",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-017546",
+      "CND-017547",
+      "CND-017548"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-08-18",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-018521",
+      "CND-018522",
+      "CND-018523"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-03",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019124",
+      "CND-019125",
+      "CND-019126"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-04",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019131",
+      "CND-019132",
+      "CND-019133"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-21",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019324",
+      "CND-019325",
+      "CND-019326"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-02",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019466",
+      "CND-019467",
+      "CND-019468"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-10",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019529",
+      "CND-019530",
+      "CND-019531"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-19",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019594",
+      "CND-019595",
+      "CND-019596"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-03",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019704",
+      "CND-019705",
+      "CND-019706"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-05",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019716",
+      "CND-019717",
+      "CND-019718"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-08",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019736",
+      "CND-019737",
+      "CND-019738"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-16",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019782",
+      "CND-019783",
+      "CND-019784"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-12-17",
+    "n_candidates": 7,
+    "candidate_ids": [
+      "CND-019789",
+      "CND-019790",
+      "CND-019791"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-12",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016081",
+      "CND-016082",
+      "CND-016083"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-16",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016111",
+      "CND-016112",
+      "CND-016113"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-17",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016117",
+      "CND-016118",
+      "CND-016119"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-25",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016180",
+      "CND-016181",
+      "CND-016182"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-30",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016212",
+      "CND-016213",
+      "CND-016214"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-31",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016218",
+      "CND-016219",
+      "CND-016220"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-03-01",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016631",
+      "CND-016632",
+      "CND-016633"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-04",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016651",
+      "CND-016652",
+      "CND-016653"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-16",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016760",
+      "CND-016761",
+      "CND-016762"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-27",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016826",
+      "CND-016827",
+      "CND-016828"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-10",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016936",
+      "CND-016937",
+      "CND-016938"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-17",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-016992",
+      "CND-016993",
+      "CND-016994"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-22",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017032",
+      "CND-017033",
+      "CND-017034"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-29",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017081",
+      "CND-017082",
+      "CND-017083"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-13",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017183",
+      "CND-017184",
+      "CND-017185"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-14",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017189",
+      "CND-017190",
+      "CND-017191"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-17",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017212",
+      "CND-017213",
+      "CND-017214"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-05",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017362",
+      "CND-017363",
+      "CND-017364"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-19",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017533",
+      "CND-017534",
+      "CND-017535"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-07-13",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-017813",
+      "CND-017814",
+      "CND-017815"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-09-08",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-018787",
+      "CND-018788",
+      "CND-018790"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-09",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-018793",
+      "CND-018794",
+      "CND-018795"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-11",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-018814",
+      "CND-018815",
+      "CND-018816"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-15",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-018859",
+      "CND-018860",
+      "CND-018863"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-09-28",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019061",
+      "CND-019062",
+      "CND-019063"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-07",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019161",
+      "CND-019162",
+      "CND-019163"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-16",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019278",
+      "CND-019279",
+      "CND-019280"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-10-23",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019344",
+      "CND-019345",
+      "CND-019346"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-11",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019536",
+      "CND-019537",
+      "CND-019538"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-16",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019575",
+      "CND-019576",
+      "CND-019577"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-12-01",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019687",
+      "CND-019689",
+      "CND-019690"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-12-15",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019776",
+      "CND-019777",
+      "CND-019778"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-19",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019798",
+      "CND-019799",
+      "CND-019800"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-25",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019835",
+      "CND-019836",
+      "CND-019837"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-27",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019852",
+      "CND-019853",
+      "CND-019854"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-29",
+    "n_candidates": 6,
+    "candidate_ids": [
+      "CND-019870",
+      "CND-019871",
+      "CND-019873"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-04",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016014",
+      "CND-016015",
+      "CND-016016"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-06",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016030",
+      "CND-016031",
+      "CND-016032"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-09",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016055",
+      "CND-016056",
+      "CND-016057"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-18",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016123",
+      "CND-016124",
+      "CND-016125"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-23",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016167",
+      "CND-016168",
+      "CND-016169"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-27",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016194",
+      "CND-016195",
+      "CND-016196"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-28",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016199",
+      "CND-016200",
+      "CND-016201"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-24",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016604",
+      "CND-016605",
+      "CND-016606"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-17",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016766",
+      "CND-016767",
+      "CND-016768"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-20",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016785",
+      "CND-016786",
+      "CND-016787"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-23",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016801",
+      "CND-016802",
+      "CND-016803"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-25",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016814",
+      "CND-016815",
+      "CND-016816"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-02",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016886",
+      "CND-016887",
+      "CND-016888"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-09",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016931",
+      "CND-016932",
+      "CND-016933"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-11",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-016942",
+      "CND-016943",
+      "CND-016944"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-01",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-017094",
+      "CND-017095",
+      "CND-017096"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-03",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-017103",
+      "CND-017104",
+      "CND-017105"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-18",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-017218",
+      "CND-017219",
+      "CND-017220"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-03",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-017345",
+      "CND-017346",
+      "CND-017347"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-28",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-017626",
+      "CND-017627",
+      "CND-017629"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-06-29",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-017631",
+      "CND-017632",
+      "CND-017633"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-09-06",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-018766",
+      "CND-018767",
+      "CND-018768"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-03",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-019473",
+      "CND-019474",
+      "CND-019475"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-04",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-019478",
+      "CND-019479",
+      "CND-019480"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-27",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-019659",
+      "CND-019660",
+      "CND-019661"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-29",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-019674",
+      "CND-019675",
+      "CND-019676"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-04",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-019711",
+      "CND-019712",
+      "CND-019713"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-12",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-019758",
+      "CND-019759",
+      "CND-019760"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-24",
+    "n_candidates": 5,
+    "candidate_ids": [
+      "CND-019830",
+      "CND-019831",
+      "CND-019832"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-14",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-016095",
+      "CND-016096",
+      "CND-016097"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-02-23",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-016600",
+      "CND-016601",
+      "CND-016602"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-04-06",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-016918",
+      "CND-016919",
+      "CND-016920"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-04-18",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-016998",
+      "CND-016999",
+      "CND-017000"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-02",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-017099",
+      "CND-017101",
+      "CND-017102"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-09",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-017153",
+      "CND-017154",
+      "CND-017155"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-05-24",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-017267",
+      "CND-017268",
+      "CND-017269"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-06-10",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-017412",
+      "CND-017413",
+      "CND-017414"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-07-03",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-017670",
+      "CND-017671",
+      "CND-017672"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-10-14",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-019262",
+      "CND-019263",
+      "CND-019264"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-11-18",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-019590",
+      "CND-019591",
+      "CND-019592"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-07",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-019732",
+      "CND-019733",
+      "CND-019734"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-09",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-019743",
+      "CND-019744",
+      "CND-019745"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-13",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-019763",
+      "CND-019764",
+      "CND-019765"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-21",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-019812",
+      "CND-019813",
+      "CND-019814"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-12-22",
+    "n_candidates": 4,
+    "candidate_ids": [
+      "CND-019816",
+      "CND-019817",
+      "CND-019818"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-01-02",
+    "n_candidates": 3,
+    "candidate_ids": [
+      "CND-016003",
+      "CND-016004",
+      "CND-016005"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-03-21",
+    "n_candidates": 3,
+    "candidate_ids": [
+      "CND-016790",
+      "CND-016791",
+      "CND-016792"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-05-28",
+    "n_candidates": 3,
+    "candidate_ids": [
+      "CND-017290",
+      "CND-017291",
+      "CND-017292"
+    ],
+    "policies_disagree": true
+  },
+  {
+    "day": "2025-11-26",
+    "n_candidates": 3,
+    "candidate_ids": [
+      "CND-019656",
+      "CND-019657",
+      "CND-019658"
+    ],
+    "policies_disagree": false
+  },
+  {
+    "day": "2025-12-10",
+    "n_candidates": 3,
+    "candidate_ids": [
+      "CND-019747",
+      "CND-019748",
+      "CND-019749"
+    ],
+    "policies_disagree": true
+  }
+]

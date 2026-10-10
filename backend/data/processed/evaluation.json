@@ -1,0 +1,586 @@
+{
+  "model_version": "rf-48h-v1",
+  "target": "Probability that a qualifying VIIRS hotspot is detected within 2 km in a distinct later satellite pass between 3 and 48 hours after this observation.",
+  "chosen_model": "random_forest",
+  "selection_rule": "Random Forest is served only if its validation PR-AUC exceeds the baseline's.",
+  "threshold_rule": "Maximise validation F1 subject to false-positive rate <= 15%.",
+  "daily_capacity_k": 5,
+  "hyperparameter_search": [
+    {
+      "max_depth": 6,
+      "min_samples_leaf": 5,
+      "val_pr_auc": 0.8392
+    },
+    {
+      "max_depth": 6,
+      "min_samples_leaf": 20,
+      "val_pr_auc": 0.8389
+    },
+    {
+      "max_depth": 10,
+      "min_samples_leaf": 5,
+      "val_pr_auc": 0.8383
+    },
+    {
+      "max_depth": 10,
+      "min_samples_leaf": 20,
+      "val_pr_auc": 0.837
+    },
+    {
+      "max_depth": 14,
+      "min_samples_leaf": 5,
+      "val_pr_auc": 0.8359
+    },
+    {
+      "max_depth": 14,
+      "min_samples_leaf": 20,
+      "val_pr_auc": 0.8372
+    }
+  ],
+  "baseline": {
+    "name": "Historical hotspot frequency (0.1\u00b0 cell, prior 365 days)",
+    "val": {
+      "n": 3862,
+      "positive_rate": 0.4399,
+      "threshold": 0.73,
+      "precision": 0.6817,
+      "recall": 0.4085,
+      "f1": 0.5109,
+      "pr_auc": 0.6707,
+      "roc_auc": 0.7697,
+      "false_positive_rate": 0.1498,
+      "false_alarms": 324,
+      "precision_at_k_daily": 0.3444,
+      "brier": 0.1968
+    },
+    "test": {
+      "n": 3786,
+      "positive_rate": 0.1867,
+      "threshold": 0.73,
+      "precision": 0.44,
+      "recall": 0.0934,
+      "f1": 0.154,
+      "pr_auc": 0.4013,
+      "roc_auc": 0.7942,
+      "false_positive_rate": 0.0273,
+      "false_alarms": 84,
+      "precision_at_k_daily": 0.1805,
+      "brier": 0.1472
+    },
+    "pr_curve_test": [
+      {
+        "recall": 1.0,
+        "precision": 0.1867
+      },
+      {
+        "recall": 0.7723,
+        "precision": 0.3908
+      },
+      {
+        "recall": 0.6096,
+        "precision": 0.4421
+      },
+      {
+        "recall": 0.5106,
+        "precision": 0.4622
+      },
+      {
+        "recall": 0.4342,
+        "precision": 0.4701
+      },
+      {
+        "recall": 0.3819,
+        "precision": 0.4813
+      },
+      {
+        "recall": 0.3098,
+        "precision": 0.4601
+      },
+      {
+        "recall": 0.2631,
+        "precision": 0.4515
+      },
+      {
+        "recall": 0.2447,
+        "precision": 0.4766
+      },
+      {
+        "recall": 0.2235,
+        "precision": 0.4877
+      },
+      {
+        "recall": 0.2065,
+        "precision": 0.4983
+      },
+      {
+        "recall": 0.1839,
+        "precision": 0.4906
+      },
+      {
+        "recall": 0.1542,
+        "precision": 0.4678
+      },
+      {
+        "recall": 0.1344,
+        "precision": 0.468
+      },
+      {
+        "recall": 0.1146,
+        "precision": 0.4682
+      },
+      {
+        "recall": 0.0934,
+        "precision": 0.44
+      },
+      {
+        "recall": 0.0806,
+        "precision": 0.4318
+      },
+      {
+        "recall": 0.0707,
+        "precision": 0.431
+      },
+      {
+        "recall": 0.0594,
+        "precision": 0.4078
+      },
+      {
+        "recall": 0.0481,
+        "precision": 0.382
+      },
+      {
+        "recall": 0.0396,
+        "precision": 0.3544
+      },
+      {
+        "recall": 0.0325,
+        "precision": 0.3382
+      },
+      {
+        "recall": 0.0297,
+        "precision": 0.3559
+      },
+      {
+        "recall": 0.024,
+        "precision": 0.3208
+      },
+      {
+        "recall": 0.0198,
+        "precision": 0.2857
+      },
+      {
+        "recall": 0.017,
+        "precision": 0.3077
+      },
+      {
+        "recall": 0.0156,
+        "precision": 0.3235
+      },
+      {
+        "recall": 0.0141,
+        "precision": 0.3226
+      },
+      {
+        "recall": 0.0127,
+        "precision": 0.3103
+      },
+      {
+        "recall": 0.0071,
+        "precision": 0.2
+      },
+      {
+        "recall": 0.0071,
+        "precision": 0.2174
+      },
+      {
+        "recall": 0.0057,
+        "precision": 0.1905
+      },
+      {
+        "recall": 0.0042,
+        "precision": 0.1667
+      },
+      {
+        "recall": 0.0042,
+        "precision": 0.1875
+      },
+      {
+        "recall": 0.0042,
+        "precision": 0.2143
+      },
+      {
+        "recall": 0.0042,
+        "precision": 0.2727
+      },
+      {
+        "recall": 0.0042,
+        "precision": 0.375
+      },
+      {
+        "recall": 0.0042,
+        "precision": 0.5
+      },
+      {
+        "recall": 0.0014,
+        "precision": 0.25
+      },
+      {
+        "recall": 0.0,
+        "precision": 1.0
+      }
+    ],
+    "reliability_test": [
+      {
+        "bin": "0.1-0.2",
+        "mean_predicted": 0.1959,
+        "observed_rate": 0.0419,
+        "n": 1788
+      },
+      {
+        "bin": "0.2-0.3",
+        "mean_predicted": 0.2846,
+        "observed_rate": 0.1431,
+        "n": 601
+      },
+      {
+        "bin": "0.3-0.4",
+        "mean_predicted": 0.3635,
+        "observed_rate": 0.2725,
+        "n": 422
+      },
+      {
+        "bin": "0.4-0.5",
+        "mean_predicted": 0.4579,
+        "observed_rate": 0.3657,
+        "n": 268
+      },
+      {
+        "bin": "0.5-0.6",
+        "mean_predicted": 0.5562,
+        "observed_rate": 0.5131,
+        "n": 267
+      },
+      {
+        "bin": "0.6-0.7",
+        "mean_predicted": 0.6528,
+        "observed_rate": 0.4203,
+        "n": 207
+      },
+      {
+        "bin": "0.7-0.8",
+        "mean_predicted": 0.7432,
+        "observed_rate": 0.4924,
+        "n": 197
+      },
+      {
+        "bin": "0.8-0.9",
+        "mean_predicted": 0.841,
+        "observed_rate": 0.3333,
+        "n": 36
+      }
+    ]
+  },
+  "random_forest": {
+    "name": "Random Forest (250 trees, balanced class weights)",
+    "params": {
+      "max_depth": 6,
+      "min_samples_leaf": 5,
+      "n_estimators": 250
+    },
+    "val": {
+      "n": 3862,
+      "positive_rate": 0.4399,
+      "threshold": 0.635,
+      "precision": 0.7921,
+      "recall": 0.7198,
+      "f1": 0.7542,
+      "pr_auc": 0.8392,
+      "roc_auc": 0.8946,
+      "false_positive_rate": 0.1484,
+      "false_alarms": 321,
+      "precision_at_k_daily": 0.4627,
+      "brier": 0.1309
+    },
+    "test": {
+      "n": 3786,
+      "positive_rate": 0.1867,
+      "threshold": 0.635,
+      "precision": 0.736,
+      "recall": 0.5007,
+      "f1": 0.596,
+      "pr_auc": 0.7265,
+      "roc_auc": 0.9383,
+      "false_positive_rate": 0.0412,
+      "false_alarms": 127,
+      "precision_at_k_daily": 0.2415,
+      "brier": 0.081
+    },
+    "pr_curve_test": [
+      {
+        "recall": 1.0,
+        "precision": 0.1867
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.1929
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.1982
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.204
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2099
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2161
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2227
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2298
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2371
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2456
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2542
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2634
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2732
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2837
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.2951
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.3075
+      },
+      {
+        "recall": 1.0,
+        "precision": 0.3208
+      },
+      {
+        "recall": 0.9986,
+        "precision": 0.3349
+      },
+      {
+        "recall": 0.9972,
+        "precision": 0.3506
+      },
+      {
+        "recall": 0.9972,
+        "precision": 0.3681
+      },
+      {
+        "recall": 0.9972,
+        "precision": 0.3874
+      },
+      {
+        "recall": 0.9972,
+        "precision": 0.4089
+      },
+      {
+        "recall": 0.9958,
+        "precision": 0.4324
+      },
+      {
+        "recall": 0.9958,
+        "precision": 0.4595
+      },
+      {
+        "recall": 0.9887,
+        "precision": 0.4864
+      },
+      {
+        "recall": 0.9646,
+        "precision": 0.5086
+      },
+      {
+        "recall": 0.9378,
+        "precision": 0.5325
+      },
+      {
+        "recall": 0.9208,
+        "precision": 0.5666
+      },
+      {
+        "recall": 0.8925,
+        "precision": 0.5987
+      },
+      {
+        "recall": 0.8331,
+        "precision": 0.6148
+      },
+      {
+        "recall": 0.7765,
+        "precision": 0.6369
+      },
+      {
+        "recall": 0.7242,
+        "precision": 0.6684
+      },
+      {
+        "recall": 0.6436,
+        "precision": 0.6781
+      },
+      {
+        "recall": 0.5686,
+        "precision": 0.6991
+      },
+      {
+        "recall": 0.4993,
+        "precision": 0.737
+      },
+      {
+        "recall": 0.4229,
+        "precision": 0.7807
+      },
+      {
+        "recall": 0.3366,
+        "precision": 0.8264
+      },
+      {
+        "recall": 0.2221,
+        "precision": 0.8177
+      },
+      {
+        "recall": 0.1132,
+        "precision": 0.8333
+      },
+      {
+        "recall": 0.0,
+        "precision": 1.0
+      }
+    ],
+    "reliability_test": [
+      {
+        "bin": "0.0-0.1",
+        "mean_predicted": 0.0172,
+        "observed_rate": 0.0013,
+        "n": 2231
+      },
+      {
+        "bin": "0.1-0.2",
+        "mean_predicted": 0.149,
+        "observed_rate": 0.0431,
+        "n": 116
+      },
+      {
+        "bin": "0.2-0.3",
+        "mean_predicted": 0.2546,
+        "observed_rate": 0.1867,
+        "n": 166
+      },
+      {
+        "bin": "0.3-0.4",
+        "mean_predicted": 0.3506,
+        "observed_rate": 0.1709,
+        "n": 199
+      },
+      {
+        "bin": "0.4-0.5",
+        "mean_predicted": 0.4544,
+        "observed_rate": 0.3932,
+        "n": 234
+      },
+      {
+        "bin": "0.5-0.6",
+        "mean_predicted": 0.5507,
+        "observed_rate": 0.5299,
+        "n": 268
+      },
+      {
+        "bin": "0.6-0.7",
+        "mean_predicted": 0.6488,
+        "observed_rate": 0.5481,
+        "n": 239
+      },
+      {
+        "bin": "0.7-0.8",
+        "mean_predicted": 0.7483,
+        "observed_rate": 0.8028,
+        "n": 218
+      },
+      {
+        "bin": "0.8-0.9",
+        "mean_predicted": 0.8398,
+        "observed_rate": 0.8158,
+        "n": 114
+      },
+      {
+        "bin": "0.9-1.0",
+        "mean_predicted": 0.9021,
+        "observed_rate": 1.0,
+        "n": 1
+      }
+    ],
+    "top_features": [
+      {
+        "feature": "is_night",
+        "importance": 0.1825
+      },
+      {
+        "feature": "log_frp_sum",
+        "importance": 0.111
+      },
+      {
+        "feature": "frp_max",
+        "importance": 0.0895
+      },
+      {
+        "feature": "frp_mean",
+        "importance": 0.0848
+      },
+      {
+        "feature": "prior_7d",
+        "importance": 0.0721
+      },
+      {
+        "feature": "month_sin",
+        "importance": 0.0681
+      },
+      {
+        "feature": "relative_humidity_2m_min",
+        "importance": 0.0576
+      },
+      {
+        "feature": "bt4_max",
+        "importance": 0.0504
+      },
+      {
+        "feature": "hist_365d",
+        "importance": 0.0448
+      },
+      {
+        "feature": "track_age_h",
+        "importance": 0.0445
+      }
+    ]
+  },
+  "generated_at": "2026-10-10T06:12:11+00:00"
+}
