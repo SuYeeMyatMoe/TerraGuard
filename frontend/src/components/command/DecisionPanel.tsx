@@ -54,7 +54,7 @@ export function DecisionPanel() {
                 Recommends <RecPill rec={pred.priority.recommendation} size="sm" />
               </span>
             </div>
-            <p className="mt-1 text-[11.5px] leading-snug text-[var(--ink-3)]">The reasons are in the incident panel above.</p>
+            <p className="mt-1 text-[11.5px] leading-snug text-[var(--ink-3)]">Review the recommendation and evidence before recording your decision.</p>
             {crewHere ? (
               <div className="mt-2.5 flex items-center gap-2 rounded-[10px] bg-[var(--cyan-50)] px-3 py-2 text-[12.5px] font-semibold text-[#0e7490] ring-1 ring-inset ring-[#a5e9f5]">
                 <CheckCircle2 size={15} /> {team.name} is assigned here
@@ -250,7 +250,7 @@ function Comparison({ sim, stale }: { sim: SimulateResponse; stale: boolean }) {
     { label: "Crew-hours", b: fa.team_hours.mean, a: ai.team_hours.mean, y: yours?.team_hours.mean, digits: 1 },
     { label: "Response cost (RM)", b: fa.response_cost_rm.mean, a: ai.response_cost_rm.mean, y: yours?.response_cost_rm.mean, digits: 0 },
   ];
-  const cols = yours ? "grid-cols-[1fr_54px_58px_48px]" : "grid-cols-[1fr_64px_64px_60px]";
+  const cols = yours ? "grid-cols-[minmax(0,1fr)_40px_54px_40px]" : "grid-cols-[minmax(0,1fr)_54px_40px_40px]";
   return (
     <div className={stale ? "opacity-60" : ""}>
       <div className={`grid ${cols} gap-x-2 text-[10.5px] font-bold uppercase tracking-wider text-[var(--ink-3)]`}>

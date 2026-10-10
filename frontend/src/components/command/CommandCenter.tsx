@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { ControlsPanel } from "./ControlsPanel";
 import { DecisionPanel } from "./DecisionPanel";
@@ -13,6 +13,8 @@ import { FieldBriefModal, Toasts } from "./Overlays";
 import { IncidentRoster } from "./IncidentRoster";
 import { Timeline } from "./Timeline";
 import { TopBar } from "./TopBar";
+import { RecPill } from "@/components/ui";
+import { pct, shortId } from "@/lib/format";
 import "./studio.css";
 
 const ForestStudio = dynamic(() => import("@/components/scene/ForestStudio").then(m => m.ForestStudio), { ssr: false });
@@ -25,6 +27,19 @@ export function CommandCenter() {
   const view = useStore((s) => s.view);
   const sim = useStore((s) => s.sim);
   const started = useRef(false);
+  const [leftTab, setLeftTab] = useState<"incidents" | "conditions">("incidents");
+  const [rightTab, setRightTab] = useState<"decision" | "evidence">("decision");
+  const [expanded, setExpanded] = useState(false);
+  const selectedId = useStore(s => s.selectedId);
+  const predictions = useStore(s => s.predictions);
+  const prediction = selectedId ? predictions[selectedId] : undefined;
+
+  useEffect(() => {
+    if (!expanded) return;
+    const exit = (event: KeyboardEvent) => { if (event.key === "Escape") setExpanded(false); };
+    window.addEventListener("keydown", exit);
+    return () => window.removeEventListener("keydown", exit);
+  }, [expanded]);
 
   useEffect(() => {
     if (started.current) return;
@@ -77,10 +92,28 @@ export function CommandCenter() {
           </div>
         )}
 
-        {view === "sim" ? <div className="studio-workspace">
-          <aside className="studio-conditions" aria-label="Incidents and conditions"><IncidentRoster/><ControlsPanel/></aside>
-          <div className="studio-center"><ForestStudio/><div className="studio-timeline"><Timeline/></div></div>
-          <aside className="studio-intelligence" aria-label="Recommendations and decision"><div className="studio-detail"><IntelligencePanel/></div><DecisionPanel/></aside>
+        {view === "sim" ? <div className={`studio-workspace ${expanded ? "studio-expanded" : ""}`}>
+          <aside className="studio-conditions" aria-label="Incidents and conditions">
+            <div className="studio-tabs" aria-label="Left panel">
+              <button aria-pressed={leftTab === "incidents"} onClick={() => setLeftTab("incidents")}>Incidents</button>
+              <button aria-pressed={leftTab === "conditions"} onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Test conditions</button>
+            </div>
+            <div hidden={leftTab !== "incidents"}><IncidentRoster/></div>
+            <div className="studio-control-content" hidden={leftTab !== "conditions"}><ControlsPanel/></div>
+            <div className="studio-workflow-note"><span>01 / SELECT AN INCIDENT</span><p>Compare policies on the same forest. Review the outcome before assigning your crew.</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
+          </aside>
+          <div className="studio-center"><ForestStudio expanded={expanded} onExpand={() => setExpanded(!expanded)}/><div className="studio-timeline"><Timeline/></div></div>
+          <aside className="studio-intelligence" aria-label="Recommendations and decision">
+            <div className="studio-tabs" aria-label="Right panel">
+              <button aria-pressed={rightTab === "decision"} onClick={() => setRightTab("decision")}>Decision & comparison</button>
+              <button aria-pressed={rightTab === "evidence"} onClick={() => setRightTab("evidence")}>Evidence</button>
+            </div>
+            <div className="studio-decision-content" hidden={rightTab !== "decision"}>
+              {prediction && <section className="studio-recommendation"><div className="eyebrow">RECOMMENDATION · {shortId(prediction.incident_id)}</div><div className="studio-rec-score"><strong>{pct(prediction.probability)}</strong><RecPill rec={prediction.priority.recommendation}/></div><p className="studio-rec-caption">Probability of a 48 h follow-up detection</p><p>{prediction.priority.reason}</p><button onClick={() => setRightTab("evidence")}>Review evidence →</button></section>}
+              <DecisionPanel/>
+            </div>
+            <div className="studio-detail" hidden={rightTab !== "evidence"}><IntelligencePanel/></div>
+          </aside>
         </div> : <div className="map-intelligence"><IntelligencePanel/><DecisionPanel/></div>}
       </main>
       <Toasts />

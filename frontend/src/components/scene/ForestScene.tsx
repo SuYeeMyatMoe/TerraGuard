@@ -43,7 +43,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 const palette = {
   healthy: "#536843",
   protected: "#3c7252",
-  burning: "#5b3720",
+  burning: "#d26a25",
   burned: "#262923",
   "non-vegetated": "#8c8065",
   intervened: "#70965b",
@@ -262,13 +262,13 @@ function Landscape() {
     const d = new Object3D(),
       color = new Color();
     let placed = 0;
-    for (let i = 0; i < 4800; i++) {
+    for (let i = 0; i < 2200; i++) {
       const x = (seed(i * 5) - 0.5) * 67,
         z = (seed(i * 11) - 0.5) * 55 - 5;
       if (Math.abs(x) < 10.2 && Math.abs(z) < 10.2) continue;
       if (landscapeHeight(x, z) < 0.2 || landscapeHeight(x, z) > 11) continue;
       d.position.set(x, landscapeHeight(x, z), z);
-      d.scale.setScalar(0.48 + seed(i * 37) * 0.8);
+      d.scale.setScalar(0.4 + seed(i * 37) * 0.5);
       d.rotation.y = i;
       d.updateMatrix();
       trees.current!.setMatrixAt(placed, d.matrix);
@@ -288,7 +288,7 @@ function Landscape() {
       <mesh geometry={geometry} receiveShadow>
         <meshStandardMaterial vertexColors roughness={1} />
       </mesh>
-      <instancedMesh ref={trees} args={[pine, undefined, 4800]}>
+      <instancedMesh ref={trees} args={[pine, undefined, 2200]}>
         <meshStandardMaterial vertexColors roughness={1} />
       </instancedMesh>
       <mesh
@@ -307,13 +307,20 @@ function Landscape() {
   );
 }
 
-function FireEffects({ cells, playing, ignition }: { cells: Cell[]; playing: boolean; ignition: [number, number] }) {
+function FireEffects({ cells, ignition }: { cells: Cell[]; ignition: [number, number] }) {
   const flames = useRef<InstancedMesh>(null),
     smoke = useRef<InstancedMesh>(null);
   const active = useMemo(
     () => cells.filter((c) => c.state === "burning"),
     [cells],
   );
+  const [reducedMotion, setReducedMotion] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(media.matches);
+    update(); media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const material = useMemo(
     () =>
       new ShaderMaterial({
@@ -321,9 +328,10 @@ function FireEffects({ cells, playing, ignition }: { cells: Cell[]; playing: boo
         depthWrite: false,
         blending: AdditiveBlending,
         side: DoubleSide,
+        toneMapped: false,
         uniforms: { time: { value: 0 } },
         vertexShader: `varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.0);}`,
-        fragmentShader: `varying vec2 vUv; uniform float time; void main(){float wave=sin(vUv.y*11.0-time*5.0)*.06+sin(vUv.y*21.0+time*8.0)*.03; float x=(vUv.x-.5+wave)*(1.0+vUv.y*2.0); float body=pow(max(0.0,1.0-abs(x)*3.0),1.5)*(1.0-vUv.y); float edge=smoothstep(.0,.24,body); vec3 color=mix(vec3(1.0,.12,.01),vec3(1.0,.82,.24),body); gl_FragColor=vec4(color*1.7,edge*(1.0-vUv.y)*.85);}`,
+        fragmentShader: `varying vec2 vUv; uniform float time; void main(){float wave=sin(vUv.y*11.0-time*5.0)*.045+sin(vUv.y*21.0+time*8.0)*.025; float x=(vUv.x-.5+wave)*(1.0+vUv.y*1.8); float body=pow(max(0.0,1.0-abs(x)*2.6),1.3)*(1.0-vUv.y); float edge=smoothstep(.0,.18,body); vec3 color=mix(vec3(1.0,.16,.015),vec3(1.0,.93,.55),body); gl_FragColor=vec4(color*1.5,edge*(1.0-vUv.y));}`,
       }),
     [],
   );
@@ -336,18 +344,18 @@ function FireEffects({ cells, playing, ignition }: { cells: Cell[]; playing: boo
         const x = cell.x - 9.5 + (seed(cell.id * 7 + j) - 0.5) * 0.65,
           z = cell.z - 9.5 + (seed(cell.id * 13 + j) - 0.5) * 0.65,
           pulse = 0.88 + Math.sin(time * 6 + cell.id + j) * 0.12;
-        d.position.set(x, terrainHeight(x, z) + 0.9 * pulse, z);
+        d.position.set(x, terrainHeight(x, z) + 1.85 * pulse, z);
         d.rotation.set(0, Math.PI / 4 + j * 1.15, 0);
-        d.scale.set(0.65, 2.4 * pulse, 1);
+        d.scale.set(1.1, 4.2 * pulse, 1);
         d.updateMatrix();
         flames.current!.setMatrixAt(count, d.matrix);
-        const rise = ((time * 0.17 + seed(cell.id + j * 11)) % 1) * 4;
+        const rise = ((time * 0.13 + seed(cell.id + j * 11)) % 1) * 5.5;
         d.position.set(
           x + rise * 0.23,
-          terrainHeight(x, z) + 1.5 + rise,
+          terrainHeight(x, z) + 3 + rise,
           z - rise * 0.12,
         );
-        d.scale.setScalar(0.3 + rise * 0.19);
+        d.scale.setScalar(0.4 + rise * 0.18);
         d.rotation.set(j, time * 0.04, j);
         d.updateMatrix();
         smoke.current!.setMatrixAt(count, d.matrix);
@@ -363,7 +371,8 @@ function FireEffects({ cells, playing, ignition }: { cells: Cell[]; playing: boo
   }, [active]);
   useLayoutEffect(() => animate(1.5), [animate]);
   useFrame(({ clock }) => {
-    if (playing) {
+    // Playback pauses the simulated time; flames remain a visual indicator of active cells.
+    if (!reducedMotion) {
       material.uniforms.time.value = clock.elapsedTime;
       animate(clock.elapsedTime);
     }
@@ -376,18 +385,21 @@ function FireEffects({ cells, playing, ignition }: { cells: Cell[]; playing: boo
       <instancedMesh ref={smoke} args={[undefined, undefined, 1200]}>
         <sphereGeometry args={[1, 9, 7]} />
         <meshStandardMaterial
-          color="#37433e"
+          color="#414039"
           transparent
-          opacity={0.2}
+          opacity={0.42}
           depthWrite={false}
           roughness={1}
         />
       </instancedMesh>
+      {active.map(cell => <mesh key={cell.id} position={worldPosition(cell.x, cell.z, .06)} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+        <circleGeometry args={[.55, 16]}/><meshBasicMaterial color="#ff681c" transparent opacity={.55} depthWrite={false} toneMapped={false}/>
+      </mesh>)}
       {active.length > 0 && (
         <pointLight
           position={worldPosition(...ignition, 2)}
           color="#ff752e"
-          intensity={18}
+          intensity={30}
           distance={8}
           decay={2}
         />
@@ -396,33 +408,43 @@ function FireEffects({ cells, playing, ignition }: { cells: Cell[]; playing: boo
   );
 }
 
-function CameraSetup({ resetKey }: { resetKey: number }) {
+function CameraSetup({ resetKey, focusKey, focusX, focusZ }: { resetKey: number; focusKey: number; focusX: number; focusZ: number }) {
   const { camera, size, controls } = useThree();
   const command = useStore(s => s.cameraCommand);
+  const lastFocus = useRef(0);
   useLayoutEffect(() => {
-    camera.position.set(16, 19, 23);
+    camera.position.set(12, 15, 17);
     camera.lookAt(0, 0.8, 0);
     const orbit = controls as OrbitControlsImpl | null;
     if (orbit) { orbit.target.set(0, 0.8, 0); orbit.update(); }
   }, [camera, resetKey, controls]);
   useLayoutEffect(() => {
     const cam = camera as PerspectiveCamera;
-    // Keep the full plot and crew route visible in narrow or tall scene panels.
-    cam.fov = Math.min(80, 2 * Math.atan(Math.tan(48 * Math.PI / 360) / Math.min(1, size.width / size.height)) * 180 / Math.PI);
+    // Preserve a readable plot on portrait screens without pulling the camera away.
+    cam.fov = Math.min(80, 2 * Math.atan(Math.tan(50 * Math.PI / 360) / Math.min(1, size.width / size.height)) * 180 / Math.PI);
     cam.updateProjectionMatrix();
   }, [camera, size]);
   useEffect(() => {
     if (!command || !controls) return;
     const orbit = controls as OrbitControlsImpl;
     const offset = camera.position.clone().sub(orbit.target);
-    if (command.kind === "reset") { camera.position.set(16, 19, 23); orbit.target.set(0, 0.8, 0); }
+    if (command.kind === "reset") { camera.position.set(12, 15, 17); orbit.target.set(0, 0.8, 0); }
     else {
-      if (command.kind === "zoomIn" || command.kind === "zoomOut") offset.multiplyScalar(command.kind === "zoomIn" ? 0.8 : 1.25).clampLength(14, 49);
+      if (command.kind === "zoomIn" || command.kind === "zoomOut") offset.multiplyScalar(command.kind === "zoomIn" ? 0.8 : 1.25).clampLength(8, 49);
       else offset.applyAxisAngle(new Vector3(0, 1, 0), command.kind === "rotateL" ? -Math.PI / 8 : Math.PI / 8);
       camera.position.copy(orbit.target).add(offset);
     }
     orbit.update();
   }, [camera, command, controls]);
+  useEffect(() => {
+    if (!controls || !focusKey || lastFocus.current === focusKey) return;
+    lastFocus.current = focusKey;
+    const orbit = controls as OrbitControlsImpl;
+    const target = worldPosition(focusX, focusZ, 1.6);
+    orbit.target.set(...target);
+    camera.position.set(target[0] + 6, target[1] + 8, target[2] + 9);
+    orbit.update();
+  }, [camera, controls, focusKey, focusX, focusZ]);
   return null;
 }
 
@@ -496,13 +518,19 @@ interface ForestSceneProps {
   showHabitat: boolean;
   showGrid: boolean;
   resetKey: number;
+  focusKey: number;
   picking: boolean;
   onPick: (row: number, col: number) => void;
 }
 
-function Scene({ frame, ignition, label, playing, showHabitat, showGrid, resetKey, picking, onPick, portal }: ForestSceneProps & { portal: RefObject<HTMLDivElement> }) {
-  const origin: [number, number] = [ignition[0]?.[1] ?? 10, ignition[0]?.[0] ?? 10];
+function Scene({ frame, ignition, label, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal }: ForestSceneProps & { portal: RefObject<HTMLDivElement> }) {
+  const originX = ignition[0]?.[1] ?? 10, originZ = ignition[0]?.[0] ?? 10;
+  const origin: [number, number] = [originX, originZ];
   const team = worldPosition(...frame.team, 0.03);
+  const fire = useMemo(() => {
+    const burning = frame.cells.filter(cell => cell.state === "burning");
+    return { count: burning.length, x: burning.length ? burning.reduce((sum, cell) => sum + cell.x, 0) / burning.length : originX, z: burning.length ? burning.reduce((sum, cell) => sum + cell.z, 0) / burning.length : originZ };
+  }, [frame.cells, originX, originZ]);
   const habitat = useMemo(() => {
     const segments: [number, number, number][][] = [];
     let x = 0, z = 0, count = 0;
@@ -523,7 +551,7 @@ function Scene({ frame, ignition, label, playing, showHabitat, showGrid, resetKe
     return { segments, center: count ? worldPosition(x / count, z / count, 3.5) : null };
   }, [frame.cells]);
   return <>
-    <CameraSetup resetKey={resetKey}/>
+    <CameraSetup resetKey={resetKey} focusKey={focusKey} focusX={fire.x} focusZ={fire.z}/>
     <color attach="background" args={["#94b4bf"]}/>
     <fog attach="fog" args={["#a0bdc7", 36, 90]}/>
     <Sky distance={450000} sunPosition={[-30, 25, 10]} inclination={.5} azimuth={.25} turbidity={3.5} rayleigh={.8}/>
@@ -533,7 +561,8 @@ function Scene({ frame, ignition, label, playing, showHabitat, showGrid, resetKe
     <Landscape/>
     <Terrain cells={frame.cells} showGrid={showGrid} picking={picking} onPick={onPick}/>
     <Forest cells={frame.cells}/>
-    <FireEffects cells={frame.cells} playing={playing} ignition={origin}/>
+    <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]}/>
+    {fire.count > 0 && <Html portal={portal} position={worldPosition(fire.x, fire.z, 4.8)} center zIndexRange={[21,1]}><div className="map-label fire-label"><Flame size={14}/>ACTIVE FIRE · {fire.count} {fire.count === 1 ? "cell" : "cells"}</div></Html>}
     {showHabitat && <>
       {habitat.segments.map((points, i) => <Line key={i} points={points} color="#c9e676" lineWidth={1.5} transparent opacity={.85}/>) }
       {frame.cells.filter(c => c.protected).map(c => <mesh key={c.id} position={worldPosition(c.x,c.z,1.7)} rotation={[-Math.PI/2,0,0]} raycast={() => null}><planeGeometry args={[1,1]}/><meshBasicMaterial color="#8da432" transparent opacity={.12} depthWrite={false} side={DoubleSide}/></mesh>)}
@@ -542,14 +571,14 @@ function Scene({ frame, ignition, label, playing, showHabitat, showGrid, resetKe
     {ignition.map(([row,col], i) => <group key={i} position={worldPosition(col,row,.08)}>
       <mesh rotation={[-Math.PI/2,0,0]} raycast={() => null}><ringGeometry args={[.52,.59,48]}/><meshBasicMaterial color="#ffd490"/></mesh>
       <Line points={[[0,.1,0],[0,2.3,0]]} color="#ffba89" lineWidth={.8}/>
-      <Html portal={portal} position={[0,2.6,0]} center zIndexRange={[20,1]}><div className="map-label"><Flame size={12}/>{i === 0 ? label : "Ignition point"}</div></Html>
+      {fire.count === 0 && <Html portal={portal} position={[0,2.6,0]} center zIndexRange={[20,1]}><div className="map-label"><Flame size={12}/>{i === 0 ? `${label} · ignition` : "Ignition point"}</div></Html>}
     </group>)}
     {frame.assigned && <>
       <Line points={[team,worldPosition(...origin,.3)]} color="#cbe88a" dashed dashSize={.22} gapSize={.15} lineWidth={1.4}/>
       <Ranger position={team} portal={portal}/>
     </>}
     {frame.arrived && <Html portal={portal} position={worldPosition(...origin,4.6)} center zIndexRange={[19,1]}><div className="containment-label"><ShieldCheck size={11}/>Response crew on site</div></Html>}
-    <OrbitControls makeDefault enablePan={false} enabled={!picking} minDistance={14} maxDistance={49} minPolarAngle={.3} maxPolarAngle={Math.PI/2.6} target={[0,.8,0]}/>
+    <OrbitControls makeDefault enablePan={false} enabled={!picking} minDistance={8} maxDistance={49} minPolarAngle={.3} maxPolarAngle={Math.PI/2.6} target={[0,.8,0]}/>
   </>;
 }
 
@@ -567,7 +596,7 @@ export default function ForestScene(props: ForestSceneProps) {
   if (contextLost) return fallback;
   return <div ref={portal} className="scene-canvas" style={{cursor:props.picking ? "crosshair" : "grab"}}>
     <SceneBoundary key={attempt} fallback={fallback}>
-      <Canvas eventSource={portal} shadows dpr={attempt ? 1 : [1,1.5]} frameloop={props.active ? "always" : "never"} camera={{position:[16,19,23],fov:48,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
+      <Canvas eventSource={portal} shadows dpr={attempt ? 1 : [1,1.5]} frameloop={props.active ? "always" : "never"} camera={{position:[12,15,17],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
         gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); setContextLost(true); });
       }}><Scene {...props} portal={portal}/></Canvas>
     </SceneBoundary>
