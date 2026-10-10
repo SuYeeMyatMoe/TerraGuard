@@ -80,12 +80,12 @@ cd backend
 .venv/Scripts/python -m ml.features          # incidents, labels, features, splits, audit.json
 .venv/Scripts/python -m ml.train             # baseline vs RF → model.joblib, evaluation.json
 .venv/Scripts/python -m ml.build_scenarios   # replay days (outcome-blind rule)
-.venv/Scripts/python -m ml.policy_backtest   # 357-day policy backtest
+.venv/Scripts/python -m ml.policy_backtest   # 361-day policy backtest
 .venv/Scripts/python -m ml.fetch_gee         # optional, needs Earth Engine credentials
 .venv/Scripts/python -m pytest tests         # 29 tests: sim fairness, leakage, AI validator, API, records (SQLite + mocked Supabase)
 ```
 
-> **Data status:** no FIRMS MAP_KEY was configured, so the current snapshot is **synthetic** data in the FIRMS VIIRS schema, conditioned on real Open-Meteo weather. It is labelled as synthetic everywhere in the UI. Add a free key from https://firms.modaps.eosdis.nasa.gov/api/map_key/ and rerun the pipeline to get real evidence.
+> **Data status:** the current snapshot is **real** NASA FIRMS VIIRS data (S-NPP + NOAA-20, 570,840 detections, 2023-2025) with Open-Meteo weather. On the held-out 2025 test the Random Forest reaches PR-AUC 0.623 against 0.535 for the baseline, a modest gain. In a one-team backtest on 361 days, the AI-priority choice was followed by another detection within 48 h 32.8% of the time, against 16.4% for first-alert. Detections are not confirmed fires. Without a FIRMS key the pipeline falls back to a labelled synthetic dataset; get a free key at https://firms.modaps.eosdis.nasa.gov/api/map_key/.
 
 ## Docs
 - [docs/DATA.md](docs/DATA.md): provenance, incident construction, labels, leakage controls, results
