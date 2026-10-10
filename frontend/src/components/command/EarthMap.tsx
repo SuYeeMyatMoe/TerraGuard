@@ -249,7 +249,9 @@ function ensureBasemap(map: maplibregl.Map) {
       source: "world-imagery",
       paint: { "raster-fade-duration": 200 },
     },
-    rasterInsertionPoint(map.getStyle()?.layers ?? []),
+    // Effects can attach dated sources as soon as the style is parsed, before
+    // load adds this basemap. Its background must stay below those rasters.
+    rasterInsertionPoint(map.getStyle()?.layers ?? [], "basemap"),
   );
   map.addLayer({
     id: "scientific-background", type: "background",
@@ -275,7 +277,6 @@ export function EarthMap(props: Props) {
   const [detail, setDetail] = useState(false);
   const tileFailures = useRef(new Set<string>());
   const rasterState = useRef<RasterState>({ before: false, after: false, detail: false });
-  const prewarmed = useRef(new WeakMap<maplibregl.Map, string>());
   const renderedFrames = useRef(new WeakMap<maplibregl.Map, string>());
   const first = data?.incidents[0]?.id;
   useEffect(() => {
@@ -357,7 +358,9 @@ export function EarthMap(props: Props) {
     before.on("click", click);
     before.on("resize", () => maps.current[1]?.resize());
     maps.current.forEach((map) =>
-      map.on("load", () => {
+      // Install the raster stack before the first tile frame. Waiting for
+      // load leaves vector land/water visible while dated tiles are pending.
+      map.on("style.load", () => {
         ensureVectors(map);
         ensureBasemap(map);
         setReady((n) => n + 1);
@@ -406,9 +409,9 @@ export function EarthMap(props: Props) {
   const afterUrl = rasterAfter?.tile_url;
   useEffect(() => {
     const before = maps.current[0];
-    // Prepare once when the post-period recipe arrives, even before the user
-    // opens comparison. Keep the map instance through all subsequent toggles.
-    if (!afterUrl || !before || !afterDiv.current || maps.current[1]) return;
+    // Create the second renderer only when comparison is opened. Retain it on
+    // subsequent toggles, but do not compete with foreground tiles beforehand.
+    if (!props.compare || !props.visibility.historical || !afterUrl || !before || !afterDiv.current || maps.current[1]) return;
     const after = new maplibregl.Map({
       container: afterDiv.current,
       style: "https://tiles.openfreemap.org/styles/positron",
@@ -417,14 +420,14 @@ export function EarthMap(props: Props) {
     });
     maps.current[1] = after;
     syncCamera(before, after);
-    after.on("load", () => {
+    after.on("style.load", () => {
       ensureVectors(after);
       ensureBasemap(after);
       setReady((n) => n + 1);
       syncCamera(before, after);
     });
     // Both instances are disposed only by the parent map's unmount cleanup.
-  }, [afterUrl]);
+  }, [afterUrl, props.compare, props.visibility.historical]);
   useEffect(() => {
     if (props.destination)
       maps.current[0]?.jumpTo({
@@ -438,7 +441,7 @@ export function EarthMap(props: Props) {
       const selected = `${props.layer}${i === 1 ? "_after" : ""}`;
       const apply = () => {
         syncRasterLayers(map, resources, bounds ?? null, selected,
-          current.current.visibility.historical, current.current.opacity);
+          current.current.visibility.historical && (i === 0 || current.current.compare), current.current.opacity);
       };
       const error = (e: maplibregl.ErrorEvent) => {
         const sourceId = "sourceId" in e ? e.sourceId : null;
@@ -468,18 +471,6 @@ export function EarthMap(props: Props) {
         if (next.before !== rasterState.current.before || next.after !== rasterState.current.after || next.detail !== rasterState.current.detail) {
           rasterState.current = next;
           v.onRasterState(next);
-        }
-        // In ordinary browsing, warm the hidden after map only after the
-        // foreground tiles finish. Avoid doubling work throughout a pan/flyTo.
-        if (i === 0 && next.before && afterMap && !v.compare && !beforeMap.isMoving() &&
-            !camerasAligned(beforeMap, afterMap)) syncCamera(beforeMap, afterMap);
-        // Warm the other display layer after the active one has loaded. It
-        // stays transparent, but its tile pyramid is ready for a quick toggle.
-        const warmKey = resources.map((resource) => resource.tile_url).join(":") + selected;
-        if (detailed && v.visibility.historical && prewarmed.current.get(map) !== warmKey &&
-            rasterSourceReady(map, `earth-engine-${selected}`, false)) {
-          prewarmed.current.set(map, warmKey);
-          syncRasterLayers(map, resources, bounds ?? null, selected, v.visibility.historical, v.opacity, true);
         }
       };
       const rendered = () => {
@@ -575,7 +566,7 @@ export function EarthMap(props: Props) {
           map.setPaintProperty("pas-fill", "fill-opacity", props.layer === "ndvi" ? 0 : 0.12);
         const selected = `${props.layer}${i === 1 ? "_after" : ""}`;
         syncRasterLayers(map, layers.filter((item) => item.id.endsWith("_after") === (i === 1)), bounds,
-          selected, v.historical, props.opacity, detail && rasterSourceReady(map, `earth-engine-${selected}`, false));
+          selected, v.historical && (i === 0 || props.compare), props.opacity);
       }),
     );
     const map = maps.current[0];

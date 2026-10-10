@@ -1,5 +1,27 @@
 # Earth Engine — Earth View
 
+## Stable imagery correction — 2026-10-10
+
+The map installs its basemap and scientific background on `style.load`, before
+the first tile frame. Dated sources can also arrive before map initialization
+finishes; basemap insertion explicitly places both backgrounds below those
+sources. Previously the backgrounds could be added above RGB/NDVI, hiding the
+loaded pixels when zoom crossed the detail threshold, including in comparison.
+
+The after renderer is created on the first comparison request and retained for
+later toggles. Closing comparison hides its dated sources and stops camera
+updates. Only the selected RGB or NDVI source is visible on each active map;
+inactive layers keep their sources but do not fetch speculative tiles. This
+reduces competing downloads during navigation and comparison. A first visit to
+a layer or location still waits for the upstream imagery provider.
+
+Verification on `codex/earth-view-stable-imagery`: 33 frontend tests, full ESLint,
+TypeScript and production build passed. A regression test first reproduced late
+basemap insertion covering dated imagery, then passed after the correction.
+Live browser checks rendered actual Sentinel-2 RGB, NDVI and before/after tiles,
+confirmed one renderer before comparison, correct raster/background ordering,
+aligned comparison cameras, and retained but inactive after sources on close.
+
 Earth View opens with a worldwide, fixed-URL Esri World Imagery basemap. Panning/zooming never runs Earth Engine. Selecting NDVI or changing the historical period/comparison automatically loads dated Sentinel-2 imagery for the current detailed viewport. The prominent Analyze button is removed; Update imagery remains an optional retry/new-viewport action. The backend runs Earth Engine; MapLibre renders its raster layers above the separate global background. A Google Maps browser key is unnecessary. Operational Supabase records, local model/detection files and the 3D simulation are independent of this feature.
 
 ## إعداد الاتصال محليًا

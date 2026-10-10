@@ -89,6 +89,19 @@ test('roads and labels remain above satellite without toggling scientific overla
   assert.equal(isReferenceLabel({id:'pas-label',type:'symbol'}),false);
 });
 
+test('a basemap added after dated imagery stays below it and above vector land fills', () => {
+  const {rasterInsertionPoint}=loadModule('src/lib/map-style.ts');
+  const layers=[{id:'background',type:'background'},{id:'land',type:'fill'},
+    {id:'earth-engine-rgb',type:'raster'},{id:'earth-engine-ndvi',type:'raster'},
+    {id:'road_minor',type:'line'},{id:'place',type:'symbol'}];
+  const before=rasterInsertionPoint(layers, 'basemap');
+  layers.splice(layers.findIndex(layer=>layer.id===before),0,
+    {id:'scientific-background',type:'background'},{id:'world-imagery',type:'raster'});
+  assert.ok(layers.findIndex(l=>l.id==='world-imagery') < layers.findIndex(l=>l.id==='earth-engine-rgb'));
+  assert.ok(layers.findIndex(l=>l.id==='scientific-background') < layers.findIndex(l=>l.id==='earth-engine-ndvi'));
+  assert.equal(rasterInsertionPoint(layers), 'road_minor');
+});
+
 test('comparison cameras preserve asymmetric panel padding and align geographic pixels', () => {
   const {syncCamera}=loadModule('src/lib/map-style.ts');
   let camera;

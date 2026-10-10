@@ -121,9 +121,11 @@ export function syncCamera(
 }
 export function rasterInsertionPoint(
   layers: Pick<LayerSpecification, "id" | "type">[],
+  role: "overlay" | "basemap" = "overlay",
 ) {
   return layers.find(
-    (l) => isReferenceLabel(l) || /^(pas-|analysis-|measure-|ctx-)/.test(l.id),
+    (l) => (role === "basemap" && l.id.startsWith("earth-engine-")) ||
+      isReferenceLabel(l) || /^(pas-|analysis-|measure-|ctx-)/.test(l.id),
   )?.id;
 }
 
