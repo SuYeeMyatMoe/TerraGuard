@@ -21,6 +21,7 @@ export function EarthEnginePanel({
   overview = false,
   children,
   manual = false,
+  automatic = false,
   analysisError,
   anchor,
   loadView,
@@ -39,6 +40,7 @@ export function EarthEnginePanel({
   overview?: boolean;
   children?: ReactNode;
   manual?: boolean;
+  automatic?: boolean;
   analysisError?: string | null;
   anchor?: string;
   loadView?: () => void;
@@ -132,16 +134,19 @@ export function EarthEnginePanel({
       )}
       {manual && (
         <div className="mt-3">
-          <button
-            disabled={state.loading}
-            onClick={loadView}
-            className="w-full rounded bg-blue-600 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
-          >
-            {state.loading ? "Analyzing view…" : "Analyze this view"}
-          </button>
+          {!automatic && (
+            <button
+              disabled={state.loading}
+              onClick={loadView}
+              className="w-full rounded bg-blue-600 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+            >
+              {state.loading ? "Analyzing view…" : "Analyze this view"}
+            </button>
+          )}
           <p className="mt-1 text-[10px] text-slate-500">
-            Earth Engine runs when requested. Pan freely; the completed overlay
-            keeps its loaded footprint.
+            {automatic
+              ? "Historical imagery loads automatically when you select NDVI or change the period/view. Pan freely; imagery keeps its loaded footprint."
+              : "Earth Engine runs when requested. Pan freely; the completed overlay keeps its loaded footprint."}
           </p>
           {analysisError && (
             <p role="alert" className="mt-2 text-[11px] text-amber-700">
@@ -183,9 +188,11 @@ export function EarthEnginePanel({
           <Info size={14} className="mt-0.5 shrink-0" />
           <span>
             {data?.reason ??
-              (manual
-                ? "Zoom to any location and choose Analyze this view for dated Sentinel-2 / NDVI."
-                : "Select an incident to load imagery.")}{" "}
+              (automatic
+                ? "Select NDVI or change the period/view to load dated Sentinel-2 imagery."
+                : manual
+                  ? "Zoom to any location and choose Analyze this view for dated Sentinel-2 / NDVI."
+                  : "Select an incident to load imagery.")}{" "}
             {data?.status === "not_configured" &&
               "The reference map stays available."}
           </span>
@@ -245,7 +252,8 @@ export function EarthEnginePanel({
               </div>
               <p className="mt-2 text-[10px] text-[var(--ink-2)]">
                 Sand tones: low NDVI; green: higher NDVI. This is a continuous
-                index, not a land-cover classification. Transparent gaps show the basemap, not NDVI.
+                index, not a land-cover classification. Transparent gaps show
+                the basemap, not NDVI.
               </p>
             </div>
           )}
@@ -301,14 +309,21 @@ export function EarthEnginePanel({
           ending at the incident time.
         </p>
       )}
-      {(!manual || ready || state.error) && (
+      {(!manual ||
+        ready ||
+        state.error ||
+        (automatic && (state.key || analysisError))) && (
         <button
           disabled={state.loading}
           onClick={retry}
           className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--blue)] disabled:opacity-50"
         >
           <RefreshCw size={12} />{" "}
-          {manual ? "Refresh analysis for this view" : "Refresh imagery"}
+          {automatic
+            ? "Update imagery for this view"
+            : manual
+              ? "Refresh analysis for this view"
+              : "Refresh imagery"}
         </button>
       )}
       <p className="mt-3 border-t border-[var(--line-2)] pt-2.5 text-[10px] leading-relaxed text-[var(--ink-2)]">

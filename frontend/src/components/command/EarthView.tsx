@@ -47,6 +47,11 @@ export function EarthView() {
     [layer, setLayer] = useState<EarthLayer>("rgb"),
     [opacity, setOpacity] = useState(1);
   const [bounds, setBounds] = useState<Bounds | null>(null);
+  // Captured by a control choice, never replaced by ordinary camera movement.
+  const [analysisRequest, setAnalysisRequest] = useState<{
+    bounds: Bounds | null;
+    refresh: boolean;
+  } | null>(null);
   const [viewError, setViewError] = useState<{
     key: string;
     message: string;
@@ -84,26 +89,49 @@ export function EarthView() {
     () => ({ ...visibility, historical: showHistorical }),
     [visibility, showHistorical],
   );
-  const onViewport = useCallback((raw: Bounds) => {
-    const next = coverViewport(raw);
-    if (next)
+  const onViewport = useCallback(
+    (raw: Bounds) => {
+      const next = coverViewport(raw);
+      if (!next) return;
       setBounds((current) =>
         current?.every((value, i) => value === next[i]) ? current : next,
       );
-  }, []);
+      // A selection made before map load waits for its first viewport only.
+      if (analysisRequest && !analysisRequest.bounds) {
+        setAnalysisRequest({ ...analysisRequest, bounds: next });
+        const error = analysisViewError(next);
+        setViewError(
+          error ? { key: `${id}:${days}:${mode}`, message: error } : null,
+        );
+      }
+    },
+    [analysisRequest, id, days, mode],
+  );
   useEffect(() => {
-    controller.reset();
     return () => controller.cancel();
-  }, [controller, id, days, mode]);
-  const analyzeView = (refresh = false) => {
+  }, [controller]);
+  useEffect(() => {
+    if (
+      !analysisRequest?.bounds ||
+      !id ||
+      analysisViewError(analysisRequest.bounds)
+    ) {
+      controller.reset();
+      return;
+    }
+    void controller.load(id, days, analysisRequest.refresh, {
+      bounds: analysisRequest.bounds,
+      mode,
+    });
+  }, [controller, id, days, mode, analysisRequest]);
+  const analyzeView = (refresh = false, nextDays = days, nextMode = mode) => {
     const error = analysisViewError(bounds);
     setViewError(
-      error ? { key: `${id}:${days}:${mode}`, message: error } : null,
+      error ? { key: `${id}:${nextDays}:${nextMode}`, message: error } : null,
     );
-    if (error || !bounds || !id) return;
+    setAnalysisRequest({ bounds, refresh });
     setFailedTiles([]);
     setVisibility((v) => (v.historical ? v : { ...v, historical: true }));
-    void controller.load(id, days, refresh, { bounds, mode });
   };
   const navigate = () => {
     const lat = Number(latitude),
@@ -179,21 +207,30 @@ export function EarthView() {
       <EarthEnginePanel
         state={state}
         layer={layer}
-        setLayer={setLayer}
+        setLayer={(next) => {
+          setLayer(next);
+          if (next === "ndvi") analyzeView();
+        }}
         days={days}
-        setDays={setDays}
+        setDays={(next) => {
+          setDays(next);
+          analyzeView(false, next);
+        }}
         opacity={opacity}
         setOpacity={setOpacity}
         tileError={tileError}
         mode={mode}
-        setMode={setMode}
+        setMode={(next) => {
+          setMode(next);
+          analyzeView(false, days, next);
+        }}
         overview={!selectedId}
         manual
+        automatic
         analysisError={
           viewError?.key === `${id}:${days}:${mode}` ? viewError.message : null
         }
         anchor={id}
-        loadView={() => analyzeView(false)}
         retry={() => analyzeView(true)}
       >
         {visibility.historical &&
@@ -204,7 +241,7 @@ export function EarthView() {
               className="mt-3 rounded bg-slate-50 p-2 text-[11px]"
             >
               Global basemap only here. Zoom into the loaded analysis footprint
-              or analyze this new view.
+              or update imagery for this location.
             </p>
           )}
         <details className="mt-3 border-t border-slate-200 pt-3">

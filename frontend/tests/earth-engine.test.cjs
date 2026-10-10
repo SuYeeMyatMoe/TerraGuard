@@ -186,6 +186,19 @@ test('a failed tile keeps available acquisition dates and valid analysis visible
   assert.match(html,/Satellite tiles could not load/);assert.match(html,/2025-07-01/);assert.match(html,/Mean NDVI/);
 });
 
+test('automatic panel removes the extra analysis step and explains control-triggered loading', () => {
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const { createElement } = require('react');
+  const { EarthEnginePanel } = loadModule('src/components/command/EarthEnginePanel.tsx');
+  const html = renderToStaticMarkup(createElement(EarthEnginePanel, {
+    state: { loading: false, data: null, error: null }, manual: true, automatic: true,
+    layer: 'rgb', setLayer() {}, days: 30, setDays() {}, opacity: 1, setOpacity() {},
+    setMode() {}, retry() {}, tileError: false,
+  }));
+  assert.doesNotMatch(html, /Analyze this view/);
+  assert.match(html, /loads automatically/);
+});
+
 test("map layers can change while tiles are pending and stale style listeners are removed", () => {
   assert.ok(fs.existsSync(path.resolve(__dirname, "../src/lib/map-style.ts")), "Map style lifecycle helper is missing");
   const { afterStyleReady } = loadModule("src/lib/map-style.ts");

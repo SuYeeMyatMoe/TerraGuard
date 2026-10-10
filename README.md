@@ -7,7 +7,7 @@ TerraGuard is a two-page MVP:
 
 - `/`: landing page.
 - `/simulation`: Forest Command Center with two modes:
-  - **Earth View**: real coordinates, protected areas and past-24 h detections, with a worldwide satellite basemap and explicitly requested Sentinel-2 RGB/NDVI, roads/place labels, retrospective before/after comparison, independent layer controls and distance/area measurement from Earth Engine when configured.
+  - **Earth View**: real coordinates, protected areas and past-24 h detections, with a worldwide satellite basemap and Sentinel-2 RGB/NDVI triggered by analysis controls, roads/place labels, retrospective before/after comparison, independent layer controls and distance/area measurement from Earth Engine when configured.
   - **3D Simulation**: React Three Fiber forest, driven by a Python cellular automaton.
 
 The flow is: select incident → 48 h prediction → AI briefing → simulate → compare First-alert vs AI-priority → approve action → field brief → notification.
@@ -45,7 +45,7 @@ The committed data snapshot (`backend/data`) supplies detections, model artifact
 
 Apply the migration in `supabase/migrations` before starting the backend, then configure a backend-only secret key. See [docs/SUPABASE.md](docs/SUPABASE.md) for setup and verification. The old `python -m app.db --reset` command refuses cloud deletion; use a separate project for disposable demos.
 
-Earth View uses MapLibre with Esri World Imagery for stable worldwide navigation, then loads Earth Engine raster analysis only when **Analyze this view** is pressed. No Google Maps browser API key is required. Register a Google Cloud project for Earth Engine, configure `GEE_PROJECT` in `backend/.env`, and authenticate locally or use a backend service account. See [docs/EARTH_ENGINE.md](docs/EARTH_ENGINE.md). Missing credentials retain worldwide browsing and report the missing Earth Engine configuration when analysis is requested; images/statistics are never fabricated.
+Earth View uses MapLibre with Esri World Imagery for stable worldwide navigation, then loads Earth Engine raster analysis automatically when NDVI is selected or the historical period/view is changed. Panning does not trigger analysis; an optional Update imagery action captures a new viewport. No Google Maps browser API key is required. Register a Google Cloud project for Earth Engine, configure `GEE_PROJECT` in `backend/.env`, and authenticate locally or use a backend service account. See [docs/EARTH_ENGINE.md](docs/EARTH_ENGINE.md). Missing credentials retain worldwide browsing and report the missing Earth Engine configuration when analysis is requested; images/statistics are never fabricated.
 
 ## Rebuild the data and model
 
