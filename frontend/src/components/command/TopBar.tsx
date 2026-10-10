@@ -1,9 +1,9 @@
 "use client";
 
-import { Bell, BookOpen, Box, ChevronDown, Database, Globe2, History } from "lucide-react";
+import { Bell, BookOpen, Box, ChevronDown, Database, Globe2, History, Leaf } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Logo, Segmented } from "@/components/ui";
+import { Segmented } from "@/components/ui";
 import { utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
@@ -27,13 +27,13 @@ export function TopBar() {
   const prov = data?.provenance;
 
   return (
-    <header className="relative z-30 flex h-16 items-center gap-4 border-b border-[var(--line)] bg-white px-5">
+    <header className="simulation-header relative z-30 flex shrink-0 items-center gap-4 border-b border-[var(--line)] px-5">
       <Link href="/" className="flex items-center gap-3" aria-label="TerraGuard AI home">
-        <Logo />
+        <span className="simulation-brand"><Leaf size={25} strokeWidth={1.5} />TerraGuard<span>AI</span></span>
       </Link>
       <span className="h-6 w-px bg-[var(--line)]" />
       <div className="leading-tight">
-        <div className="text-[13.5px] font-bold">Forest Command Center</div>
+        <h1 className="simulation-title">Forest Command Center</h1>
         <div className="text-[11.5px] text-[var(--ink-2)]">Malaysia &amp; Indonesia study region</div>
       </div>
 
@@ -53,7 +53,7 @@ export function TopBar() {
         open={scenOpen}
         setOpen={setScenOpen}
         button={
-          <span className="flex items-center gap-2.5 rounded-[10px] border border-[var(--line)] bg-white px-3 py-1.5 hover:border-[#cdd8e5]">
+          <span className="flex items-center gap-2.5 rounded-[10px] border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 hover:border-[var(--blue-200)]">
             <History size={15} className="text-[var(--ink-2)]" />
             <span className="text-left leading-tight">
               <span className="block text-[10.5px] font-bold uppercase tracking-wider text-[var(--ink-3)]">Historical replay</span>
@@ -74,7 +74,7 @@ export function TopBar() {
                 setScenOpen(false);
                 if (s.id !== data.scenario.id) load(s.id);
               }}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left hover:bg-[#f3f6fa] ${s.id === data.scenario.id ? "bg-[var(--blue-50)]" : ""}`}
+              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left hover:bg-[var(--line-2)] ${s.id === data.scenario.id ? "bg-[var(--blue-50)]" : ""}`}
             >
               <span>
                 <span className="block text-[13px] font-semibold tnum">{utc(s.replay_time_utc)}</span>
@@ -108,7 +108,7 @@ export function TopBar() {
         }}
         align="right"
         button={
-          <span className="relative grid h-9 w-9 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[#f1f5f9]" aria-label="Notifications">
+          <span className="relative grid h-9 w-9 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" aria-label="Notifications">
             <Bell size={18} />
             {unread > 0 && (
               <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--red)] px-1 text-[10px] font-bold text-white">
@@ -126,7 +126,7 @@ export function TopBar() {
           <div className="scroll-thin max-h-[340px] overflow-y-auto p-1.5">
             {actions.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-[var(--ink-2)]">No decisions recorded yet.</div>}
             {actions.map((a) => (
-              <div key={a.id} className="rounded-lg px-3 py-2 hover:bg-[#f6f8fb]">
+              <div key={a.id} className="rounded-lg px-3 py-2 hover:bg-[var(--line-2)]">
                 <div className="flex items-center justify-between">
                   <span className="text-[12.5px] font-semibold">{ACTION_TEXT[a.action]}</span>
                   <span className="text-[11px] text-[var(--ink-3)] tnum">

@@ -56,11 +56,11 @@ export function CommandCenter() {
   }, [data, sim, simLoading]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[var(--bg)]">
+    <div className="simulation-theme flex h-screen flex-col overflow-hidden bg-[var(--bg)]">
       <TopBar />
-      <main className="relative min-h-0 flex-1">
+      <main className={`command-workspace relative min-h-0 flex-1 ${view === "sim" ? "is-simulation" : "is-earth"}`}>
         {/* main view: the 3D canvas stays mounted so switching back is instant */}
-        <div className={`absolute inset-0 ${view === "sim" ? "visible" : "invisible"}`} aria-hidden={view !== "sim"}>
+        <div className={`forest-stage absolute inset-0 ${view === "sim" ? "visible" : "invisible"}`} aria-hidden={view !== "sim"}>
           <ForestCanvas />
           {simLoading && !sim && (
             <div className="absolute inset-0 grid place-items-center">
@@ -70,7 +70,7 @@ export function CommandCenter() {
             </div>
           )}
         </div>
-        {view === "earth" && <EarthView />}
+        {view === "earth" && <div className="earth-stage absolute inset-0"><EarthView /></div>}
 
         {loadError && (
           <div className="absolute inset-0 z-20 grid place-items-center bg-[var(--bg)]/80">
@@ -87,7 +87,7 @@ export function CommandCenter() {
 
         {/* left: controls (3D only) */}
         {view === "sim" && (
-          <div className="pointer-events-none absolute bottom-[156px] left-4 top-4 z-10 flex">
+          <div className="conditions-dock pointer-events-none absolute z-10 flex">
             <div className="pointer-events-auto flex max-h-full">
               <ControlsPanel />
             </div>
@@ -96,7 +96,7 @@ export function CommandCenter() {
 
         {/* top: stat cards (3D only) */}
         {view === "sim" && (
-          <div className="pointer-events-none absolute left-[332px] right-[468px] top-4 z-10 hidden justify-start xl:flex">
+          <div className="stats-dock pointer-events-none absolute z-10 hidden justify-start">
             <div className="pointer-events-auto">
               <StatCards />
             </div>
@@ -105,30 +105,30 @@ export function CommandCenter() {
 
         {/* camera controls */}
         {view === "sim" && (
-          <div className="absolute right-[412px] top-4 z-10">
+          <div className="camera-dock absolute z-10">
             <MapControls />
           </div>
         )}
 
         {/* right column: intelligence + decision */}
-        <div className="pointer-events-none absolute bottom-4 right-4 top-4 z-10 flex w-[380px] flex-col gap-3">
-          <div className="pointer-events-auto flex min-h-[240px] flex-1 flex-col">
+        <div className="intelligence-dock pointer-events-none absolute z-10 flex flex-col gap-3">
+          <div className="incident-slot pointer-events-auto flex min-h-0 flex-1 flex-col">
             <IntelligencePanel />
           </div>
-          <div className="pointer-events-auto">
+          <div className="decision-slot scroll-thin pointer-events-auto overflow-y-auto">
             <DecisionPanel />
           </div>
         </div>
 
         {/* bottom timeline (3D only) */}
         {view === "sim" && (
-          <div className="absolute bottom-4 left-4 right-[412px] z-10">
+          <div className="timeline-dock absolute z-10">
             <Timeline />
           </div>
         )}
 
         {view === "sim" && sim && (
-          <div className="pointer-events-none absolute bottom-[160px] left-1/2 z-[5] -translate-x-1/2 text-center text-[11px] font-medium text-[var(--ink-3)]">
+          <div className="scenario-note pointer-events-none absolute z-[5] text-center text-[10px] font-medium text-[var(--ink-3)]">
             Hypothetical scenario on procedurally generated plots · not a reconstruction of the real sites
           </div>
         )}

@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 
 export function MapControls() {
   const camera = useStore((s) => s.camera);
-  const btn = "grid h-10 w-10 place-items-center text-[var(--ink-2)] hover:bg-[#f1f5f9] hover:text-[var(--ink)]";
+  const btn = "grid h-10 w-10 place-items-center text-[var(--ink-2)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]";
   return (
     <div className="panel-float flex flex-col overflow-hidden">
       <button className={btn} onClick={() => camera("zoomIn")} aria-label="Zoom in"><Plus size={17} /></button>
@@ -65,7 +65,7 @@ export function FieldBriefModal() {
       ].join("\n\n")
     : "";
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#172638]/30 p-6 backdrop-blur-[2px]" onClick={close}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--ink)]/30 p-6 backdrop-blur-[2px]" onClick={close}>
       <div className="panel-float animate-in flex max-h-[88vh] w-[620px] flex-col" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Field brief">
         <div className="flex items-start justify-between border-b border-[var(--line)] px-6 py-4">
           <div>

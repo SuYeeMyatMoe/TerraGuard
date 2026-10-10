@@ -38,41 +38,41 @@ function IncidentList() {
     (a, b) => (predictions[a.id]?.priority.rank ?? 9) - (predictions[b.id]?.priority.rank ?? 9),
   );
   return (
-    <div className="panel-float slide-in flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-[var(--line)] px-5 pb-4 pt-5">
+    <div className="incident-list-panel panel-float slide-in flex min-h-0 flex-1 flex-col">
+      <div className="incident-list-header shrink-0 border-b border-[var(--line)] px-4 py-3">
         <div className="eyebrow">Competing incidents</div>
-        <h2 className="mt-1 text-[17px] font-bold leading-snug">
-          {data.incidents.length} incidents. {teams === 1 ? "One team" : `${teams} teams`}. Which first?
+        <h2 className="mt-1">
+          {data.incidents.length} incidents · {teams === 1 ? "1 team" : `${teams} teams`}
         </h2>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--ink-2)]">
-          Ranked by the transparent priority score. Select an incident to see the prediction, evidence and recommendation.
+        <p className="mt-1 text-[11px] leading-snug text-[var(--ink-2)]">
+          Ranked by priority. Select to review.
         </p>
       </div>
-      <div className="scroll-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+      <div className="incident-list scroll-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {sorted.map((inc) => {
           const p = predictions[inc.id];
           return (
             <button
               key={inc.id}
               onClick={() => select(inc.id)}
-              className="group flex w-full items-start gap-3 rounded-[12px] border border-[var(--line)] bg-white p-3 text-left transition hover:border-[var(--blue-200)] hover:shadow-[0_4px_14px_rgba(37,99,235,0.08)]"
+              className="incident-card group flex w-full items-start gap-2 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-2.5 text-left transition hover:border-[var(--blue-200)]"
             >
               <span
                 className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold text-white"
-                style={{ background: p ? (p.priority.recommendation === "INSPECT" ? "#ff8a35" : p.priority.recommendation === "RECHECK" ? "#2563eb" : "#94a3b8") : "#cbd5e1" }}
+                style={{ background: p ? (p.priority.recommendation === "INSPECT" ? "var(--fire)" : p.priority.recommendation === "RECHECK" ? "var(--blue)" : "var(--ink-3)") : "var(--line)" }}
               >
                 {p?.priority.rank ?? "·"}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="truncate text-[13.5px] font-bold">{shortId(inc.id)} · {inc.region}</span>
+                  <span className="truncate text-[12.5px] font-bold">{shortId(inc.id)} · {inc.region}</span>
                   {p && <RecPill rec={p.priority.recommendation} size="sm" />}
                 </span>
-                <span className="mt-0.5 block text-[12px] text-[var(--ink-2)]">
-                  {inc.country} · first seen {utc(inc.observed_at, false)} · alert #{inc.arrival_order}
+                <span className="mt-0.5 block text-[11px] text-[var(--ink-2)]">
+                  {inc.country} · {utc(inc.observed_at, false)} · alert #{inc.arrival_order}
                 </span>
                 {p ? (
-                  <span className="mt-2 flex items-center gap-3 text-[12px]">
+                  <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
                     <span className="tnum"><b>{pct(p.probability)}</b> <span className="text-[var(--ink-2)]">48 h follow-up</span></span>
                     <span className="text-[var(--line)]">|</span>
                     <span className="text-[var(--ink-2)]">{p.evidence.quality} evidence</span>
@@ -108,17 +108,17 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
         </div>
         <div className="min-w-0 flex-1">
           <div className="eyebrow !text-[var(--blue)]">Hotspot · {pred?.category_label ?? "Assessing"}</div>
-          <div className="truncate text-[16px] font-bold leading-snug">{inc.region}, {inc.country}</div>
+          <div className="panel-heading truncate">{inc.region}, {inc.country}</div>
           <div className="font-mono text-[11.5px] text-[var(--ink-2)]">{inc.id}</div>
         </div>
-        <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--line)] text-[var(--ink-2)] hover:bg-[#f6f8fb]" aria-label="Close incident">
+        <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--line)] text-[var(--ink-2)] hover:bg-[var(--line-2)]" aria-label="Close incident">
           <X size={15} />
         </button>
       </div>
 
       <div className="scroll-thin min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#eef2f7] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--ink-2)]">{inc.status}</span>
+          <span className="rounded-full bg-[var(--line-2)] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--ink-2)]">{inc.status}</span>
           {pred && <QualityPill q={pred.evidence.quality} />}
           {pred && <RecPill rec={pred.priority.recommendation} />}
         </div>
@@ -211,7 +211,7 @@ function ProbabilityBlock({ pred }: { pred: Prediction }) {
           alert threshold {pct(pred.threshold)}
         </div>
       </div>
-      <div className="relative mt-3 h-2 rounded-full bg-[#eef2f7]">
+      <div className="relative mt-3 h-2 rounded-full bg-[var(--line-2)]">
         <div className="absolute inset-y-0 rounded-full bg-[var(--fire-200)]" style={{ left: `${lo * 100}%`, width: `${Math.max((hi - lo) * 100, 1)}%` }} />
         <div className="absolute -top-1 h-4 w-1 rounded-full bg-[var(--fire)]" style={{ left: `calc(${pred.probability * 100}% - 2px)` }} />
         <div className="absolute -top-1.5 h-5 w-px bg-[var(--ink-3)]" style={{ left: `${pred.threshold * 100}%` }} title="Alert threshold" />
@@ -232,15 +232,15 @@ function PrioritySection({ pred }: { pred: Prediction }) {
       <SectionTitle right={<span className="text-[12px] font-bold tnum">{pred.priority.score.toFixed(2)}</span>}>
         Operational priority · rank {pred.priority.rank} of {pred.priority.of}
       </SectionTitle>
-      <div className="flex h-2 overflow-hidden rounded-full bg-[#eef2f7]">
+      <div className="flex h-2 overflow-hidden rounded-full bg-[var(--line-2)]">
         {Object.entries(comps).map(([k, v], i) => (
-          <div key={k} title={`${label[k]}: ${v.toFixed(2)}`} style={{ width: `${v * 100}%`, background: ["#ff8a35", "#22a06b", "#2563eb", "#06b6d4"][i] }} />
+          <div key={k} title={`${label[k]}: ${v.toFixed(2)}`} style={{ width: `${v * 100}%`, background: ["var(--fire)", "var(--green)", "var(--blue)", "var(--cyan)"][i] }} />
         ))}
       </div>
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
         {Object.entries(comps).map(([k, v], i) => (
           <div key={k} className="flex items-center gap-1.5 text-[11.5px] text-[var(--ink-2)]">
-            <span className="h-2 w-2 rounded-sm" style={{ background: ["#ff8a35", "#22a06b", "#2563eb", "#06b6d4"][i] }} />
+            <span className="h-2 w-2 rounded-sm" style={{ background: ["var(--fire)", "var(--green)", "var(--blue)", "var(--cyan)"][i] }} />
             {label[k]} <b className="ml-auto text-[var(--ink)] tnum">{v.toFixed(2)}</b>
           </div>
         ))}
@@ -248,7 +248,7 @@ function PrioritySection({ pred }: { pred: Prediction }) {
       <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--ink-2)]">{pred.priority.reason}</p>
       <div className="mt-2.5 space-y-1">
         {pred.competing.map((c) => (
-          <div key={c.incident_id} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] ${c.incident_id === pred.incident_id ? "bg-[var(--blue-50)]" : "bg-[#f7f9fc]"}`}>
+          <div key={c.incident_id} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] ${c.incident_id === pred.incident_id ? "bg-[var(--blue-50)]" : "bg-[var(--surface)]"}`}>
             <b className="w-4 tnum">{c.rank}</b>
             <span className="flex-1 truncate">{shortId(c.incident_id)} · {c.region}</span>
             <span className="tnum text-[var(--ink-2)]">{c.priority_score.toFixed(2)}</span>
@@ -281,7 +281,7 @@ function GeoSection({ geo }: { geo: GeoContext | null }) {
           ))}
         </div>
       ) : (
-        <div className="flex gap-2 rounded-[10px] bg-[#f7f9fc] p-3 text-[12px] leading-relaxed text-[var(--ink-2)]">
+        <div className="flex gap-2 rounded-[10px] bg-[var(--surface)] p-3 text-[12px] leading-relaxed text-[var(--ink-2)]">
           <Info size={14} className="mt-0.5 shrink-0" />
           <span>{geo.earth_engine.reason} Protected-area boundaries shown are <b>{geo.boundary_status}</b>.</span>
         </div>
@@ -350,7 +350,7 @@ function AIBriefing({ incidentId }: { incidentId: string }) {
                 </button>
               </div>
               {showEvidence && (
-                <div className="scroll-thin max-h-52 space-y-1 overflow-y-auto rounded-lg bg-white p-2 ring-1 ring-[var(--line)]">
+                <div className="scroll-thin max-h-52 space-y-1 overflow-y-auto rounded-lg bg-[var(--surface)] p-2 ring-1 ring-[var(--line)]">
                   {brief.evidence.map((f) => (
                     <div key={f.evidence_id} className="text-[11px] leading-snug">
                       <span className="font-mono text-[var(--blue-700)]">{f.evidence_id}</span>{" "}

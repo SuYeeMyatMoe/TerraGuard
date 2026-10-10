@@ -28,7 +28,7 @@ export function ControlsPanel() {
   if (!open) {
     return (
       <div className="panel-float flex flex-col items-center gap-1 p-1.5">
-        <button className="grid h-10 w-10 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[#f1f5f9]" onClick={() => setOpen(true)} title="Simulation controls">
+        <button className="grid h-10 w-10 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" onClick={() => setOpen(true)} title="Simulation controls">
           <SlidersHorizontal size={18} />
         </button>
         <button className="grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--blue)] text-white disabled:opacity-60" onClick={run} disabled={loading} title="Run simulation">
@@ -47,10 +47,10 @@ export function ControlsPanel() {
   return (
     <div className="panel-float slide-in flex max-h-full w-[296px] flex-col">
       <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
-        <div className="flex items-center gap-2 text-[13.5px] font-bold">
+        <div className="panel-heading flex items-center gap-2">
           <SlidersHorizontal size={16} className="text-[var(--blue)]" /> Simulation conditions
         </div>
-        <button className="grid h-7 w-7 place-items-center rounded-lg text-[var(--ink-2)] hover:bg-[#f1f5f9]" onClick={() => setOpen(false)} aria-label="Collapse controls">
+        <button className="grid h-7 w-7 place-items-center rounded-lg text-[var(--ink-2)] hover:bg-[var(--line-2)]" onClick={() => setOpen(false)} aria-label="Collapse controls">
           <PanelLeftClose size={16} />
         </button>
       </div>
@@ -82,7 +82,7 @@ export function ControlsPanel() {
                     <div className="grid flex-1 grid-cols-4 gap-1">
                       {[0, 90, 180, 270, 45, 135, 225, 315].map((d) => (
                         <button key={d} onClick={() => setOverride(selectedId, { wind_dir_deg: d })}
-                          className={`h-7 rounded-md text-[11px] font-semibold ${Math.round(dir) === d ? "bg-[var(--blue)] text-white" : "bg-[#f1f5f9] text-[var(--ink-2)] hover:bg-[#e8eef5]"}`}>
+                          className={`h-7 rounded-md text-[11px] font-semibold ${Math.round(dir) === d ? "bg-[var(--blue)] text-white" : "bg-[var(--line-2)] text-[var(--ink-2)] hover:bg-[var(--line)]"}`}>
                           {compass(d)}
                         </button>
                       ))}
@@ -206,17 +206,17 @@ function Dial({ value, onChange }: { value: number; onChange: (v: number) => voi
       aria-label="Wind direction"
       aria-valuenow={Math.round(value)}
     >
-      <circle r="29" fill="#f7f9fc" stroke="#e3eaf2" />
+      <circle r="29" fill="var(--surface)" stroke="var(--line)" />
       {["N", "E", "S", "W"].map((l, i) => (
-        <text key={l} x={Math.sin((i * Math.PI) / 2) * 21} y={-Math.cos((i * Math.PI) / 2) * 21 + 3.5} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#94a3b8">
+        <text key={l} x={Math.sin((i * Math.PI) / 2) * 21} y={-Math.cos((i * Math.PI) / 2) * 21 + 3.5} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--ink-3)">
           {l}
         </text>
       ))}
       <g transform={`rotate(${(rad * 180) / Math.PI})`}>
-        <line x1="0" y1="10" x2="0" y2="-12" stroke="#06b6d4" strokeWidth="3" strokeLinecap="round" />
-        <path d="M0 -17 L5 -9 L-5 -9 Z" fill="#06b6d4" />
+        <line x1="0" y1="10" x2="0" y2="-12" stroke="var(--cyan)" strokeWidth="3" strokeLinecap="round" />
+        <path d="M0 -17 L5 -9 L-5 -9 Z" fill="var(--cyan)" />
       </g>
-      <circle r="2.5" fill="#06b6d4" />
+      <circle r="2.5" fill="var(--cyan)" />
     </svg>
   );
 }

@@ -14,7 +14,7 @@ import type { FeatureCollection } from "geojson";
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 const GOOGLE_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || "DEMO_MAP_ID";
 const STUDY_BOUNDS: [[number, number], [number, number]] = [[95.0, -4.5], [119.5, 7.5]];
-const REC_COLOR: Record<string, string> = { INSPECT: "#ff8a35", RECHECK: "#2563eb", MONITOR: "#64748b" };
+const REC_COLOR: Record<string, string> = { INSPECT: "#ff8a35", RECHECK: "#365004", MONITOR: "#74634c" };
 
 function usePAs() {
   const data = useStore((s) => s.data);
@@ -46,8 +46,8 @@ function EarthLegend() {
         </div>
         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11.5px] text-[var(--ink-2)]">
           <span className="flex items-center gap-1.5"><Dot c="#ff8a35" /> Inspect recommended</span>
-          <span className="flex items-center gap-1.5"><Dot c="#2563eb" /> Recheck recommended</span>
-          <span className="flex items-center gap-1.5"><Dot c="#64748b" /> Monitor</span>
+          <span className="flex items-center gap-1.5"><Dot c="#365004" /> Recheck recommended</span>
+          <span className="flex items-center gap-1.5"><Dot c="#74634c" /> Monitor</span>
           <span className="flex items-center gap-1.5"><Dot c="#f59e0b" small /> Other detections, prior 24 h</span>
           <span className="col-span-2 flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-[#16a34a] bg-[#16a34a22]" /> Protected areas (approximate boundaries)
@@ -72,15 +72,15 @@ function Dot({ c, small }: { c: string; small?: boolean }) {
 }
 
 function markerEl(inc: Incident, pred: Prediction | undefined, selected: boolean) {
-  const color = pred ? REC_COLOR[pred.priority.recommendation] : "#2563eb";
+  const color = pred ? REC_COLOR[pred.priority.recommendation] : "#365004";
   const el = document.createElement("button");
   el.setAttribute("aria-label", `${inc.id} ${inc.region}`);
   el.style.cssText = "background:none;border:0;padding:0;cursor:pointer;";
   el.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;transform:translateY(-6px)">
-      <div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:4px 10px 4px 4px;box-shadow:0 4px 14px rgba(23,38,56,.18);border:1.5px solid ${selected ? "#2563eb" : "#e3eaf2"};font:600 12px var(--font-manrope),sans-serif;color:#172638;white-space:nowrap">
+      <div style="display:flex;align-items:center;gap:6px;background:#faf8ef;border-radius:999px;padding:4px 10px 4px 4px;box-shadow:0 4px 14px rgba(23,38,56,.18);border:1.5px solid ${selected ? "#365004" : "#dedbc9"};font:600 12px var(--font-manrope),sans-serif;color:#351903;white-space:nowrap">
         <span style="display:grid;place-items:center;width:20px;height:20px;border-radius:999px;background:${color};color:#fff;font-size:11px;font-weight:800">${pred?.priority.rank ?? "·"}</span>
-        ${shortId(inc.id)} <span style="color:#64748b;font-weight:500">${inc.region}</span>
+        ${shortId(inc.id)} <span style="color:#74634c;font-weight:500">${inc.region}</span>
       </div>
       <div style="width:2px;height:10px;background:${color}"></div>
       <div style="width:14px;height:14px;border-radius:999px;background:${color};border:3px solid #fff;box-shadow:0 0 0 ${selected ? 6 : 0}px ${color}33,0 2px 6px rgba(0,0,0,.25)"></div>
@@ -207,7 +207,7 @@ function OfflineCard() {
         <p className="mt-1 text-[12.5px] text-[var(--ink-2)]">The basemap needs internet. Incident coordinates are still available:</p>
         <div className="mt-3 space-y-1.5">
           {data?.incidents.map((i) => (
-            <button key={i.id} onClick={() => select(i.id)} className="flex w-full justify-between rounded-lg bg-[#f7f9fc] px-3 py-2 text-left text-[12.5px] hover:bg-[var(--blue-50)]">
+            <button key={i.id} onClick={() => select(i.id)} className="flex w-full justify-between rounded-lg bg-[#faf8ef] px-3 py-2 text-left text-[12.5px] hover:bg-[var(--blue-50)]">
               <span className="font-semibold">{shortId(i.id)} · {i.region}</span>
               <span className="font-mono text-[11.5px] text-[var(--ink-2)]">{i.lat.toFixed(3)}, {i.lon.toFixed(3)}</span>
             </button>

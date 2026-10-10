@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, FileText, Minus, Plus, RefreshCw, ScanSearch, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, FileText, Minus, Plus, RefreshCw, ScanSearch, XCircle } from "lucide-react";
 import { useState } from "react";
 import { RecPill } from "@/components/ui";
 import { num, shortId } from "@/lib/format";
@@ -39,7 +39,7 @@ export function DecisionPanel() {
   };
 
   return (
-    <div className="panel-float shrink-0 px-4 py-3.5">
+    <div className="decision-panel panel-float shrink-0 px-4 py-3">
       {/* resources & strategy */}
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -61,19 +61,22 @@ export function DecisionPanel() {
       </div>
 
       {/* comparison (3D mode; Earth View keeps the panel compact) */}
-      {view === "sim" && <div className="mt-3 border-t border-[var(--line-2)] pt-3">
-        <div className="mb-1.5 flex items-center justify-between">
-          <div className="eyebrow">Baseline vs AI-prioritised response</div>
+      {view === "sim" && <details className="policy-details mt-2 border-t border-[var(--line-2)] pt-2">
+        <summary className="flex cursor-pointer items-center justify-between gap-2 text-[12px] font-semibold text-[var(--blue)]">
+          <span>Compare response policies</span>
           {sim && <span className="text-[10.5px] font-semibold text-[var(--ink-3)]">{sim.n_seeds} seeds</span>}
-        </div>
-        {!sim && <div className="rounded-lg bg-[#f7f9fc] p-3 text-[12px] text-[var(--ink-2)]">Run the simulation to compare policies under identical conditions.</div>}
+          <ChevronDown size={14} className="shrink-0 transition-transform" />
+        </summary>
+        <div className="mt-2">
+        {!sim && <div className="rounded-lg bg-[var(--surface)] p-3 text-[12px] text-[var(--ink-2)]">Run the simulation to compare policies under identical conditions.</div>}
         {sim && <Comparison sim={sim} stale={simStale} />}
-      </div>}
+        </div>
+      </details>}
 
       {/* recommendation & approval */}
-      <div className="mt-3 border-t border-[var(--line-2)] pt-3">
+      <div className="mt-2 border-t border-[var(--line-2)] pt-2">
         {!inc || !pred ? (
-          <div className="text-[12.5px] text-[var(--ink-2)]">Select an incident to review its recommendation and approve an action.</div>
+          <div className="text-[11px] text-[var(--ink-2)]">Select an incident to review its response.</div>
         ) : (
           <>
             <div className="flex items-center justify-between">
