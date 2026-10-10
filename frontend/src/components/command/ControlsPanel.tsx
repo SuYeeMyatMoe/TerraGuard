@@ -15,6 +15,7 @@ export function ControlsPanel() {
   const resetOverride = useStore((s) => s.resetOverride);
   const responseDelay = useStore((s) => s.responseDelay);
   const burnDuration = useStore((s) => s.burnDuration);
+  const crewMode = useStore((s) => s.crewMode);
   const steps = useStore((s) => s.steps);
   const setParam = useStore((s) => s.setParam);
   const run = useStore((s) => s.runSimulation);
@@ -113,7 +114,7 @@ export function ControlsPanel() {
             <Slider icon={<Timer size={14} />} label="Test horizon" value={steps} min={24} max={72} step={4}
               display={`${steps} steps`} onChange={(v) => setParam("steps", v)} />
             <p className="text-[11px] leading-snug text-[var(--ink-3)]">
-              Three response crews, one per incident. 1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). Each crew carries initial suppression kit.
+              {crewMode === 1 ? "One shared crew, as in the command map." : "Three response crews, one per incident."} 1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). Each crew carries initial suppression kit.
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Crosshair, Flame, Grid2X2, Layers, Leaf, Maximize2, Minimize2, Minus, Play, Plus, RotateCcw, Trees, Truck } from "lucide-react";
+import { Crosshair, Flame, Loader2, Grid2X2, Layers, Leaf, Maximize2, Minimize2, Minus, Play, Plus, RotateCcw, Trees, Truck } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { pct, shortId } from "@/lib/format";
 import { toForestFrame } from "@/lib/forestFrame";
@@ -30,6 +30,8 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   const [focusKey, setFocus] = useState(0);
   const [quality, setQuality] = useState<QualityMode>("auto");
   const loading=useStore(s=>s.simLoading);
+  const nSeeds=useStore(s=>s.nSeeds);
+  const crewMode=useStore(s=>s.crewMode);
   const selectedIndex = sim?.plots.findIndex(p => p.incident_id === selectedId) ?? -1;
   const index = selectedIndex >= 0 ? selectedIndex : Math.max(0, sim?.plots.findIndex(p => p.incident_id === sim.ai_order[0]) ?? 0);
   const plot = sim?.plots[index];
@@ -89,6 +91,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
     {!overviewVisible && frame?.value && <div className="forest-live"><span><Flame size={14}/><b>{frame.value.metrics.burning}</b> burning</span><span><b>{frame.value.metrics.burned}</b> burned</span><span><Leaf size={14}/><b>{frame.value.metrics.habitat}</b> habitat cells burned</span></div>}
     {(overviewVisible ? !overview.plots.length : !frame?.value) && <div className="forest-empty"><Trees size={28}/><p>{(overviewVisible ? overview.error : frame?.error) ?? "The forest will appear when the response test is ready."}</p></div>}
     {picking && <div className="forest-pick-notice">Click a vegetated cell to set the ignition point</div>}
+    {loading && <div className="forest-run-loader" role="status"><div><Loader2 size={17} className="animate-spin text-[#365004]"/><span>Preparing the response test…<small>{nSeeds} matched runs · {crewMode === 1 ? "1 shared crew" : "1 crew per incident"} · {sim?.plots.map((_, i) => String.fromCharCode(65 + i)).join(" · ") || "A · B · C"}</small></span></div></div>}
     {!overviewVisible && water && <section className={`forest-water-response ${water.spraying ? "is-spraying" : ""}`} aria-label="Crew response controls">
       <div className="water-response-title"><span><Truck size={15}/>FIELD RESPONSE</span><i className={water.spraying ? "active" : ""}/></div>
       <p aria-live="polite">{waterStatus}</p>

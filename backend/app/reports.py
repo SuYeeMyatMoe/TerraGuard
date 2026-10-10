@@ -10,6 +10,9 @@ No LLM is involved. Consequences are hypothetical simulation outputs, not foreca
 """
 from __future__ import annotations
 
+import threading
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
 
@@ -65,7 +68,27 @@ def _stat(m: dict) -> dict:
     return {"mean": m["mean"], "ci95": m["ci95"]}
 
 
+_CACHE: OrderedDict[tuple[str, str], dict] = OrderedDict()
+_CACHE_LOCK = threading.Lock()
+CACHE_SIZE = 32
+
+
 def build(store, incident_id: str, req: SimulateRequest | None = None) -> dict:
+    """Reports are deterministic for a given incident and simulation request, so repeat requests are cached."""
+    key = (incident_id, (req or SimulateRequest()).model_dump_json())
+    with _CACHE_LOCK:
+        if key in _CACHE:
+            _CACHE.move_to_end(key)
+            return _CACHE[key]
+    out = _build(store, incident_id, req)
+    with _CACHE_LOCK:
+        _CACHE[key] = out
+        while len(_CACHE) > CACHE_SIZE:
+            _CACHE.popitem(last=False)
+    return out
+
+
+def _build(store, incident_id: str, req: SimulateRequest | None = None) -> dict:
     pred = store.predict(incident_id, 1)
     inc = store.incident(incident_id, att={})
     scenario, meta = store.inc_index[incident_id]
@@ -77,9 +100,14 @@ def build(store, incident_id: str, req: SimulateRequest | None = None) -> dict:
     noise = noise_check(store, meta["candidate_id"], pred["threshold"])
 
     # ---------------- simulation: crew HERE vs crew elsewhere vs no crew (matched seeds) ----------------
+    # One run covers everything. Plots are independent (a crew only affects its own plot) and every policy shares the
+    # same random draws, so with one crew per incident:
+    #   coordinator -> the single crew at THIS incident;  first_alert (teams = all) -> every incident attended;
+    #   none        -> no crew anywhere.
     base_req = req or SimulateRequest()
+    n_inc = len(scenario["incidents"])
     sim = store.simulate(base_req.model_copy(update={"scenario_id": scenario["scenario_id"], "coordinator_assignment": incident_id,
-                                                     "teams": 1}))
+                                                     "teams": n_inc}), keep_all_frames=True)
     pi = {p: {x["incident_id"]: x for x in sim["policies"][p]["metrics"]["per_incident"]} for p in sim["policies"]}
     here, none = pi["coordinator"][incident_id], pi["none"][incident_id]
     attended, unattended = here["burned_cells"], none["burned_cells"]
@@ -94,37 +122,32 @@ def build(store, incident_id: str, req: SimulateRequest | None = None) -> dict:
     # simulated benefit of the crew at EACH incident (same seeds), so trade-offs are visible, not hidden
     benefit = {incident_id: gain}
     for o in others:
-        s2 = store.simulate(base_req.model_copy(update={"scenario_id": scenario["scenario_id"],
-                                                         "coordinator_assignment": o["incident_id"], "teams": 1}))
-        a2 = next(x for x in s2["policies"]["coordinator"]["metrics"]["per_incident"] if x["incident_id"] == o["incident_id"])
-        benefit[o["incident_id"]] = round(pi["none"][o["incident_id"]]["burned_cells"]["mean"] - a2["burned_cells"]["mean"], 2)
+        oid = o["incident_id"]
+        benefit[oid] = round(pi["none"][oid]["burned_cells"]["mean"] - pi["first_alert"][oid]["burned_cells"]["mean"], 2)
     for w in waiting:
         w["simulated_crew_benefit_cells"] = benefit[w["incident_id"]]
     best_sim = max(benefit, key=benefit.get)
 
-    # one matched run of this incident's plot for playback: the run (among the first seeds) whose no-crew AND crew-here
-    # outcomes are closest to the all-runs averages, so the preview neither understates nor exaggerates the consequence.
-    # Seed s's first run equals a single-seed run at s, so each candidate is one cheap simulation.
+    # one matched run of this incident's plot for playback: the run whose no-crew AND crew-here outcomes are closest
+    # to the all-runs averages, so the preview neither understates nor exaggerates the consequence.
     plot_index = next(k for k, p in enumerate(sim["plots"]) if p["incident_id"] == incident_id)
+    raw_c, raw_n = sim["policies"]["coordinator"].pop("_raw"), sim["policies"]["none"].pop("_raw")
+    for p in sim["policies"].values():
+        p.pop("_raw", None)
+    gaps = np.abs(raw_n["burned"][:, plot_index] - unattended["mean"]) + np.abs(raw_c["burned"][:, plot_index] - attended["mean"])
+    k = int(np.argmin(gaps))
+    def _frames(raw: dict) -> list[str]:
+        return ["".join(map(str, f[k, plot_index].reshape(-1).tolist())) for f in raw["frames"]]
     def _burned(frames: list[str]) -> int:
         return sum(ch in "23" for ch in frames[-1])
-    best = None
-    for s in range(base_req.seed, base_req.seed + min(base_req.n_seeds, 12)):
-        one = store.simulate(base_req.model_copy(update={"scenario_id": scenario["scenario_id"], "coordinator_assignment": incident_id,
-                                                         "teams": 1, "seed": s, "n_seeds": 1}))
-        nf = [f[plot_index] for f in one["policies"]["none"]["frames"]]
-        cf = [f[plot_index] for f in one["policies"]["coordinator"]["frames"]]
-        gap = abs(_burned(nf) - unattended["mean"]) + abs(_burned(cf) - attended["mean"])
-        if best is None or gap < best[0]:
-            best = (gap, s, cf, nf)
-    _, replay_seed, crew_frames, none_frames = best
+    crew_frames, none_frames = _frames(raw_c), _frames(raw_n)
     replay = {"plot_index": plot_index, "h": sim["grid"]["h"], "w": sim["grid"]["w"], "steps": len(crew_frames) - 1,
-              "response_delay": base_req.response_delay, "seed": replay_seed,
+              "response_delay": base_req.response_delay, "seed": base_req.seed, "run_index": k + 1,
               "crew_here": crew_frames, "no_crew": none_frames,
               "crew_here_burned": _burned(crew_frames), "no_crew_burned": _burned(none_frames),
               "states": {"0": "no fuel", "1": "forest", "2": "burning", "3": "burned", "4": "crew intervention"},
-              "note": (f"Replay of one matched run (seed {replay_seed}), chosen because its outcomes with and without the crew "
-                       f"are closest to the averages of {base_req.n_seeds} runs. Hypothetical spread on a procedural plot, not a forecast.")}
+              "note": (f"Replay of matched run {k + 1} of {base_req.n_seeds}, chosen because its outcomes with and without the "
+                       "crew are closest to the averages. Hypothetical spread on a procedural plot, not a forecast.")}
 
     # ---------------- recommended action ----------------
     if rec == "INSPECT":

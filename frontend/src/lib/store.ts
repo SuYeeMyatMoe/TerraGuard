@@ -19,9 +19,10 @@ import type {
 
 export type View = "earth" | "sim";
 
-/** The operational map has one crew; the 3D response test gives each incident its own crew. */
+/** The operational map has one crew. The 3D response test defaults to that one shared crew (so the AI choice matters)
+ *  and can be switched to one crew per incident. */
 export const TEAMS = 1;
-export const SIMULATION_TEAMS = 3;
+export type CrewMode = 1 | 3;
 
 export interface Toast {
   id: number;
@@ -57,6 +58,7 @@ interface State {
   playing: boolean;
   /** A user-started run continues into the Prediction report when its playback reaches the last step. */
   reportAfterPlayback: boolean;
+  crewMode: CrewMode;
   speed: number;
 
   actions: ActionRecord[];
@@ -91,6 +93,9 @@ interface State {
   setPolicy: (p: PolicyKey) => void;
   replay: () => void;
   playbackEnded: () => void;
+  setCrewMode: (m: CrewMode) => void;
+  /** Start fetching the selected incident's reports in the background (used while a run plays). */
+  prefetchReport: (incidentId?: string | null) => void;
   setStep: (s: number) => void;
   setPlaying: (v: boolean) => void;
   setSpeed: (v: number) => void;
@@ -109,6 +114,21 @@ interface State {
 let toastId = 0;
 let actionsRequestId = 0;
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
+
+// Report requests are shared by key, so a prefetch during playback is reused when the report opens.
+const reportRequests = new Map<string, Promise<IncidentReports>>();
+function fetchReport(s: Pick<State, "responseDelay" | "steps" | "seed" | "nSeeds" | "overrides">, id: string): Promise<IncidentReports> {
+  const body = { response_delay: s.responseDelay, steps: s.steps, seed: s.seed, n_seeds: s.nSeeds, per_incident: s.overrides };
+  const key = `${id}|${JSON.stringify(body)}`;
+  let request = reportRequests.get(key);
+  if (!request) {
+    request = api.reports(id, body);
+    reportRequests.set(key, request);
+    request.catch(() => reportRequests.delete(key));
+    if (reportRequests.size > 24) reportRequests.delete(reportRequests.keys().next().value!);
+  }
+  return request;
+}
 
 export const useStore = create<State>((set, get) => ({
   data: null,
@@ -134,6 +154,7 @@ export const useStore = create<State>((set, get) => ({
   playbackRun: 0,
   playing: false,
   reportAfterPlayback: false,
+  crewMode: 1,
   speed: 1,
   actions: [],
   archivedActions: [],
@@ -233,7 +254,7 @@ export const useStore = create<State>((set, get) => ({
     try {
       const sim = await api.simulate({
         scenario_id: s.data.scenario.id,
-        teams: opts?.coordinator !== undefined ? TEAMS : SIMULATION_TEAMS,
+        teams: opts?.coordinator !== undefined ? TEAMS : s.crewMode,
         response_delay: s.responseDelay,
         burn_duration_steps: s.burnDuration,
         steps: s.steps,
@@ -246,6 +267,7 @@ export const useStore = create<State>((set, get) => ({
       set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy,
         // a user-run response test ends with the Prediction Report once its playback finishes
         reportAfterPlayback: (opts?.autoplay ?? true) && (opts?.openReport ?? true) });
+      if (get().reportAfterPlayback) get().prefetchReport();
     } catch (e) {
       set({ simLoading: false, simError: errMsg(e) });
       get().toast({ tone: "error", title: "Response test failed", body: errMsg(e) });
@@ -280,7 +302,7 @@ export const useStore = create<State>((set, get) => ({
     }
     set({ consequence: null, report: { open: true, loading: true, incidentId: id, data: null, error: null, tab } });
     try {
-      const data = await api.reports(id, { response_delay: s.responseDelay, steps: s.steps, seed: s.seed, n_seeds: s.nSeeds, per_incident: s.overrides });
+      const data = await fetchReport(s, id);
       if (get().report.incidentId === id) set((st) => ({ report: { ...st.report, loading: false, data } }));
     } catch (e) {
       set((st) => ({ report: { ...st.report, loading: false, error: errMsg(e) } }));
@@ -288,12 +310,28 @@ export const useStore = create<State>((set, get) => ({
   },
   setReportTab: (tab) => set((st) => ({ report: { ...st.report, tab } })),
   closeReport: () => set((st) => ({ report: { ...st.report, open: false } })),
-  setPolicy: (p) => set(s => ({
-    policy: p, step: 0, playing: true, pickingIgnition: false, reportAfterPlayback: !s.consequence,
-    playbackRun: s.playbackRun + 1,
-    selectedId: s.sim?.policies[p]?.assigned[0] ?? s.selectedId,
-  })),
-  replay: () => set(s => ({ step: 0, playing: true, playbackRun: s.playbackRun + 1, reportAfterPlayback: !s.consequence })),
+  setPolicy: (p) => {
+    set(s => ({
+      policy: p, step: 0, playing: true, pickingIgnition: false, reportAfterPlayback: !s.consequence,
+      playbackRun: s.playbackRun + 1,
+      selectedId: s.sim?.policies[p]?.assigned[0] ?? s.selectedId,
+    }));
+    if (get().reportAfterPlayback) get().prefetchReport();
+  },
+  replay: () => {
+    set(s => ({ step: 0, playing: true, playbackRun: s.playbackRun + 1, reportAfterPlayback: !s.consequence }));
+    if (get().reportAfterPlayback) get().prefetchReport();
+  },
+  setCrewMode: (m) => {
+    if (get().crewMode === m) return;
+    set({ crewMode: m, simStale: !!get().sim, playing: false });
+    if (get().data) void get().runSimulation({ autoplay: false });
+  },
+  prefetchReport: (incidentId) => {
+    const s = get();
+    const id = incidentId ?? s.selectedId ?? s.sim?.ai_order[0] ?? null;
+    if (id) fetchReport(s, id).catch(() => undefined);
+  },
   playbackEnded: () => {
     const s = get();
     set({ playing: false, reportAfterPlayback: false });
@@ -307,6 +345,7 @@ export const useStore = create<State>((set, get) => ({
     const s = get();
     if (playing && s.sim && s.step >= s.sim.steps) set({ step: 0 });
     set(playing ? { playing, reportAfterPlayback: !s.consequence } : { playing });
+    if (playing && get().reportAfterPlayback) get().prefetchReport();
   },
   setSpeed: (speed) => set({ speed }),
 

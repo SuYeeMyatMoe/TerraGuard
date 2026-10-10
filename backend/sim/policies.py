@@ -30,7 +30,7 @@ def allocate(policy: str, arrival_order: list[str], ai_order: list[str], teams: 
 
 def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order: list[str], teams: int,
                       response_delay: int, steps: int, seed: int, n_seeds: int, coordinator: str | None = None,
-                      burn_duration_steps: int | None = None) -> dict:
+                      burn_duration_steps: int | None = None, keep_all_frames: bool = False) -> dict:
     ids = [p.incident_id for p in plots]
     P = len(plots)
     rng = np.random.default_rng(seed)
@@ -42,7 +42,8 @@ def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order:
         arrivals = np.array([response_delay if i in assigned else np.inf for i in ids])
         teams_at = np.array([1 if i in assigned else 0 for i in ids])
         out = run(plots, arrivals, teams_at, steps, rand, keep_frames=True,
-                  burn_duration_steps=burn_duration_steps)
+                  burn_duration_steps=burn_duration_steps, all_seeds=keep_all_frames)
+        first = [f[0] for f in out["frames"]] if keep_all_frames else out["frames"]
         events = []
         for i in assigned:
             pi = ids.index(i)
@@ -54,10 +55,12 @@ def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order:
                 events.append({"step": cs, "incident_id": i, "type": "contained", "label": "No active fire cells"})
         results[policy] = {
             "assigned": assigned,
-            "frames": encode_frames(out["frames"]),
+            "frames": encode_frames(first),
             "events": sorted(events, key=lambda e: e["step"]),
             "metrics": summarise(out, ids, assigned, arrivals, steps),
         }
+        if keep_all_frames:  # internal use only (reports); never serialised by the API
+            results[policy]["_raw"] = {"frames": out["frames"], "burned": out["burned"]}
     return {
         "policies": results,
         "comparison": compare(results),

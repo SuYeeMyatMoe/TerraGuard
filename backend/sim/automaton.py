@@ -145,12 +145,13 @@ def _direction_probs(plot: PlotSpec) -> np.ndarray:
 
 
 def run(plots: list[PlotSpec], arrivals: np.ndarray, teams_at: np.ndarray, steps: int,
-        rand: np.ndarray, keep_frames: bool, burn_duration_steps: int | None = None) -> dict:
+        rand: np.ndarray, keep_frames: bool, burn_duration_steps: int | None = None, all_seeds: bool = False) -> dict:
     """Run the automaton for S seeds at once.
 
     arrivals : (P,) arrival step for each plot (np.inf when no team assigned)
     teams_at : (P,) number of teams assigned to each plot
     rand     : (S, steps, P, H, W) uniform random numbers, SHARED across policies (common random numbers)
+    all_seeds: keep frames for every seed (S,P,H,W) instead of the first seed only (P,H,W)
     """
     duration = ASSUMPTIONS["burn_duration_steps"] if burn_duration_steps is None else burn_duration_steps
     if not 2 <= duration <= 24:
@@ -171,7 +172,7 @@ def run(plots: list[PlotSpec], arrivals: np.ndarray, teams_at: np.ndarray, steps
         for r, c in p.ignition:
             state[:, pi, r, c] = BURNING
             timer[:, pi, r, c] = duration
-    frames = [state[0].copy()] if keep_frames else []
+    frames = [(state if all_seeds else state[0]).copy()] if keep_frames else []
     contained_step = np.full((S, P), -1)
     active_until = np.zeros((S, P))
     order_cache = np.argsort(dist.reshape(P, -1), axis=1, kind="stable")  # suppression priority per plot
@@ -214,7 +215,7 @@ def run(plots: list[PlotSpec], arrivals: np.ndarray, teams_at: np.ndarray, steps
         state = np.where(ignite, BURNING, state).astype(np.int8)
         timer = np.where(ignite, duration, timer)
         if keep_frames:
-            frames.append(state[0].copy())
+            frames.append((state if all_seeds else state[0]).copy())
 
     burned = ((state == BURNED) | (state == BURNING)).sum(axis=(2, 3))            # (S,P)
     prot_burned = (((state == BURNED) | (state == BURNING)) & prot[None]).sum(axis=(2, 3))

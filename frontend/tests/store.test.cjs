@@ -156,15 +156,16 @@ test("actions API encodes replay and archive inclusion; omitted resource count d
 });
 
 
-test("ABC comparisons keep three crews while a decision consequence uses one crew", async () => {
+test("the response test defaults to one shared crew, three crews on request, and a consequence uses one crew", async () => {
   const requests = [];
   const store = makeStore({ simulate: async request => {
     requests.push(request);
     return { teams: request.teams, ai_order: ["I1"], policies: { ai_priority: {}, none: {}, coordinator: request.coordinator_assignment ? {} : undefined } };
   } });
   store.setState({ data: { scenario: { id: "S1" }, incidents: [], team: { assigned_incident_id: null } } });
+  assert.equal(store.getState().crewMode, 1);
   await store.getState().runSimulation({ autoplay: false });
-  assert.equal(requests[0].teams, 3);
+  assert.equal(requests[0].teams, 1);
   assert.equal("coordinator_assignment" in requests[0], false);
   await store.getState().watchConsequence("I1", "ASSIGN_INSPECTION");
   assert.equal(requests[1].teams, 1);
@@ -172,6 +173,7 @@ test("ABC comparisons keep three crews while a decision consequence uses one cre
   assert.equal(store.getState().policy, "coordinator");
   assert.equal(store.getState().selectedId, "I1");
   assert.equal(store.getState().playbackRun, 1);
+  store.setState({ crewMode: 3 });
   await store.getState().runSimulation({ autoplay: false });
   assert.equal(requests[2].teams, 3);
   assert.equal(store.getState().policy, "ai_priority");
@@ -222,4 +224,25 @@ test("a user-started playback continues into the Prediction report; scrubbing an
   store.getState().playbackEnded();
   assert.deepEqual(opened, ["B"]);
   assert.equal(store.getState().playing, false);
+});
+
+test("a report prefetched during playback is reused when the report opens", async () => {
+  let calls = 0;
+  const store = makeStore({ reports: async (id) => { calls++; return { incident_id: id }; } });
+  store.setState({ sim: { steps: 48, ai_order: ["B"], policies: {} }, selectedId: "B", step: 0 });
+  store.getState().setPlaying(true);
+  await store.getState().openReport("B", "prediction");
+  assert.equal(calls, 1);
+  assert.equal(store.getState().report.data.incident_id, "B");
+});
+
+test("switching crew mode reruns the response test with that many crews", async () => {
+  const teams = [];
+  const store = makeStore({ simulate: async r => { teams.push(r.teams); return { teams: r.teams, ai_order: [], policies: { ai_priority: {}, none: {} } }; } });
+  store.setState({ data: { scenario: { id: "S1" }, incidents: [], team: { assigned_incident_id: null } } });
+  store.getState().setCrewMode(3);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  store.getState().setCrewMode(1);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(teams, [3, 1]);
 });

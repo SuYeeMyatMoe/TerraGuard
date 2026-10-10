@@ -125,3 +125,43 @@ def test_sqlite_migration_widens_old_check_constraint(tmp_path):
     store.record_action({"scenario_id": "S", "incident_id": "I", "action": "CONTINUE_MONITORING", "reason": "watch"}, {})
     assert len(store.list_actions(None, True)) == 2
     records.set_records(Records(SqliteStore(tmp_path / "x.db")))
+
+
+# ----------------------------------------------------------------------------- speed-ups stay exact
+def test_single_run_crew_benefit_matches_per_incident_runs(client):
+    from app import reports
+    from app.schemas import SimulateRequest
+    from app.service import store
+    s = store()
+    iid = client.get("/api/incidents").json()["incidents"][0]["id"]
+    scen = s.inc_index[iid][0]["scenario_id"]
+    req = SimulateRequest(n_seeds=6, steps=24)
+    rr = reports.build(s, iid, req)["recommendation_report"]
+    new = {b["incident_id"]: b["cells"] for b in rr["consequences"]["simulation"]["crew_benefit_by_incident"]}
+    base = s.simulate(req.model_copy(update={"scenario_id": scen, "coordinator_assignment": iid, "teams": 1}))
+    none = {x["incident_id"]: x["burned_cells"]["mean"] for x in base["policies"]["none"]["metrics"]["per_incident"]}
+    for oid, cells in new.items():
+        one = s.simulate(req.model_copy(update={"scenario_id": scen, "coordinator_assignment": oid, "teams": 1}))
+        att = next(x for x in one["policies"]["coordinator"]["metrics"]["per_incident"] if x["incident_id"] == oid)
+        assert cells == round(none[oid] - att["burned_cells"]["mean"], 2)
+
+
+def test_replay_is_a_real_matched_run_and_reports_are_cached(client):
+    import time
+    from app import reports
+    from app.schemas import SimulateRequest
+    from app.service import store
+    s = store()
+    iid = client.get("/api/incidents").json()["incidents"][1]["id"]
+    req = SimulateRequest(n_seeds=5, steps=20, seed=11)
+    first = reports.build(s, iid, req)
+    t = time.time()
+    again = reports.build(s, iid, req)
+    assert again is first and time.time() - t < 0.05
+    rp = first["recommendation_report"]["consequences"]["simulation"]["replay"]
+    assert 1 <= rp["run_index"] <= 5 and f"run {rp['run_index']} of 5" in rp["note"]
+
+
+def test_simulate_api_never_exposes_raw_frames(client):
+    body = client.post("/api/simulate", json={"n_seeds": 3, "steps": 12}).json()
+    assert all("_raw" not in p for p in body["policies"].values())

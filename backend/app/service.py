@@ -446,7 +446,7 @@ class Store:
         d = 0.4 * min(dsr, 21) / 21 + 0.35 * min(max((85 - rh) / 45, 0), 1) + 0.25 * math.exp(-p7 / 15)
         return round(min(max(d, 0), 1), 3), True
 
-    def simulate(self, req) -> dict:
+    def simulate(self, req, keep_all_frames: bool = False) -> dict:
         scenario = self.scenario(req.scenario_id)
         ids = [i["incident_id"] for i in scenario["incidents"]]
         _, recs, ai_order = self.prioritise(scenario, req.teams)
@@ -464,7 +464,7 @@ class Store:
         plots, infos = self.build_plots([self.incident(iid, att={}) for iid in ids], req.per_incident)
         res = simulate_policies(plots, arrival_order, ai_order, req.teams, req.response_delay, req.steps,
                                 req.seed, req.n_seeds, coordinator=coordinator,
-                                burn_duration_steps=req.burn_duration_steps)
+                                burn_duration_steps=req.burn_duration_steps, keep_all_frames=keep_all_frames)
         return {
             "scenario_id": scenario["scenario_id"],
             "grid": {"plots": len(plots), "h": H, "w": W},
