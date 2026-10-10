@@ -38,9 +38,10 @@ class EarthEngineProvider:
                 credentials = ee.ServiceAccountCredentials(info["client_email"], str(path))
             else:
                 credentials = ee.data.get_persistent_credentials()
-            ee.data.setDeadline(20000)
             ee.data.setMaxRetries(0)
             ee.Initialize(credentials=credentials, project=self.project)
+            # setDeadline rebuilds the SDK transport, which Initialize creates.
+            ee.data.setDeadline(20000)
             self.ee = ee
         return self.ee
 

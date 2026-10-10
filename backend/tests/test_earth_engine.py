@@ -183,6 +183,24 @@ def test_tile_transport_uses_authenticated_sdk_map_resource(module):
     assert calls == ["projects/p/maps/m", (3, 5, 8)]
 
 
+def test_provider_cold_initialization_sets_deadline_after_transport_exists(module, monkeypatch):
+    import ee
+    from ee.apitestcase import GetAlgorithms
+    ee.Reset()
+    monkeypatch.setattr(ee.data, "get_persistent_credentials", lambda: None)
+    monkeypatch.setattr(ee.data, "getAlgorithms", GetAlgorithms)
+    # Keep real SDK initialization and deadline installation; replace only HTTP.
+    monkeypatch.setattr(ee._cloud_api_utils, "build_cloud_resource", lambda *a, **k: None)
+    try:
+        provider = module.EarthEngineProvider("offline-test")
+        assert provider.initialize() is ee
+        state = ee.data._get_state()
+        assert state.requests_session is not None
+        assert state.deadline_ms == 20000 and state.max_retries == 0
+    finally:
+        ee.Reset()
+
+
 def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolated_db, monkeypatch):
     from app.main import app
     from fastapi.testclient import TestClient

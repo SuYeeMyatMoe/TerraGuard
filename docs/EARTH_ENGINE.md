@@ -16,7 +16,7 @@ Earth View displays incident-focused Sentinel-2 satellite imagery and NDVI. The 
 4. من مجلد backend نفّذ الأمر التالي وأكمل تسجيل الدخول والتفويض في صفحة Google التي تظهر:
 
    ```bash
-   .venv/bin/earthengine authenticate
+   .venv/bin/earthengine authenticate --auth_mode=localhost --scopes=https://www.googleapis.com/auth/earthengine.readonly
    ```
 
    هذا تفويض لحساب Google على جهاز التطوير، ولا يضيف صفحة تسجيل دخول إلى TerraGuard. لا ترسل ملف الاعتماد أو الرموز في المحادثة، ولا تضفها إلى Git.
@@ -53,4 +53,6 @@ Responses contain only same-origin `/api/earth-engine/tiles/{handle}/{z}/{x}/{y}
 
 ## Verification status
 
-Offline tests compile real Earth Engine expressions using bundled SDK algorithm signatures and replace remote evaluation/map creation. They verify cloud masking, historical filtering, NDVI, no-data behavior, handles/TTL and authenticated tile routing. They cannot prove account permissions or actual scene/tile retrieval. The account has no registered project or credentials yet, so live imagery verification remains pending.
+Offline tests compile real Earth Engine expressions using bundled SDK algorithm signatures and replace remote evaluation/map creation. They verify cloud masking, historical filtering, NDVI, no-data behavior, handles/TTL and authenticated tile routing. A cold-initialization regression test retains real SDK transport initialization: setDeadline must run after Initialize creates the requests session.
+
+Live connection verified on 2026-10-10 using project `terraguard-earth-engine`, registered for noncommercial academic use on the Community Tier. Read-only OAuth credentials are stored locally outside the repository. The connection checker accessed the Sentinel-2 collection successfully. Earth View incident `INC-20250729-B`, 30-day window, returned 16 scenes (2025-07-01 to 2025-07-29), mean NDVI 0.548 and 100% valid coverage. Both RGB and NDVI center tiles were verified as actual PNG responses through the frontend proxy, and both layers rendered in the browser. Other incidents/windows can still have cloud gaps or provider timeouts; Refresh imagery retries failed requests.

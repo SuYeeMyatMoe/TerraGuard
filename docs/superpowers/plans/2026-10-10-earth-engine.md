@@ -1,6 +1,6 @@
 # Earth Engine Earth View Implementation Plan
 
-> Execute inline on codex/earth-engine-earth-view. User has authorized implementation; account activation remains external.
+> Execute inline on codex/earth-engine-earth-view. User authorized implementation and assisted with academic registration and read-only OAuth consent.
 
 **Goal:** Add dated Sentinel-2 RGB and NDVI layers to Earth View.
 
@@ -20,4 +20,4 @@
 
 ## Verification result
 
-58 backend and 10 frontend tests passed; frontend lint, TypeScript and production build passed. Browser checks confirmed configuration-needed, incident selection, period/layer controls and switching to the existing 3D view. Real Earth Engine graph construction was verified offline. Live collection/tile retrieval remains pending because the user has no registered Cloud project or credentials. Connection checker correctly exits 2 with a configuration-needed message. No operational rows were written, and the main branch/model/simulation files were not changed by this feature.
+59 backend tests passed after a cold SDK initialization regression was reproduced and fixed; the original feature passed 10 frontend tests, lint, TypeScript and production build. Browser checks confirmed configuration-needed, incident selection, period/layer controls and switching to the existing 3D view. Real Earth Engine graph construction was verified offline. On 2026-10-10 project terraguard-earth-engine was registered for noncommercial academic use, and the user completed read-only OAuth consent. The connection checker and actual RGB/NDVI PNG tile retrieval passed. Earth View rendered 16 Sentinel-2 scenes for incident B, with mean NDVI 0.548 and 100% valid coverage. No operational rows were written, and the main branch/model/simulation files were not changed by this feature.
