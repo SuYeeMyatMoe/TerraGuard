@@ -59,7 +59,7 @@ export function Timeline() {
     { key: "progress", label: "Fire progression", icon: Flame, at: 2 },
     { key: "crew", label: arrival == null ? "No crew" : "Crew on site", icon: arrival == null ? ShieldCheck : Truck, at: arrival ?? Infinity },
     { key: "final", label: "Final state", icon: Flag, at: steps },
-  ];
+  ].sort((a, b) => a.at - b.at);
   const active = phases.reduce((acc, p, i) => (step >= p.at ? i : acc), 0);
 
   return <section className="forest-playback" aria-label="Simulation timeline">
