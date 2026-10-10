@@ -4,22 +4,19 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import {
-  EarthEngineController,
-  visibleImagery,
-} from "@/lib/earth-engine";
+import { EarthEngineController } from "@/lib/earth-engine";
 import {
   areaKm2,
   distanceKm,
-  nextCoverage,
+  coverViewport,
+  analysisViewError,
+  analysisOverlayVisible,
   polygonError,
-  STUDY_BOUNDS,
   type Bounds,
   type Position,
 } from "@/lib/map-geometry";
@@ -27,7 +24,8 @@ import { EarthEnginePanel, type EarthLayer } from "./EarthEnginePanel";
 import { EarthMap, type LayerVisibility, type Measurement } from "./EarthMap";
 
 const LAYER_NAMES: Record<keyof LayerVisibility, string> = {
-  imagery: "Satellite imagery",
+  imagery: "Global satellite basemap",
+  historical: "Dated Sentinel-2 overlay",
   roads: "Roads & place labels",
   incidents: "Incident markers",
   hotspots: "Context hotspots",
@@ -48,12 +46,23 @@ export function EarthView() {
   const [days, setDays] = useState(30),
     [layer, setLayer] = useState<EarthLayer>("rgb"),
     [opacity, setOpacity] = useState(1);
-  const [bounds, setBounds] = useState<Bounds | null>(null),
-    [outside, setOutside] = useState(false);
+  const [bounds, setBounds] = useState<Bounds | null>(null);
+  const [viewError, setViewError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
+  const [destination, setDestination] = useState<{
+    center: Position;
+    zoom: number;
+  } | null>(null);
+  const [latitude, setLatitude] = useState(""),
+    [longitude, setLongitude] = useState("");
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [mode, setMode] = useState<"context" | "compare">("context"),
     [divider, setDivider] = useState(50);
   const [visibility, setVisibility] = useState<LayerVisibility>({
     imagery: true,
+    historical: true,
     roads: true,
     incidents: true,
     hotspots: true,
@@ -68,36 +77,51 @@ export function EarthView() {
     }),
     [measureError, setMeasureError] = useState<string | null>(null);
   const id = selectedId ?? data?.incidents[0]?.id;
-  const previousId = useRef<string | undefined>(undefined);
-  const options = useMemo(
-    () => ({ bounds: bounds ?? STUDY_BOUNDS, mode }),
-    [bounds, mode],
+  const state = snapshot;
+  const inAnalysis = analysisOverlayVisible(bounds, state.data?.bounds);
+  const showHistorical = visibility.historical && inAnalysis;
+  const mapVisibility = useMemo(
+    () => ({ ...visibility, historical: showHistorical }),
+    [visibility, showHistorical],
   );
-  const state = visibleImagery(snapshot,id,days,options);
   const onViewport = useCallback((raw: Bounds) => {
-    const next = nextCoverage(null, raw);
-    setOutside(!next);
-    if (next) setBounds((current) => nextCoverage(current, raw) ?? current);
+    const next = coverViewport(raw);
+    if (next)
+      setBounds((current) =>
+        current?.every((value, i) => value === next[i]) ? current : next,
+      );
   }, []);
   useEffect(() => {
-    if (!id || !bounds) return;
-    // Let the selection flight finish before requesting its viewport.
-    const changed = previousId.current !== id;
-    previousId.current = id;
-    const pending = setTimeout(
-      () => void controller.load(id, days, false, options),
-      changed && selectedId ? 1600 : 100,
+    controller.reset();
+    return () => controller.cancel();
+  }, [controller, id, days, mode]);
+  const analyzeView = (refresh = false) => {
+    const error = analysisViewError(bounds);
+    setViewError(
+      error ? { key: `${id}:${days}:${mode}`, message: error } : null,
     );
-    const timer = setInterval(
-      () => void controller.load(id, days, false, options),
-      540000,
-    );
-    return () => {
-      clearTimeout(pending);
-      clearInterval(timer);
-      controller.cancel();
-    };
-  }, [controller, id, days, options, bounds, selectedId]);
+    if (error || !bounds || !id) return;
+    setFailedTiles([]);
+    setVisibility((v) => (v.historical ? v : { ...v, historical: true }));
+    void controller.load(id, days, refresh, { bounds, mode });
+  };
+  const navigate = () => {
+    const lat = Number(latitude),
+      lon = Number(longitude);
+    if (
+      !latitude.trim() ||
+      !longitude.trim() ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      Math.abs(lat) > 85 ||
+      Math.abs(lon) > 180
+    ) {
+      setLocationError("Enter latitude −85 to 85 and longitude −180 to 180.");
+      return;
+    }
+    setLocationError(null);
+    setDestination({ center: [lon, lat], zoom: 11 });
+  };
   const onPoint = useCallback((point: Position) => {
     setMeasureError(null);
     setMeasurement((m) =>
@@ -116,7 +140,9 @@ export function EarthView() {
   };
   const onTileError = useCallback(
     (url: string) =>
-      setFailedTiles((urls) => (urls.includes(url) ? urls : [...urls, url])),
+      setFailedTiles((urls) =>
+        urls.includes(url) ? urls : [...urls.slice(-15), url],
+      ),
     [],
   );
   const tileError =
@@ -143,11 +169,12 @@ export function EarthView() {
         opacity={opacity}
         compare={mode === "compare"}
         divider={divider}
-        visibility={visibility}
+        visibility={mapVisibility}
         measurement={measurement}
         onPoint={onPoint}
         onViewport={onViewport}
         onTileError={onTileError}
+        destination={destination}
       />
       <EarthEnginePanel
         state={state}
@@ -161,11 +188,82 @@ export function EarthView() {
         mode={mode}
         setMode={setMode}
         overview={!selectedId}
-        retry={() => {
-          setFailedTiles([]);
-          void controller.load(id, days, true, options);
-        }}
+        manual
+        analysisError={
+          viewError?.key === `${id}:${days}:${mode}` ? viewError.message : null
+        }
+        anchor={id}
+        loadView={() => analyzeView(false)}
+        retry={() => analyzeView(true)}
       >
+        {visibility.historical &&
+          state.data?.status === "ready" &&
+          !inAnalysis && (
+            <p
+              role="status"
+              className="mt-3 rounded bg-slate-50 p-2 text-[11px]"
+            >
+              Global basemap only here. Zoom into the loaded analysis footprint
+              or analyze this new view.
+            </p>
+          )}
+        <details className="mt-3 border-t border-slate-200 pt-3">
+          <summary className="cursor-pointer text-xs font-bold">
+            Go to a location
+          </summary>
+          <form
+            className="mt-2 space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate();
+            }}
+          >
+            <label className="block text-[11px]">
+              Latitude
+              <input
+                aria-label="Latitude"
+                type="number"
+                step="any"
+                min="-85"
+                max="85"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                className="mt-1 w-full rounded border px-2 py-1"
+                placeholder="37.7749"
+                required
+              />
+            </label>
+            <label className="block text-[11px]">
+              Longitude
+              <input
+                aria-label="Longitude"
+                type="number"
+                step="any"
+                min="-180"
+                max="180"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                className="mt-1 w-full rounded border px-2 py-1"
+                placeholder="-122.4194"
+                required
+              />
+            </label>
+            <button className="rounded bg-blue-600 px-3 py-1.5 text-[11px] text-white">
+              Go to coordinates
+            </button>
+          </form>
+          {locationError && (
+            <p role="alert" className="mt-2 text-[11px] text-amber-700">
+              {locationError}
+            </p>
+          )}
+          <button
+            className="mt-2 text-[11px] text-blue-600"
+            onClick={() => setDestination({ center: [0, 20], zoom: 2 })}
+          >
+            World view
+          </button>
+        </details>
         <details className="mt-3 border-t border-slate-200 pt-3" open>
           <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-bold">
             <Layers size={13} />
@@ -263,34 +361,28 @@ export function EarthView() {
           </p>
         </details>
       </EarthEnginePanel>
-      {mode === "compare" && state.data?.comparison?.status === "ready" && (
-        <div className="panel-float absolute bottom-5 left-1/2 z-10 w-[280px] -translate-x-1/2 p-3">
-          <div className="flex justify-between text-[11px] font-bold">
-            <span>Before · left</span>
-            <span>After · right</span>
+      {mode === "compare" &&
+        showHistorical &&
+        state.data?.comparison?.status === "ready" && (
+          <div className="panel-float absolute bottom-5 left-1/2 z-10 w-[280px] -translate-x-1/2 p-3">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span>Before · left</span>
+              <span>After · right</span>
+            </div>
+            <input
+              aria-label="Before and after divider"
+              type="range"
+              min={0}
+              max={100}
+              value={divider}
+              onChange={(e) => setDivider(Number(e.target.value))}
+              className="mt-2 w-full accent-blue-600"
+            />
+            <p className="text-center text-[10px] text-amber-700">
+              Retrospective · not used for prediction
+            </p>
           </div>
-          <input
-            aria-label="Before and after divider"
-            type="range"
-            min={0}
-            max={100}
-            value={divider}
-            onChange={(e) => setDivider(Number(e.target.value))}
-            className="mt-2 w-full accent-blue-600"
-          />
-          <p className="text-center text-[10px] text-amber-700">
-            Retrospective · not used for prediction
-          </p>
-        </div>
-      )}
-      {outside && (
-        <div
-          role="status"
-          className="panel-float absolute left-1/2 top-4 z-10 -translate-x-1/2 p-2 text-xs"
-        >
-          Outside study coverage · reference map only
-        </div>
-      )}
+        )}
       <div className="panel-float absolute bottom-4 left-4 z-10 max-w-[300px] p-3">
         <details>
           <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold">
@@ -302,8 +394,10 @@ export function EarthView() {
             hotspots · green: protected boundaries · blue ring: 1 km statistics.
           </p>
           <p className="mt-2 text-[10px] text-slate-500">
-            Roads / places: OpenFreeMap / OpenStreetMap. Sentinel-2 via Earth
-            Engine. Cloud gaps show the reference map.
+            Global basemap: Esri World Imagery (mixed acquisition dates; not the
+            replay date). Roads / places: OpenFreeMap / OpenStreetMap. Dated
+            Sentinel-2 and NDVI: Earth Engine. Cloud gaps in the scientific
+            overlay show the basemap.
           </p>
           {data?.provenance.is_synthetic && (
             <p className="mt-1 text-[10px] font-semibold text-amber-700">

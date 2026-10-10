@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import json
@@ -40,11 +41,7 @@ def display_extent(incident: dict, bbox=None) -> list[float]:
     west, south, east, north = bounds
     if not (-180 <= west < east <= 180 and -90 <= south < north <= 90):
         raise ValueError("bbox must contain ordered geographic coordinates")
-    clipped = [max(west, STUDY_BOUNDS[0]), max(south, STUDY_BOUNDS[1]),
-               min(east, STUDY_BOUNDS[2]), min(north, STUDY_BOUNDS[3])]
-    if clipped[0] >= clipped[2] or clipped[1] >= clipped[3]:
-        raise ValueError("bbox must intersect the study area")
-    return clipped
+    return bounds
 
 
 class EarthEngineProvider:
@@ -133,6 +130,8 @@ class EarthEngineService:
         self.generation_lock = RLock()
         self.utcnow = utcnow or (lambda: datetime.now(timezone.utc))
         self.cache, self.tiles = OrderedDict(), OrderedDict()
+        self.tile_cache, self.tile_pending = OrderedDict(), {}
+        self.tile_bytes, self.max_tile_bytes = 0, 32 * 1024 * 1024
 
     def status(self) -> dict:
         return {"status": "select_incident" if self.project else "not_configured", "available": False,
@@ -164,12 +163,58 @@ class EarthEngineService:
             self.tiles.move_to_end(handle)
         return url.format(z=z, x=x, y=y)
 
+    def fetch_tile(self, handle: str, z: int, x: int, y: int) -> bytes:
+        url = self.tile_url(handle, z, x, y)
+        with self.lock:
+            cached = self.tile_cache.get(url)
+            if cached and cached[0] > self.clock():
+                self.tile_cache.move_to_end(url)
+                return cached[1]
+            if cached:
+                self.tile_bytes -= len(self.tile_cache.pop(url)[1])
+            pending = self.tile_pending.get(url)
+            producer = pending is None
+            if producer:
+                pending = self.tile_pending[url] = Future()
+        if not producer:
+            return pending.result()
+        try:
+            image = self.provider.fetch_tile(url)
+            if not image.startswith((b'\x89PNG\r\n\x1a\n', b'\xff\xd8\xff')):
+                raise ValueError('Invalid satellite tile')
+            with self.lock:
+                if len(image) <= self.max_tile_bytes:
+                    self.tile_cache[url] = (self.clock() + 600, image)
+                    self.tile_bytes += len(image)
+                    while self.tile_bytes > self.max_tile_bytes or len(self.tile_cache) > 512:
+                        self.tile_bytes -= len(self.tile_cache.popitem(last=False)[1][1])
+                pending.set_result(image)
+            return image
+        except Exception as exc:
+            pending.set_exception(exc)
+            raise
+        finally:
+            with self.lock:
+                self.tile_pending.pop(url, None)
+
+    def cached_description(self, key, refresh):
+        with self.lock:
+            cached = self.cache.get(key)
+            valid = cached and all(self.tiles.get(layer['tile_url'].split('/')[4], (0,))[0] > self.clock()
+                                   for layer in cached[1]['layers'])
+            if not refresh and cached and cached[0] > self.clock() and valid:
+                self.cache.move_to_end(key)
+                return cached[1]
+        return None
+
     def describe(self, incident: dict, days: int, refresh: bool = False, bbox=None, mode: str = "context") -> dict:
         if days not in (14, 30, 60):
             raise ValueError("Choose a 14, 30 or 60 day window")
         if mode not in ("context", "compare"):
             raise ValueError("Choose context or compare mode")
         bounds = display_extent(incident, bbox)
+        if bounds[2] - bounds[0] > 8 or bounds[3] - bounds[1] > 8:
+            raise ValueError('Zoom in to analyze a view no wider or taller than 8 degrees. Global browsing stays available.')
         end = datetime.fromisoformat(incident["observed_at"].replace("Z", "+00:00")).astimezone(timezone.utc)
         start = end - timedelta(days=days)
         now = self.utcnow()
@@ -186,16 +231,14 @@ class EarthEngineService:
         if not self.project:
             return base
         key = (incident["id"], incident["lat"], incident["lon"], iso(end), days, tuple(bounds), mode)
+        cached = self.cached_description(key, refresh)
+        if cached is not None:
+            return cached
         # Remote computations must not block the short-lived tile registry lock.
         with self.generation_lock:
-            with self.lock:
-                cached = self.cache.get(key)
-                handles_valid = cached and all(
-                    self.tiles.get(layer["tile_url"].split("/")[4], (0,))[0] > self.clock()
-                    for layer in cached[1]["layers"])
-                if not refresh and cached and cached[0] > self.clock() and handles_valid:
-                    self.cache.move_to_end(key)
-                    return cached[1]
+            cached = self.cached_description(key, refresh)
+            if cached is not None:
+                return cached
             def load(window, suffix=""):
                 data = dict(self.provider.analyze(incident, window["start"], window["end"], display_bounds=bounds))
                 layers = [{"id": kind + suffix, "tile_url": self.register_tile(url), "attribution": ATTRIBUTION}

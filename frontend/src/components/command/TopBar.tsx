@@ -37,7 +37,7 @@ export function TopBar() {
       <span className="h-6 w-px bg-[var(--line)]" />
       <div className="leading-tight">
         <div className="text-[13.5px] font-bold">Forest Command Center</div>
-        <div className="text-[11.5px] text-[var(--ink-2)]">Malaysia &amp; Indonesia study region</div>
+        <div className="text-[11.5px] text-[var(--ink-2)]">{view === "earth" ? "Worldwide satellite view · regional incident demo" : "Malaysia & Indonesia study region"}</div>
       </div>
 
       <div className="mx-auto">
@@ -45,7 +45,7 @@ export function TopBar() {
           value={view}
           onChange={setView}
           options={[
-            { value: "earth", label: (<><Globe2 size={15} /> Earth View</>), title: "Real coordinates of historical hotspots" },
+            { value: "earth", label: (<><Globe2 size={15} /> Earth View</>), title: "Worldwide imagery and historical incident analysis" },
             { value: "sim", label: (<><Box size={15} /> 3D Simulation</>), title: "Hypothetical forest scenario" },
           ]}
         />

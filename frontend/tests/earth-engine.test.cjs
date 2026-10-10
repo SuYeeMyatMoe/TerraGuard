@@ -9,6 +9,39 @@ function controller(load) {
   return new (loadModule("src/lib/earth-engine.ts", {}, { Error }).EarthEngineController)(load);
 }
 
+test('revisiting a completed view reuses its resource objects, while explicit refresh reloads',async()=>{
+  let calls=0;
+  const state=controller(async id=>({incident_id:id,status:'ready',layers:[],n:++calls}));
+  await state.load('A',30); const first=state.getSnapshot().data;
+  await state.load('A',30); assert.equal(calls,1);
+  await state.load('B',30); await state.load('A',30);
+  assert.equal(state.getSnapshot().data,first); assert.equal(calls,2);
+  await state.load('A',30,true); assert.equal(calls,3);
+});
+
+test('identical pending analysis is deduplicated rather than aborted and resubmitted',async()=>{
+  let resolve,calls=0,signal;
+  const state=controller((id,days,refresh,options)=>new Promise(r=>{resolve=r;calls++;signal=options.signal;}));
+  const first=state.load('A',30);const second=state.load('A',30);
+  assert.equal(calls,1);assert.equal(signal.aborted,false);
+  resolve({status:'ready'});await Promise.all([first,second]);
+});
+
+test('unchanged raster identity preserves loaded source and tiles across metadata refresh',()=>{
+  const {syncRaster}=loadModule('src/lib/map-style.ts');
+  const sources=new Map(),layers=new Map(); let adds=0,removes=0;
+  const map={getSource:id=>sources.get(id),getLayer:id=>layers.get(id),getStyle:()=>({layers:[]}),
+    addSource:(id,s)=>{adds++;sources.set(id,s);},addLayer:l=>layers.set(l.id,l),
+    removeSource:id=>{removes++;sources.delete(id);},removeLayer:id=>layers.delete(id)};
+  const resource={tile_url:'/api/earth-engine/tiles/a/{z}/{x}/{y}',attribution:'Test'};
+  const bounds=[-123,37,-122,38];
+  syncRaster(map,'earth-engine',resource,bounds);
+  syncRaster(map,'earth-engine',{...resource},[...bounds]);
+  assert.equal(adds,1);assert.equal(removes,0);
+  syncRaster(map,'earth-engine',null,null);
+  assert.equal(removes,1);
+});
+
 test("changing incidents clears the old imagery and ignores an out-of-order response", async () => {
   const waits = {};
   const state = controller((id) => new Promise((resolve) => { waits[id] = resolve; }));

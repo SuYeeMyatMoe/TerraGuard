@@ -12,6 +12,7 @@ import {
   rasterInsertionPoint,
   isReferenceLabel,
   syncCamera,
+  syncRaster,
 } from "@/lib/map-style";
 import {
   analysisCircle,
@@ -24,6 +25,7 @@ import type { EarthLayer } from "./EarthEnginePanel";
 
 export type LayerVisibility = {
   imagery: boolean;
+  historical: boolean;
   roads: boolean;
   incidents: boolean;
   hotspots: boolean;
@@ -52,6 +54,7 @@ type Props = {
   onPoint: (point: Position) => void;
   onViewport: (bounds: Bounds) => void;
   onTileError: (url: string) => void;
+  destination: { center: Position; zoom: number } | null;
 };
 
 function measureFeatures(m: Measurement): FeatureCollection {
@@ -223,6 +226,29 @@ function ensureVectors(map: maplibregl.Map) {
   });
 }
 
+function ensureBasemap(map: maplibregl.Map) {
+  if (map.getSource("world-imagery")) return;
+  map.addSource("world-imagery", {
+    type: "raster",
+    tiles: [
+      "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    ],
+    tileSize: 256,
+    maxzoom: 19,
+    attribution:
+      'Imagery © <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9" target="_blank" rel="noopener">Esri</a>, Vantor, Earthstar Geographics, GIS User Community',
+  });
+  map.addLayer(
+    {
+      id: "world-imagery",
+      type: "raster",
+      source: "world-imagery",
+      paint: { "raster-fade-duration": 200 },
+    },
+    rasterInsertionPoint(map.getStyle()?.layers ?? []),
+  );
+}
+
 /** One interactive camera; the after map mirrors it and is clipped by the slider. */
 export function EarthMap(props: Props) {
   const beforeDiv = useRef<HTMLDivElement>(null),
@@ -286,28 +312,30 @@ export function EarthMap(props: Props) {
       fitBoundsOptions: {
         padding: { top: 60, bottom: 60, left: 340, right: 440 },
       },
-      attributionControl: { compact: true },
-    });
-    const after = new maplibregl.Map({
-      container: afterDiv.current,
-      style: "https://tiles.openfreemap.org/styles/positron",
-      interactive: false,
       attributionControl: false,
     });
-    maps.current = [before, after];
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const sync = () => syncCamera(before, after);
+    maps.current = [before];
+    before.addControl(new maplibregl.NavigationControl(), "bottom-left");
+    before.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+      "bottom-left",
+    );
+    const controls = before
+      .getContainer()
+      .querySelector<HTMLElement>(".maplibregl-ctrl-bottom-left");
+    if (controls) controls.style.bottom = "70px";
+    const sync = () => {
+      const after = maps.current[1];
+      if (after) syncCamera(before, after);
+    };
     const viewport = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        const b = before.getBounds();
-        current.current.onViewport([
-          b.getWest(),
-          b.getSouth(),
-          b.getEast(),
-          b.getNorth(),
-        ]);
-      }, 600);
+      const b = before.getBounds();
+      current.current.onViewport([
+        b.getWest(),
+        b.getSouth(),
+        b.getEast(),
+        b.getNorth(),
+      ]);
     };
     const click = (e: maplibregl.MapMouseEvent) => {
       if (current.current.measurement.drawing)
@@ -316,10 +344,11 @@ export function EarthMap(props: Props) {
     before.on("move", sync);
     before.on("moveend", viewport);
     before.on("click", click);
-    before.on("resize", () => after.resize());
+    before.on("resize", () => maps.current[1]?.resize());
     maps.current.forEach((map) =>
       map.on("load", () => {
         ensureVectors(map);
+        ensureBasemap(map);
         setReady((n) => n + 1);
         sync();
         viewport();
@@ -334,15 +363,13 @@ export function EarthMap(props: Props) {
     });
     const observer = new ResizeObserver(() => {
       before.resize();
-      after.resize();
+      maps.current[1]?.resize();
     });
     observer.observe(beforeDiv.current);
     return () => {
-      clearTimeout(timer);
       observer.disconnect();
-      maps.current = [];
       before.remove();
-      after.remove();
+      maps.current = [];
     };
   }, []);
   useEffect(() => {
@@ -363,36 +390,54 @@ export function EarthMap(props: Props) {
   );
   const beforeUrl = rasterBefore?.tile_url,
     afterUrl = rasterAfter?.tile_url;
+  const needsAfter =
+    props.compare && props.visibility.historical && Boolean(afterUrl);
+  useEffect(() => {
+    const before = maps.current[0];
+    if (!needsAfter || !before || !afterDiv.current) return;
+    const after = new maplibregl.Map({
+      container: afterDiv.current,
+      style: "https://tiles.openfreemap.org/styles/positron",
+      interactive: false,
+      attributionControl: false,
+    });
+    maps.current[1] = after;
+    syncCamera(before, after);
+    after.on("load", () => {
+      ensureVectors(after);
+      ensureBasemap(after);
+      setReady((n) => n + 1);
+      syncCamera(before, after);
+    });
+    return () => {
+      if (maps.current[1] === after) maps.current.pop();
+      after.remove();
+    };
+  }, [needsAfter]);
+  useEffect(() => {
+    if (props.destination)
+      maps.current[0]?.jumpTo({
+        ...props.destination,
+        padding: { top: 0, bottom: 0, left: 300, right: 420 },
+      });
+  }, [props.destination]);
   useEffect(() => {
     const cancels = maps.current.map((map, i) => {
       const raster = i === 0 ? rasterBefore : rasterAfter;
       const apply = () => {
-        if (map.getLayer("earth-engine")) map.removeLayer("earth-engine");
-        if (map.getSource("earth-engine")) map.removeSource("earth-engine");
-        if (!raster || !bounds) return;
-        map.addSource("earth-engine", {
-          type: "raster",
-          tiles: [raster.tile_url],
-          tileSize: 256,
-          bounds,
-          minzoom: 0,
-          maxzoom: 18,
-          attribution: raster.attribution,
-        });
-        map.addLayer(
-          {
-            id: "earth-engine",
-            type: "raster",
-            source: "earth-engine",
-            paint: { "raster-opacity": current.current.opacity },
-            layout: {
-              visibility: current.current.visibility.imagery
-                ? "visible"
-                : "none",
-            },
-          },
-          rasterInsertionPoint(map.getStyle()?.layers ?? []),
-        );
+        syncRaster(map, "earth-engine", raster ?? null, bounds ?? null);
+        if (map.getLayer("earth-engine")) {
+          map.setPaintProperty(
+            "earth-engine",
+            "raster-opacity",
+            current.current.opacity,
+          );
+          map.setLayoutProperty(
+            "earth-engine",
+            "visibility",
+            current.current.visibility.historical ? "visible" : "none",
+          );
+        }
       };
       const error = (e: maplibregl.ErrorEvent) => {
         if ("sourceId" in e && e.sourceId === "earth-engine" && raster)
@@ -426,28 +471,25 @@ export function EarthMap(props: Props) {
         setSource(
           map,
           "analysis",
-          inc
-            ? analysisCircle(
-                [inc.lon, inc.lat],
-                imagery?.analysis_region?.radius_m ?? 1000,
-              )
-            : EMPTY,
+          inc ? analysisCircle([inc.lon, inc.lat], 1000) : EMPTY,
         );
         setSource(map, "measure", measureFeatures(props.measurement));
         const v = props.visibility;
         for (const l of map.getStyle()?.layers ?? []) {
           const show =
-            l.id === "earth-engine"
+            l.id === "world-imagery"
               ? v.imagery
-              : l.id.startsWith("pas-")
-                ? v.protected
-                : l.id === "ctx-dots"
-                  ? v.hotspots
-                  : l.id.startsWith("analysis-")
-                    ? v.analysis
-                    : isReferenceLabel(l)
-                      ? v.roads
-                      : undefined;
+              : l.id === "earth-engine"
+                ? v.historical
+                : l.id.startsWith("pas-")
+                  ? v.protected
+                  : l.id === "ctx-dots"
+                    ? v.hotspots
+                    : l.id.startsWith("analysis-")
+                      ? v.analysis
+                      : isReferenceLabel(l)
+                        ? v.roads
+                        : undefined;
           if (show !== undefined)
             map.setLayoutProperty(
               l.id,
@@ -469,28 +511,30 @@ export function EarthMap(props: Props) {
     data,
     pas,
     selectedId,
-    imagery,
     props.visibility,
     props.opacity,
     props.measurement,
     ready,
   ]);
 
+  const selectedIncident = data?.incidents.find((i) => i.id === selectedId);
+  const selectedLon = selectedIncident?.lon,
+    selectedLat = selectedIncident?.lat;
   useEffect(() => {
-    const map = maps.current[0],
-      inc = data?.incidents.find((i) => i.id === selectedId);
+    const map = maps.current[0];
     if (!map) return;
-    if (inc)
+    if (selectedLon !== undefined && selectedLat !== undefined)
       map.flyTo({
-        center: [inc.lon, inc.lat],
+        center: [selectedLon, selectedLat],
         zoom: 10,
         padding: { top: 0, bottom: 0, left: 300, right: 420 },
         duration: 900,
         essential: true,
       });
-  }, [selectedId, data]);
+  }, [selectedId, selectedLon, selectedLat]);
   const comparing =
     props.compare &&
+    props.visibility.historical &&
     imagery?.comparison?.status === "ready" &&
     Boolean(afterUrl);
   return (

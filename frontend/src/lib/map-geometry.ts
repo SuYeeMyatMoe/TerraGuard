@@ -3,6 +3,7 @@ import type { FeatureCollection } from "geojson";
 export type Position = [number, number];
 export type Bounds = [number, number, number, number];
 export const STUDY_BOUNDS: Bounds = [95, -4.5, 119.5, 7.5];
+export const WORLD_BOUNDS: Bounds = [-180, -85.051129, 180, 85.051129];
 const R = 6371.0088;
 const radians = (v: number) => (v * Math.PI) / 180;
 const degrees = (v: number) => (v * 180) / Math.PI;
@@ -11,22 +12,46 @@ const degrees = (v: number) => (v * 180) / Math.PI;
 export function coverViewport(raw: Bounds): Bounds | null {
   if (!raw.every(Number.isFinite) || raw[0] >= raw[2] || raw[1] >= raw[3])
     return null;
+  const shift =
+    raw[2] - raw[0] >= 360
+      ? 0
+      : 360 * Math.floor(((raw[0] + raw[2]) / 2 + 180) / 360);
   const b: Bounds = [
-    Math.max(raw[0], STUDY_BOUNDS[0]),
-    Math.max(raw[1], STUDY_BOUNDS[1]),
-    Math.min(raw[2], STUDY_BOUNDS[2]),
-    Math.min(raw[3], STUDY_BOUNDS[3]),
+    raw[2] - raw[0] >= 360 ? -180 : Math.max(raw[0] - shift, WORLD_BOUNDS[0]),
+    Math.max(raw[1], WORLD_BOUNDS[1]),
+    raw[2] - raw[0] >= 360 ? 180 : Math.min(raw[2] - shift, WORLD_BOUNDS[2]),
+    Math.min(raw[3], WORLD_BOUNDS[3]),
   ];
   if (b[0] >= b[2] || b[1] >= b[3]) return null;
   const dx = (b[2] - b[0]) / 4,
     dy = (b[3] - b[1]) / 4;
   const step = Math.max(0.001, 10 ** Math.floor(Math.log10(Math.max(dx, dy))));
   return [
-    Math.max(STUDY_BOUNDS[0], Math.floor((b[0] - dx) / step) * step),
-    Math.max(STUDY_BOUNDS[1], Math.floor((b[1] - dy) / step) * step),
-    Math.min(STUDY_BOUNDS[2], Math.ceil((b[2] + dx) / step) * step),
-    Math.min(STUDY_BOUNDS[3], Math.ceil((b[3] + dy) / step) * step),
+    Math.max(WORLD_BOUNDS[0], Math.floor((b[0] - dx) / step) * step),
+    Math.max(WORLD_BOUNDS[1], Math.floor((b[1] - dy) / step) * step),
+    Math.min(WORLD_BOUNDS[2], Math.ceil((b[2] + dx) / step) * step),
+    Math.min(WORLD_BOUNDS[3], Math.ceil((b[3] + dy) / step) * step),
   ].map((v) => Number(v.toFixed(6))) as Bounds;
+}
+export function analysisViewError(bounds: Bounds | null) {
+  if (!bounds) return "Wait for the map to finish loading.";
+  return bounds[2] - bounds[0] > 8 || bounds[3] - bounds[1] > 8
+    ? "Zoom in to analyze this view (maximum 8° per dimension). Global browsing stays available."
+    : null;
+}
+export function analysisOverlayVisible(
+  view: Bounds | null,
+  loaded: Bounds | null | undefined,
+) {
+  return Boolean(
+    view &&
+    loaded &&
+    !analysisViewError(view) &&
+    view[0] < loaded[2] &&
+    view[2] > loaded[0] &&
+    view[1] < loaded[3] &&
+    view[3] > loaded[1],
+  );
 }
 export function nextCoverage(
   current: Bounds | null,

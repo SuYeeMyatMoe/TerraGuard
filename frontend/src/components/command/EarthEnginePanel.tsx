@@ -20,6 +20,10 @@ export function EarthEnginePanel({
   setMode,
   overview = false,
   children,
+  manual = false,
+  analysisError,
+  anchor,
+  loadView,
 }: {
   state: ImagerySnapshot;
   layer: EarthLayer;
@@ -34,6 +38,10 @@ export function EarthEnginePanel({
   setMode?: (mode: "context" | "compare") => void;
   overview?: boolean;
   children?: ReactNode;
+  manual?: boolean;
+  analysisError?: string | null;
+  anchor?: string;
+  loadView?: () => void;
 }) {
   const data = state.data;
   const analysis = data?.analysis;
@@ -48,22 +56,33 @@ export function EarthEnginePanel({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-[13px] font-bold">
-          <Satellite size={16} className="text-[var(--blue)]" /> Earth Engine
+          <Satellite size={16} className="text-[var(--blue)]" />{" "}
+          {manual ? "Earth View" : "Earth Engine"}
         </div>
         <span
           className={`rounded-full px-2 py-1 text-[10px] font-semibold ${ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
         >
-          {ready
-            ? "Connected"
-            : data?.status === "not_configured"
-              ? "Setup needed"
-              : "Satellite context"}
+          {manual && !ready
+            ? "Worldwide"
+            : ready
+              ? "Connected"
+              : data?.status === "not_configured"
+                ? "Setup needed"
+                : "Satellite context"}
         </span>
       </div>
       <p className="mt-1 text-[11px] text-[var(--ink-2)]">
-        {overview
-          ? "Replay overview · select an incident for statistics"
-          : "Imagery follows the visible study region"}
+        {manual
+          ? "Global satellite basemap · browse without recalculating"
+          : overview
+            ? "Replay overview · select an incident for statistics"
+            : "Imagery follows the visible region"}
+        {manual && (
+          <span className="mt-1 block text-[10px]">
+            Basemap dates vary by location. Historical analysis uses the replay
+            date{anchor ? ` of ${anchor}` : ""}.
+          </span>
+        )}
       </p>
       <div
         className="mt-3 flex gap-1 rounded-lg bg-slate-100 p-1"
@@ -111,7 +130,35 @@ export function EarthEnginePanel({
           </select>
         </label>
       )}
-      {ready && (state.error || tileError) && <div role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-[11px] text-amber-800">{state.error ?? 'Satellite tiles could not load. Refresh the imagery.'}</div>}
+      {manual && (
+        <div className="mt-3">
+          <button
+            disabled={state.loading}
+            onClick={loadView}
+            className="w-full rounded bg-blue-600 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+          >
+            {state.loading ? "Analyzing view…" : "Analyze this view"}
+          </button>
+          <p className="mt-1 text-[10px] text-slate-500">
+            Earth Engine runs when requested. Pan freely; the completed overlay
+            keeps its loaded footprint.
+          </p>
+          {analysisError && (
+            <p role="alert" className="mt-2 text-[11px] text-amber-700">
+              {analysisError}
+            </p>
+          )}
+        </div>
+      )}
+      {ready && (state.error || tileError) && (
+        <div
+          role="alert"
+          className="mt-3 rounded-lg bg-amber-50 p-3 text-[11px] text-amber-800"
+        >
+          {state.error ??
+            "Satellite tiles could not load. Refresh the imagery."}
+        </div>
+      )}
       {state.loading ? (
         <div
           role="status"
@@ -120,7 +167,8 @@ export function EarthEnginePanel({
           <Loader2 size={14} className="animate-spin" /> Loading satellite
           context…
         </div>
-      ) : !ready && (state.error || data?.status === "unavailable" || tileError) ? (
+      ) : !ready &&
+        (state.error || data?.status === "unavailable" || tileError) ? (
         <div
           role="alert"
           className="mt-3 rounded-lg bg-amber-50 p-3 text-[11px] text-amber-800"
@@ -134,7 +182,10 @@ export function EarthEnginePanel({
         <div className="mt-3 flex gap-2 rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-[var(--ink-2)]">
           <Info size={14} className="mt-0.5 shrink-0" />
           <span>
-            {data?.reason ?? "Select an incident to load imagery."}{" "}
+            {data?.reason ??
+              (manual
+                ? "Zoom to any location and choose Analyze this view for dated Sentinel-2 / NDVI."
+                : "Select an incident to load imagery.")}{" "}
             {data?.status === "not_configured" &&
               "The reference map stays available."}
           </span>
@@ -166,8 +217,9 @@ export function EarthEnginePanel({
                 </div>
               </div>
               <p className="text-[10px] text-[var(--ink-2)]">
-                Statistics within 1 km · sampled at 20 m. Cloud gaps remain
-                transparent.
+                Incident statistics within 1 km · sampled at 20 m. These
+                describe the selected incident, even when browsing elsewhere.
+                Cloud gaps remain transparent.
               </p>
               {analysis.valid_coverage_pct < 50 && (
                 <p className="text-amber-700">
@@ -244,13 +296,16 @@ export function EarthEnginePanel({
           ending at the incident time.
         </p>
       )}
-      <button
-        disabled={state.loading}
-        onClick={retry}
-        className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--blue)] disabled:opacity-50"
-      >
-        <RefreshCw size={12} /> Refresh imagery
-      </button>
+      {(!manual || ready || state.error) && (
+        <button
+          disabled={state.loading}
+          onClick={retry}
+          className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--blue)] disabled:opacity-50"
+        >
+          <RefreshCw size={12} />{" "}
+          {manual ? "Refresh analysis for this view" : "Refresh imagery"}
+        </button>
+      )}
       <p className="mt-3 border-t border-[var(--line-2)] pt-2.5 text-[10px] leading-relaxed text-[var(--ink-2)]">
         Satellite context is not live fire detection. NDVI measures vegetation
         greenness; it does not identify fire or forest loss.

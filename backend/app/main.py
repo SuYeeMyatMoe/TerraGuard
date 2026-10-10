@@ -120,7 +120,7 @@ def earth_engine_tile(handle: str, z: int, x: int, y: int):
     except ValueError:
         raise HTTPException(422, "Invalid tile coordinates.")
     try:
-        image = service.provider.fetch_tile(url)
+        image = service.fetch_tile(handle, z, x, y)
     except Exception:
         raise HTTPException(503, "Satellite tile is unavailable. Refresh the imagery.")
     # Earth Engine can optimize an opaque RGB tile as JPEG.

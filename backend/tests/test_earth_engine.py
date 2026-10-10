@@ -230,7 +230,8 @@ def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolate
         def fail(url):
             raise RuntimeError("OAuth token and Google URL must not escape")
         provider.fetch_tile = fail
-        response = client.get(path)
+        assert client.get(path).content == image  # completed tiles survive an upstream outage
+        response = client.get(path.replace("/8/0/0", "/8/1/0"))
         assert response.status_code == 503 and "OAuth" not in response.text
 
 
@@ -253,26 +254,26 @@ def test_tile_endpoint_matches_actual_image_format(module, isolated_db, monkeypa
 @pytest.mark.parametrize('bbox', [
     'nan,0,110,1', '95,0,inf,1', '95,0,110', '95,0,110,1,2',
     '110,0,95,1', '95,1,110,0', '95,0,95,1', '-181,0,110,1',
-    '95,-91,110,1', '0,0,10,1', '119.5,0,120,1',
+    '95,-91,110,1',
 ])
-def test_viewport_rejects_invalid_or_nonintersecting_bounds(module, bbox):
+def test_viewport_rejects_invalid_bounds(module, bbox):
     with pytest.raises(ValueError):
         module.EarthEngineService('p', Provider()).describe(INCIDENT, 30, bbox=bbox)
 
 
-def test_viewport_clips_to_study_and_separates_cache_identity(module):
+def test_viewport_is_worldwide_and_separates_cache_identity(module):
     class Extents(Provider):
         def analyze(self, incident, start, end, display_bounds=None):
             self.bounds = display_bounds
             return super().analyze(incident, start, end, display_bounds)
     p = Extents()
     s = module.EarthEngineService('p', p)
-    clipped = s.describe(INCIDENT, 30, bbox='94,-5,120,8')
-    assert clipped['bounds'] == [95, -4.5, 119.5, 7.5]
+    clipped = s.describe(INCIDENT, 30, bbox='94,-5,98,1')
+    assert clipped['bounds'] == [94, -5, 98, 1]
     assert p.bounds == clipped['bounds']
     assert clipped['display']['bounds'] == clipped['bounds']
     assert clipped['analysis_region'] == {'center': [113, 3.5], 'radius_m': 1000}
-    assert s.describe(INCIDENT, 30, bbox='95,-4.5,119.5,7.5') == clipped
+    assert s.describe(INCIDENT, 30, bbox='94,-5,98,1') == clipped
     assert len(p.calls) == 1
     assert s.describe(INCIDENT, 30, bbox='112,3,114,4')['bounds'] == [112,3,114,4]
     assert len(p.calls) == 2
@@ -333,7 +334,7 @@ def test_api_validates_viewport_and_mode(module, isolated_db, monkeypatch):
     monkeypatch.setattr(module, 'service', lambda: module.EarthEngineService('p', Provider()))
     with TestClient(app) as c:
         path = '/api/earth-engine/INC-20250729-A'
-        for query in ('bbox=nan,0,110,1', 'bbox=0,0,10,1', 'mode=future'):
+        for query in ('bbox=nan,0,110,1', 'bbox=110,0,95,1', 'mode=future'):
             assert c.get(f'{path}?{query}').status_code == 422
         result = c.get(f'{path}?bbox=112,3,114,4&mode=compare').json()
         assert result['bounds'] == [112,3,114,4] and 'comparison' in result
@@ -403,3 +404,64 @@ def test_existing_tiles_remain_available_during_viewport_computation(module):
 def test_tile_registration_requires_exact_sdk_resource_path(module, bad_path):
     with pytest.raises(ValueError):
         module.EarthEngineService('p', Provider()).register_tile('https://earthengine.googleapis.com' + bad_path)
+
+
+def test_global_display_preserves_incident_analysis_location(module):
+    result = module.EarthEngineService('p', Provider()).describe(INCIDENT, 30, bbox='-123,37,-122,38')
+    assert result['bounds'] == [-123,37,-122,38]
+    assert result['analysis_region']['center'] == [113,3.5]
+    with pytest.raises(ValueError, match='Zoom in'):
+        module.EarthEngineService('p', Provider()).describe(INCIDENT, 30, bbox='-180,-80,180,80')
+
+
+def test_cached_metadata_does_not_wait_for_unrelated_generation(module):
+    from threading import Event, Thread
+    started, release, returned = Event(), Event(), Event()
+    class Slow(Provider):
+        def analyze(self, incident, *args, **kwargs):
+            if incident['id'] == 'other':
+                started.set(); release.wait(2)
+            return super().analyze(incident,*args,**kwargs)
+    s=module.EarthEngineService('p',Slow())
+    s.describe(INCIDENT,30)
+    busy=Thread(target=lambda:s.describe({**INCIDENT,'id':'other'},30));busy.start()
+    assert started.wait(1)
+    reader=Thread(target=lambda:(s.describe(INCIDENT,30),returned.set()));reader.start()
+    try:
+        assert returned.wait(.2), 'cached metadata blocked behind a new computation'
+    finally:
+        release.set();busy.join();reader.join()
+
+
+def test_tile_bytes_are_reused_and_bounded(module):
+    class Tiles(Provider):
+        def __init__(self): super().__init__();self.fetches=0
+        def fetch_tile(self,url): self.fetches+=1;return b'\x89PNG\r\n\x1a\n'+b'x'*8
+    now=[0];p=Tiles();s=module.EarthEngineService('p',p,clock=lambda:now[0])
+    s.max_tile_bytes=20
+    result=s.describe(INCIDENT,30)
+    handle=result['layers'][0]['tile_url'].split('/')[4]
+    assert s.fetch_tile(handle,2,1,1)==s.fetch_tile(handle,2,1,1)
+    assert p.fetches==1
+    s.fetch_tile(handle,2,2,1)
+    s.fetch_tile(handle,2,1,1)
+    assert p.fetches==3
+    now[0]=601;s.fetch_tile(handle,2,1,1)
+    assert p.fetches==4
+
+
+def test_concurrent_duplicate_tiles_share_one_upstream_fetch(module):
+    from threading import Event, Thread
+    started, release=Event(),Event()
+    class Tiles(Provider):
+        fetches=0
+        def fetch_tile(self,url):
+            self.fetches+=1;started.set();release.wait(1);return b'\xff\xd8\xfftest'
+    p=Tiles();s=module.EarthEngineService('p',p)
+    handle=s.describe(INCIDENT,30)['layers'][0]['tile_url'].split('/')[4]
+    output=[]
+    threads=[Thread(target=lambda:output.append(s.fetch_tile(handle,2,1,1))) for _ in range(2)]
+    threads[0].start();assert started.wait(1);threads[1].start()
+    release.set()
+    for t in threads:t.join()
+    assert p.fetches==1 and len(output)==2 and output[0]==output[1]
