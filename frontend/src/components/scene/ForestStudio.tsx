@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Crosshair, Flame, Grid2X2, Layers, Leaf, Maximize2, Minimize2, Minus, Plus, RotateCcw, Trees } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Crosshair, Droplets, Flame, Grid2X2, Layers, Leaf, Maximize2, Minimize2, Minus, Plus, RotateCcw, Square, Trees } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { shortId } from "@/lib/format";
 import { toForestFrame } from "@/lib/forestFrame";
+import { getWaterResponse } from "@/lib/waterResponse";
+import type { PolicyResult } from "@/lib/types";
 import ForestScene from "./ForestScene";
 
 export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpand: () => void }) {
@@ -20,6 +22,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   const [showHabitat, setHabitat] = useState(true);
   const [resetKey, setReset] = useState(0);
   const [focusKey, setFocus] = useState(0);
+  const [preview, setPreview] = useState<{ context: string; result: PolicyResult } | null>(null);
   const selectedIndex = sim?.plots.findIndex(p => p.incident_id === selectedId) ?? -1;
   const index = selectedIndex >= 0 ? selectedIndex : Math.max(0, sim?.plots.findIndex(p => p.incident_id === sim.ai_order[0]) ?? 0);
   const plot = sim?.plots[index];
@@ -30,8 +33,18 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
     catch (error) { return { value: null, error: error instanceof Error ? error.message : "Invalid forest frame." }; }
   }, [plot, result, index, step]);
   const incident = data?.incidents.find(i => i.id === plot?.incident_id);
+  const previewContext = `${plot?.incident_id}:${policy}:${frame?.value?.tick}:${picking}`;
+  useEffect(() => {
+    if (!preview) return;
+    if (preview.context !== previewContext || preview.result !== result) { setPreview(null); return; }
+    const timer = window.setTimeout(() => setPreview(null), 10000);
+    return () => window.clearTimeout(timer);
+  }, [preview, previewContext, result]);
+  const previewing = preview?.context === previewContext && preview?.result === result;
+  const water = frame?.value && plot && result ? getWaterResponse(frame.value, result, plot.incident_id, previewing) : null;
+  const waterStatus = water?.phase === "preview" ? "Previewing water response" : water?.phase === "suppression" ? "Crew spraying · response active" : water?.phase === "en-route" ? "Crew en route · starts on arrival" : water?.phase === "complete" ? "Crew on site · no active target" : "No crew assigned in this policy";
   return <section className="forest-stage" aria-label="Interactive forest simulation">
-    {frame?.value && plot && <ForestScene frame={frame.value} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
+    {frame?.value && plot && water && <ForestScene frame={frame.value} water={water} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
       if (plot.fuel[row * 20 + col] === "0") return;
       const store = useStore.getState();
       store.setOverride(plot.incident_id, { ignition: [[row, col]] });
@@ -51,6 +64,17 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
     {frame?.value && <div className="forest-live"><span><Flame size={14}/><b>{frame.value.metrics.burning}</b> burning</span><span><b>{frame.value.metrics.burned}</b> burned</span><span><Leaf size={14}/><b>{frame.value.metrics.habitat}</b> habitat cells burned</span></div>}
     {!frame?.value && <div className="forest-empty"><Trees size={28}/><p>{frame?.error ?? "The forest will appear when the response test is ready."}</p></div>}
     {picking && <div className="forest-pick-notice">Click a vegetated cell to set the ignition point</div>}
+    {water && <section className={`forest-water-response ${water.spraying ? "is-spraying" : ""}`} aria-label="Water response controls">
+      <div className="water-response-title"><span><Droplets size={15}/>WATER RESPONSE</span><i className={water.spraying ? "active" : ""}/></div>
+      <p aria-live="polite">{waterStatus}</p>
+      <button disabled={!frame?.value?.assigned || !frame.value.metrics.burning || !result || picking} onClick={() => {
+        if (previewing) { setPreview(null); return; }
+        if (!result) return;
+        useStore.getState().setPlaying(false);
+        setPreview({ context: previewContext, result });
+      }}>{previewing ? <Square size={12}/> : <Droplets size={13}/>} {previewing ? "Stop preview" : "Preview water response"}</button>
+      <small>{previewing ? "10 s visual preview · test results unchanged" : "Schematic suppression · automatic on arrival"}</small>
+    </section>}
     <div className="forest-legend" aria-label="Forest legend"><span><i className="legend-healthy"/>Healthy</span><span><i className="legend-burning"/>Burning</span><span><i className="legend-burned"/>Burned</span><span><i className="legend-bare"/>Non-vegetated</span><span><i className="legend-protected"/>Protected</span></div>
     <div className="forest-scene-note">Backend simulation · selected incident plot. Landscape and crew route are schematic.</div>
   </section>;

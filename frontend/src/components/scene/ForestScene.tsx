@@ -39,6 +39,8 @@ import {
 import type { ForestCell as Cell, ForestFrame } from "@/lib/forestFrame";
 import { useStore } from "@/lib/store";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import type { WaterResponse } from "@/lib/waterResponse";
+import { WaterEffects, waterNozzlePosition } from "./WaterEffects";
 
 const palette = {
   healthy: "#536843",
@@ -511,6 +513,7 @@ function Ranger({
 
 interface ForestSceneProps {
   frame: ForestFrame;
+  water: WaterResponse;
   ignition: number[][];
   label: string;
   playing: boolean;
@@ -523,10 +526,12 @@ interface ForestSceneProps {
   onPick: (row: number, col: number) => void;
 }
 
-function Scene({ frame, ignition, label, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal }: ForestSceneProps & { portal: RefObject<HTMLDivElement> }) {
+function Scene({ frame, water, ignition, label, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal }: ForestSceneProps & { portal: RefObject<HTMLDivElement> }) {
   const originX = ignition[0]?.[1] ?? 10, originZ = ignition[0]?.[0] ?? 10;
   const origin: [number, number] = [originX, originZ];
   const team = worldPosition(...frame.team, 0.03);
+  const rangerPosition: [number, number, number] = frame.arrived && water.spraying && water.target ? waterNozzlePosition(water.target, water.source) : team;
+  if (frame.arrived && water.spraying) rangerPosition[2] += 1.3;
   const fire = useMemo(() => {
     const burning = frame.cells.filter(cell => cell.state === "burning");
     return { count: burning.length, x: burning.length ? burning.reduce((sum, cell) => sum + cell.x, 0) / burning.length : originX, z: burning.length ? burning.reduce((sum, cell) => sum + cell.z, 0) / burning.length : originZ };
@@ -562,6 +567,7 @@ function Scene({ frame, ignition, label, showHabitat, showGrid, resetKey, focusK
     <Terrain cells={frame.cells} showGrid={showGrid} picking={picking} onPick={onPick}/>
     <Forest cells={frame.cells}/>
     <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]}/>
+    {water.spraying && water.target && <WaterEffects target={water.target} source={water.source} preview={water.phase === "preview"} portal={portal}/>}
     {fire.count > 0 && <Html portal={portal} position={worldPosition(fire.x, fire.z, 4.8)} center zIndexRange={[21,1]}><div className="map-label fire-label"><Flame size={14}/>ACTIVE FIRE · {fire.count} {fire.count === 1 ? "cell" : "cells"}</div></Html>}
     {showHabitat && <>
       {habitat.segments.map((points, i) => <Line key={i} points={points} color="#c9e676" lineWidth={1.5} transparent opacity={.85}/>) }
@@ -575,9 +581,9 @@ function Scene({ frame, ignition, label, showHabitat, showGrid, resetKey, focusK
     </group>)}
     {frame.assigned && <>
       <Line points={[team,worldPosition(...origin,.3)]} color="#cbe88a" dashed dashSize={.22} gapSize={.15} lineWidth={1.4}/>
-      <Ranger position={team} portal={portal}/>
+      <Ranger position={rangerPosition} portal={portal}/>
     </>}
-    {frame.arrived && <Html portal={portal} position={worldPosition(...origin,4.6)} center zIndexRange={[19,1]}><div className="containment-label"><ShieldCheck size={11}/>Response crew on site</div></Html>}
+    {frame.arrived && !water.spraying && <Html portal={portal} position={worldPosition(...origin,4.6)} center zIndexRange={[19,1]}><div className="containment-label"><ShieldCheck size={11}/>Response crew on site</div></Html>}
     <OrbitControls makeDefault enablePan={false} enabled={!picking} minDistance={8} maxDistance={49} minPolarAngle={.3} maxPolarAngle={Math.PI/2.6} target={[0,.8,0]}/>
   </>;
 }
