@@ -2,19 +2,20 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html, Line } from "@react-three/drei";
+import { Line } from "@react-three/drei";
 import { CatmullRomCurve3, InstancedMesh, Object3D, TubeGeometry, Vector3 } from "three";
-import { Droplets } from "lucide-react";
-import type { RefObject } from "react";
 import { seed, worldPosition } from "./forestGeometry";
 
 export function waterNozzlePosition(target: [number, number], source?: [number, number] | null): [number, number, number] {
-  if (source) return worldPosition(source[0], source[1], .04);
+  if (source) {
+    const base=worldPosition(source[0],source[1],.04),dx=target[0]-source[0],dz=target[1]-source[1],distance=Math.hypot(dx,dz)||1;
+    return [base[0]+dx/distance*.85,base[1],base[2]+dz/distance*.85];
+  }
   const x = target[0] > 4 ? target[0] - 3.8 : target[0] + 3.8;
   return worldPosition(x, Math.min(19, target[1] + 1.5), .04);
 }
 
-export function WaterEffects({ target, source, preview, portal }: { target: [number, number]; source: [number, number] | null; preview: boolean; portal: RefObject<HTMLDivElement> }) {
+export function WaterEffects({ target, source, playing }: { target: [number, number]; source: [number, number] | null; playing: boolean }) {
   const droplets = useRef<InstancedMesh>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
@@ -32,7 +33,8 @@ export function WaterEffects({ target, source, preview, portal }: { target: [num
     const mid = start.clone().lerp(end, .5); mid.y += 1.7;
     const curve = new CatmullRomCurve3([start, mid, end]);
     const geometry = new TubeGeometry(curve, 48, .055, 8, false);
-    const hose = [new Vector3(base[0] - .8, base[1] + .06, base[2] + 1.3), new Vector3(base[0] - .45, base[1] + .1, base[2] + .5), start];
+    const truck=sourceX!=null&&sourceZ!=null?new Vector3(...worldPosition(sourceX,sourceZ,.1)):new Vector3(base[0]-.8,base[1]+.06,base[2]+1.3);
+    const hose = [truck, new Vector3(base[0],base[1]+.1,base[2]), start];
     return { base, start, end, curve, geometry, hose, angle: Math.atan2(end.x - start.x, end.z - start.z) };
   }, [x, z, sourceX, sourceZ]);
   useEffect(() => () => spray.geometry.dispose(), [spray]);
@@ -59,7 +61,7 @@ export function WaterEffects({ target, source, preview, portal }: { target: [num
     droplets.current.computeBoundingSphere();
   }, [spray]);
   useLayoutEffect(() => animate(0), [animate]);
-  useFrame(({ clock }) => { if (!reducedMotion) animate(clock.elapsedTime); });
+  useFrame(({ clock }) => { if (playing&&!reducedMotion) animate(clock.elapsedTime); });
   return <>
     <Line points={spray.hose} color="#254338" lineWidth={3}/>
     <mesh geometry={spray.geometry} raycast={() => null}><meshBasicMaterial color="#a9eeff" transparent opacity={.7} toneMapped={false} depthWrite={false}/></mesh>
@@ -73,7 +75,6 @@ export function WaterEffects({ target, source, preview, portal }: { target: [num
       {[-.085,.085].map(side => <mesh key={side} position={[side,.19,0]} castShadow><boxGeometry args={[.1,.35,.12]}/><meshStandardMaterial color="#2d382b"/></mesh>)}
       <mesh position={[0,.7,-.16]}><boxGeometry args={[.2,.28,.1]}/><meshStandardMaterial color="#344c35"/></mesh>
       <mesh position={[0,.89,.22]} rotation={[Math.PI / 2,0,0]}><cylinderGeometry args={[.035,.04,.32,8]}/><meshStandardMaterial color="#a6b6b5" metalness={.65} roughness={.25}/></mesh>
-      <Html portal={portal} position={[0,1.6,0]} center zIndexRange={[23,1]}><div className="map-label water-label"><Droplets size={12}/>{preview ? "Water response preview" : "Water suppression active"}</div></Html>
     </group>
   </>;
 }

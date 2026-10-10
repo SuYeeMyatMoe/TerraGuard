@@ -105,7 +105,7 @@ export function ControlsPanel() {
           <div className="eyebrow mb-3">Response</div>
           <div className="space-y-3.5">
             <Slider icon={<Timer size={14} />} label="Response delay" value={responseDelay} min={0} max={16} step={1}
-              display={`${responseDelay} steps`} onChange={(v) => setParam("responseDelay", v)} />
+              display={`${responseDelay} steps · ${(responseDelay * mps / 60).toFixed(1)} h`} onChange={(v) => setParam("responseDelay", v)} />
             <Slider icon={<Timer size={14} />} label="Test horizon" value={steps} min={24} max={72} step={4}
               display={`${steps} steps`} onChange={(v) => setParam("steps", v)} />
             <p className="text-[11px] leading-snug text-[var(--ink-3)]">

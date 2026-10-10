@@ -25,7 +25,7 @@ import {
   PlaneGeometry,
   ShaderMaterial,
 } from "three";
-import { Flame, ShieldCheck, Trees, Users } from "lucide-react";
+import { Flame, ShieldCheck, Trees } from "lucide-react";
 import {
   landscapeHeight,
   makeBroadleaf,
@@ -40,7 +40,9 @@ import type { ForestCell as Cell, ForestFrame } from "@/lib/forestFrame";
 import { useStore } from "@/lib/store";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { WaterResponse } from "@/lib/waterResponse";
-import { WaterEffects, waterNozzlePosition } from "./WaterEffects";
+import { WaterEffects } from "./WaterEffects";
+import { CrewVehicle } from "./CrewVehicle";
+import type { CrewPlan } from "@/lib/crewMotion";
 
 const palette = {
   healthy: "#536843",
@@ -450,70 +452,10 @@ function CameraSetup({ resetKey, focusKey, focusX, focusZ }: { resetKey: number;
   return null;
 }
 
-function Ranger({
-  position,
-  portal,
-}: {
-  position: [number, number, number];
-  portal: RefObject<HTMLDivElement>;
-}) {
-  return (
-    <group position={position}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
-        <ringGeometry args={[0.38, 0.43, 48]} />
-        <meshBasicMaterial color="#46c5ff" />
-      </mesh>
-      <group rotation={[0, -0.7, 0]} position={[0, 0.15, 0]}>
-        <mesh castShadow>
-          <boxGeometry args={[0.31, 0.18, 0.6]} />
-          <meshStandardMaterial
-            color="#d9e2d4"
-            metalness={0.25}
-            roughness={0.6}
-          />
-        </mesh>
-        <mesh position={[0, 0.16, -0.04]}>
-          <boxGeometry args={[0.26, 0.15, 0.26]} />
-          <meshStandardMaterial
-            color="#617887"
-            metalness={0.35}
-            roughness={0.4}
-          />
-        </mesh>
-        {[
-          [-0.18, -0.05, -0.2],
-          [0.18, -0.05, -0.2],
-          [-0.18, -0.05, 0.2],
-          [0.18, -0.05, 0.2],
-        ].map((p, i) => (
-          <mesh
-            key={i}
-            position={p as [number, number, number]}
-            rotation={[0, 0, Math.PI / 2]}
-          >
-            <cylinderGeometry args={[0.07, 0.07, 0.06, 12]} />
-            <meshStandardMaterial color="#121c22" />
-          </mesh>
-        ))}
-      </group>
-      <Html
-        portal={portal}
-        position={[0, 1.15, 0]}
-        center
-        zIndexRange={[22, 1]}
-      >
-        <div className="map-label ranger-label">
-          <Users size={12} />
-          Ranger team <span>01</span>
-        </div>
-      </Html>
-    </group>
-  );
-}
-
 interface ForestSceneProps {
   frame: ForestFrame;
   water: WaterResponse;
+  crew: CrewPlan;
   ignition: number[][];
   label: string;
   playing: boolean;
@@ -526,12 +468,10 @@ interface ForestSceneProps {
   onPick: (row: number, col: number) => void;
 }
 
-function Scene({ frame, water, ignition, label, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal }: ForestSceneProps & { portal: RefObject<HTMLDivElement> }) {
+function Scene({ frame, water, crew, ignition, label, playing, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal }: ForestSceneProps & { portal: RefObject<HTMLDivElement> }) {
+  const speed=useStore(s=>s.speed);
   const originX = ignition[0]?.[1] ?? 10, originZ = ignition[0]?.[0] ?? 10;
   const origin: [number, number] = [originX, originZ];
-  const team = worldPosition(...frame.team, 0.03);
-  const rangerPosition: [number, number, number] = frame.arrived && water.spraying && water.target ? waterNozzlePosition(water.target, water.source) : team;
-  if (frame.arrived && water.spraying) rangerPosition[2] += 1.3;
   const fire = useMemo(() => {
     const burning = frame.cells.filter(cell => cell.state === "burning");
     return { count: burning.length, x: burning.length ? burning.reduce((sum, cell) => sum + cell.x, 0) / burning.length : originX, z: burning.length ? burning.reduce((sum, cell) => sum + cell.z, 0) / burning.length : originZ };
@@ -567,7 +507,7 @@ function Scene({ frame, water, ignition, label, showHabitat, showGrid, resetKey,
     <Terrain cells={frame.cells} showGrid={showGrid} picking={picking} onPick={onPick}/>
     <Forest cells={frame.cells}/>
     <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]}/>
-    {water.spraying && water.target && <WaterEffects target={water.target} source={water.source} preview={water.phase === "preview"} portal={portal}/>}
+    {water.spraying && water.target && <WaterEffects target={water.target} source={water.source} playing={playing}/>}
     {fire.count > 0 && <Html portal={portal} position={worldPosition(fire.x, fire.z, 4.8)} center zIndexRange={[21,1]}><div className="map-label fire-label"><Flame size={14}/>ACTIVE FIRE · {fire.count} {fire.count === 1 ? "cell" : "cells"}</div></Html>}
     {showHabitat && <>
       {habitat.segments.map((points, i) => <Line key={i} points={points} color="#c9e676" lineWidth={1.5} transparent opacity={.85}/>) }
@@ -579,10 +519,7 @@ function Scene({ frame, water, ignition, label, showHabitat, showGrid, resetKey,
       <Line points={[[0,.1,0],[0,2.3,0]]} color="#ffba89" lineWidth={.8}/>
       {fire.count === 0 && <Html portal={portal} position={[0,2.6,0]} center zIndexRange={[20,1]}><div className="map-label"><Flame size={12}/>{i === 0 ? `${label} · ignition` : "Ignition point"}</div></Html>}
     </group>)}
-    {frame.assigned && <>
-      <Line points={[team,worldPosition(...origin,.3)]} color="#cbe88a" dashed dashSize={.22} gapSize={.15} lineWidth={1.4}/>
-      <Ranger position={rangerPosition} portal={portal}/>
-    </>}
+    <CrewVehicle plan={crew} tick={frame.tick} playing={playing} speed={speed} spraying={water.spraying} portal={portal}/>
     {frame.arrived && !water.spraying && <Html portal={portal} position={worldPosition(...origin,4.6)} center zIndexRange={[19,1]}><div className="containment-label"><ShieldCheck size={11}/>Response crew on site</div></Html>}
     <OrbitControls makeDefault enablePan={false} enabled={!picking} minDistance={8} maxDistance={49} minPolarAngle={.3} maxPolarAngle={Math.PI/2.6} target={[0,.8,0]}/>
   </>;

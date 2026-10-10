@@ -3,6 +3,7 @@
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
+import { PLAYBACK_STEP_MS } from "@/lib/crewMotion";
 
 export function Timeline() {
   const sim = useStore(s => s.sim);
@@ -24,7 +25,7 @@ export function Timeline() {
       const state = useStore.getState();
       if (state.step >= steps) state.setPlaying(false);
       else state.setStep(state.step + 1);
-    }, 420 / speed);
+    }, PLAYBACK_STEP_MS / speed);
     return () => clearInterval(id);
   }, [playing, speed, steps, sim]);
 
@@ -42,5 +43,6 @@ export function Timeline() {
       <div className="playback-track"><div><span>Fire progression</span><b className="tnum">Step {step} / {steps} <small>· ≈{(step * minutesPerStep / 60).toFixed(1)} h</small></b></div><input type="range" className="tg-range" min={0} max={steps} value={step} disabled={!sim} onChange={e => { setStep(Number(e.target.value)); setPlaying(false); }} style={{ ["--fill" as string]: `${step / steps * 100}%` }} aria-label="Simulation step"/></div>
       <label className="playback-speed"><span>Speed</span><select aria-label="Playback speed" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[1,2,4].map(v => <option key={v} value={v}>{v}×</option>)}</select></label>
     </div>
+    <p className="playback-clock-note">Playback {(PLAYBACK_STEP_MS / speed / 1000).toFixed(2)} s per step · {minutesPerStep} simulated minutes per step</p>
   </section>;
 }
