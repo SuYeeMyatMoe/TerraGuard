@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 Recommendation = Literal["INSPECT", "RECHECK", "MONITOR"]
 ActionType = Literal["ASSIGN_INSPECTION", "REQUEST_RECHECK", "DISMISS"]
@@ -207,6 +207,22 @@ class SimulateResponse(BaseModel):
 class ActionRequest(BaseModel):
     action: ActionType
     reason: Optional[str] = Field(None, max_length=500)
+    team_name: Optional[str] = Field(None, min_length=1, max_length=120)
+
+    @field_validator("team_name")
+    @classmethod
+    def clean_team_name(cls, value: str | None) -> str | None:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("A team name cannot be blank.")
+        return value
+
+    @model_validator(mode="after")
+    def assignment_only(self):
+        if self.team_name is not None and self.action != "ASSIGN_INSPECTION":
+            raise ValueError("team_name is only allowed for ASSIGN_INSPECTION.")
+        return self
 
 
 class ActionRecord(BaseModel):

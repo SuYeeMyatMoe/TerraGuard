@@ -7,6 +7,7 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from . import db, geospatial
 from .ai import service as ai
@@ -14,10 +15,16 @@ from .ai.providers import grafilab_ready, openai_model, openai_ready
 from .schemas import (ActionRequest, ActionResponse, ExplainRequest, FieldBriefRequest, IncidentsResponse,
                       PredictRequest, PredictResponse, SimulateRequest, SimulateResponse)
 from .service import store
+from .operational_store import OperationalStoreError
 
 app = FastAPI(title="TerraGuard AI", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                    allow_methods=["*"], allow_headers=["*"])
+
+
+@app.exception_handler(OperationalStoreError)
+async def operational_error(_request, _exc):
+    return JSONResponse(status_code=503, content={"detail": "Operational records are unavailable. Please try again."})
 
 
 @app.on_event("startup")
@@ -70,7 +77,7 @@ def action(incident_id: str, req: ActionRequest):
     s = store()
     scenario, _ = s.inc_index[incident_id]
     rec = s.predict(incident_id, 1)["priority"]["recommendation"]
-    row = db.record_action(scenario["scenario_id"], incident_id, req.action, req.reason, rec)
+    row = db.record_action(scenario["scenario_id"], incident_id, req.action, req.reason, rec, req.team_name)
     return {"action": row, "incident_status": db.STATUS_TEXT[req.action]}
 
 

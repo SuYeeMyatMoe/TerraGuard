@@ -21,7 +21,7 @@ NASA FIRMS VIIRS + Open-Meteo ──► incidents, labels, past-only features �
                                    │
       evidence package ──► OpenAI briefing / Grafilab field brief ──► validator ──► UI
                                    │
-                    human decision ──► SQLite audit log ──► notification
+                    human decision ──► Supabase audit log + status ──► notification
 ```
 LLMs explain verified outputs only. They never produce probabilities, rankings or simulation results.
 
@@ -31,7 +31,7 @@ LLMs explain verified outputs only. They never produce probabilities, rankings o
 # backend (Python 3.11)
 cd backend
 py -3.11 -m venv .venv && .venv/Scripts/pip install -r requirements.txt
-cp .env.example .env        # add OPENAI_API_KEY / GRAFILAB_API_KEY (optional: FIRMS_MAP_KEY, GEE_*)
+cp .env.example .env        # required: SUPABASE_URL / SUPABASE_SECRET_KEY; optional: AI and data keys
 .venv/Scripts/python -m uvicorn app.main:app --port 8010
 
 # frontend (Node 22)
@@ -41,9 +41,9 @@ cp .env.local.example .env.local   # optional: NEXT_PUBLIC_GOOGLE_MAPS_KEY for s
 npm run dev                        # http://localhost:3000  (proxies /api → :8010)
 ```
 
-The committed data snapshot (`backend/data`) lets the demo run offline. Only the basemap tiles and the LLM calls need the internet, and both degrade gracefully.
+The committed data snapshot (`backend/data`) supplies detections, model artifacts, and simulation inputs locally. Operational statuses and audit history require Supabase. Basemap tiles and LLM calls use the internet and degrade gracefully; database failures return 503 and are never silently saved to SQLite.
 
-Reset decisions before a demo: `backend/.venv/Scripts/python -m app.db --reset` (run from `backend/`).
+Apply the migration in `supabase/migrations` before starting the backend, then configure a backend-only secret key. See [docs/SUPABASE.md](docs/SUPABASE.md) for setup and verification. The old `python -m app.db --reset` command refuses cloud deletion; use a separate project for disposable demos.
 
 ## Rebuild the data and model
 
@@ -55,7 +55,7 @@ cd backend
 .venv/Scripts/python -m ml.build_scenarios   # replay days (outcome-blind rule)
 .venv/Scripts/python -m ml.policy_backtest   # 357-day policy backtest
 .venv/Scripts/python -m ml.fetch_gee         # optional, needs Earth Engine credentials
-.venv/Scripts/python -m pytest tests         # 21 tests: sim fairness, leakage, AI validator, API
+.venv/Scripts/python -m pytest tests         # isolated tests: persistence, sim fairness, leakage, AI validator, API
 ```
 
 > **Data status:** no FIRMS MAP_KEY was configured, so the current snapshot is **synthetic** data in the FIRMS VIIRS schema, conditioned on real Open-Meteo weather. It is labelled as synthetic everywhere in the UI. Add a free key from https://firms.modaps.eosdis.nasa.gov/api/map_key/ and rerun the pipeline to get real evidence.
@@ -65,3 +65,4 @@ cd backend
 - [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md): prioritisation weights and simulation assumptions
 - [docs/API.md](docs/API.md): endpoints and contracts
 - [docs/AI_SAFETY.md](docs/AI_SAFETY.md): LLM grounding, validation and fallback rules
+- [docs/SUPABASE.md](docs/SUPABASE.md): operational persistence, server-only credentials, migration and verification

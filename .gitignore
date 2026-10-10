@@ -4,3 +4,5 @@ backend/data/terraguard.db
 backend/data/raw/firms_manual/
 **/__pycache__/
 .pytest_cache/
+# Supabase CLI local cache
+supabase/.temp/

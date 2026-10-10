@@ -5,11 +5,10 @@ from app import db
 from app.main import app
 
 
-@pytest.fixture(scope="module")
-def client():
+@pytest.fixture
+def client(isolated_db):
     with TestClient(app) as c:
         yield c
-    db.reset()
 
 
 def test_incident_to_action_flow(client):
@@ -46,3 +45,28 @@ def test_ai_endpoints_never_fail(client):
 
 def test_unknown_incident_404(client):
     assert client.post("/api/predict", json={"incident_id": "NOPE"}).status_code == 404
+
+
+def test_named_assignment_is_optional_and_validated(client, operational_store):
+    import json
+    iid = client.get("/api/incidents").json()["incidents"][0]["id"]
+    path = f"/api/incidents/{iid}/action"
+    assert client.post(path, json={"action": "REQUEST_RECHECK", "team_name": "Alpha"}).status_code == 422
+    assert client.post(path, json={"action": "ASSIGN_INSPECTION", "team_name": "  "}).status_code == 422
+    assert client.post(path, json={"action": "ASSIGN_INSPECTION", "team_name": "A" * 121}).status_code == 422
+    r = client.post(path, json={"action": "ASSIGN_INSPECTION", "team_name": "  Alpha  "})
+    assert r.status_code == 200
+    assert r.json()["incident_status"] == "Inspection assigned"
+    writes = [q for q in operational_store[1] if q.method == "POST"]
+    assert json.loads(writes[-1].content)["p_team_name"] == "Alpha"
+    assert client.get("/api/actions").json()["actions"][0] == r.json()["action"]
+
+
+def test_database_outage_returns_sanitized_503(client, monkeypatch):
+    from app.operational_store import OperationalStoreError
+    def unavailable():
+        raise OperationalStoreError("Operational records are unavailable. Please try again.")
+    monkeypatch.setattr(db, "list_actions", unavailable)
+    response = client.get("/api/actions")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Operational records are unavailable. Please try again."}
