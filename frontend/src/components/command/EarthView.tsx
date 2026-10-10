@@ -350,7 +350,7 @@ export function EarthView() {
         </details>
       </EarthEnginePanel>
       {mode === "compare" && showHistorical && (
-          <div className="panel-float absolute bottom-5 left-1/2 z-10 w-[280px] -translate-x-1/2 p-3">
+          <div className="panel-float absolute bottom-3 right-3 z-10 w-[280px] max-w-[calc(100%-76px)] p-3 lg:bottom-5 lg:left-1/2 lg:right-auto lg:max-w-none lg:-translate-x-1/2">
             <div className="flex justify-between text-[11px] font-bold">
               <span>Before · left</span>
               <span>After · right</span>
@@ -375,11 +375,11 @@ export function EarthView() {
             </p>
           </div>
         )}
-      <div className="panel-float absolute bottom-4 left-4 z-10 max-w-[300px] p-3">
+      <div className="earth-legend panel-float absolute bottom-3 left-3 z-10 max-w-[calc(100%-24px)] p-3 lg:bottom-4 lg:left-4 lg:max-w-[300px]">
         <details>
-          <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold">
+          <summary aria-label="Map legend & data sources" className="flex cursor-pointer items-center gap-2 text-xs font-bold">
             <Satellite size={14} className="text-blue-600" />
-            Map legend & data sources
+            <span className="sr-only lg:not-sr-only">Map legend &amp; data sources</span>
           </summary>
           <p className="mt-2 text-[10px] text-slate-600">
             Orange: inspect · blue: recheck · gray: monitor · amber: prior 24 h

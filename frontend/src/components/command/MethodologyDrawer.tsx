@@ -31,7 +31,7 @@ export function MethodologyDrawer() {
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-[#172638]/20" onClick={() => setOpen(false)}>
-      <aside className="slide-in flex h-full w-[640px] flex-col bg-white shadow-[-20px_0_60px_rgba(23,38,56,0.15)]" onClick={(e) => e.stopPropagation()} aria-label="Methodology">
+      <aside className="command-drawer methodology-drawer slide-in flex h-full w-full max-w-[640px] flex-col bg-white shadow-[-20px_0_60px_rgba(23,38,56,0.15)]" onClick={(e) => e.stopPropagation()} aria-label="Methodology">
         <div className="flex items-start justify-between border-b border-[var(--line)] px-6 pb-4 pt-5">
           <div>
             <div className="eyebrow">Methodology &amp; evaluation</div>

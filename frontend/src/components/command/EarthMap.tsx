@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { shortId } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { crewRoute, replayBounds } from "@/lib/crew-map";
+import { mapPadding } from "@/lib/map-layout";
 import {
   afterStyleReady,
   rasterInsertionPoint,
@@ -367,7 +368,12 @@ export function EarthMap(props: Props) {
     before.on("move", sync);
     before.on("moveend", viewport);
     before.on("click", click);
-    before.on("resize", () => maps.current[1]?.resize());
+    before.on("resize", () => {
+      const container = before.getContainer();
+      before.setPadding(mapPadding(container.clientWidth, container.clientHeight, !useStore.getState().selectedId));
+      maps.current[1]?.resize();
+      sync();
+    });
     maps.current.forEach((map) =>
       // Install the raster stack before the first tile frame. Waiting for
       // load leaves vector land/water visible while dated tiles are pending.
@@ -440,10 +446,11 @@ export function EarthMap(props: Props) {
     // Both instances are disposed only by the parent map's unmount cleanup.
   }, [afterUrl, props.compare, props.visibility.historical]);
   useEffect(() => {
-    if (props.destination)
-      maps.current[0]?.jumpTo({
+    const map = maps.current[0];
+    if (props.destination && map)
+      map.jumpTo({
         ...props.destination,
-        padding: { top: 0, bottom: 0, left: 300, right: 420 },
+        padding: mapPadding(map.getContainer().clientWidth, map.getContainer().clientHeight),
       });
   }, [props.destination]);
   useEffect(() => {
@@ -607,24 +614,34 @@ export function EarthMap(props: Props) {
   const selectedIncident = data?.incidents.find((i) => i.id === selectedId);
   const selectedLon = selectedIncident?.lon,
     selectedLat = selectedIncident?.lat;
+  const cameraFramed = useRef(false);
   useEffect(() => {
     const map = maps.current[0];
     if (!map) return;
-    if (selectedLon !== undefined && selectedLat !== undefined)
-      map.flyTo({
-        center: [selectedLon, selectedLat],
-        zoom: 10,
-        padding: { top: 0, bottom: 0, left: 300, right: 420 },
-        duration: 900,
-        essential: true,
-      });
-    else {
-      const overviewBounds = JSON.parse(overviewBoundsKey) as [Position, Position] | null;
-      if (overviewBounds) map.fitBounds(overviewBounds, {
-        padding: { top: 90, bottom: 230, left: 300, right: 420 },
-        duration: 900,
-      });
-    }
+    return afterStyleReady(map, () => {
+      // The first ResizeObserver callback can interrupt a flight on cached styles.
+      const duration = cameraFramed.current ? 900 : 0;
+      if (selectedLon !== undefined && selectedLat !== undefined) {
+        cameraFramed.current = true;
+        map.flyTo({
+          center: [selectedLon, selectedLat],
+          zoom: 10,
+          padding: mapPadding(map.getContainer().clientWidth, map.getContainer().clientHeight),
+          duration,
+          essential: true,
+        });
+      } else {
+        const overviewBounds = JSON.parse(overviewBoundsKey) as [Position, Position] | null;
+        if (!overviewBounds) return;
+        cameraFramed.current = true;
+        map.fitBounds(overviewBounds, {
+          padding: mapPadding(map.getContainer().clientWidth, map.getContainer().clientHeight, true),
+          // Resize already sets camera padding; fitBounds otherwise adds it again.
+          absolutePadding: true,
+          duration,
+        });
+      }
+    });
   }, [selectedId, selectedLon, selectedLat, overviewBoundsKey]);
   const comparing = props.compare && props.visibility.historical;
   return (
@@ -687,11 +704,11 @@ export function EarthMap(props: Props) {
                     {pred?.priority.rank ?? "·"}
                   </b>
                   {shortId(inc.id)}{" "}
-                  <span className="font-normal text-slate-500">
+                  <span className="hidden font-normal text-slate-500 lg:inline">
                     {inc.region}
                   </span>
                   {inc.attendance === "assigned" && <span className="rounded-full bg-cyan-100 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-700">CREW</span>}
-                  {inc.attendance === "unattended" && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-700">WAITING · NO CREW</span>}
+                  {inc.attendance === "unattended" && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-700">WAITING<span className="hidden lg:inline"> · NO CREW</span></span>}
                 </span>
                 <span className="h-2.5 w-0.5" style={{ background: color }} />
                 <span

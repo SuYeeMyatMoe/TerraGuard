@@ -54,7 +54,7 @@ export function DecisionRecord() {
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-[#172638]/20" onClick={() => setOpen(false)}>
-      <aside className="slide-in flex h-full w-[520px] flex-col bg-white shadow-[-20px_0_60px_rgba(23,38,56,0.15)]" onClick={(e) => e.stopPropagation()} aria-label="Decision record">
+      <aside className="command-drawer slide-in flex h-full w-full max-w-[520px] flex-col bg-white shadow-[-20px_0_60px_rgba(23,38,56,0.15)]" onClick={(e) => e.stopPropagation()} aria-label="Decision record">
         <div className="border-b border-[var(--line)] px-6 pb-4 pt-5">
           <div className="flex items-start justify-between">
             <div>

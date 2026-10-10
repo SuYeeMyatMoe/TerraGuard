@@ -276,3 +276,45 @@ input[type="range"].tg-range::-moz-range-thumb {
 .maplibregl-ctrl-attrib {
   font-size: 10px;
 }
+
+.command-viewport { height: 56dvh; }
+@media (min-width: 1024px) {
+  .command-viewport { height: auto; }
+}
+@media (max-width: 1023px) {
+  .command-header { padding-top: max(8px, env(safe-area-inset-top)); }
+  .command-main { overscroll-behavior-y: contain; padding-bottom: env(safe-area-inset-bottom); }
+  .command-view-switch [role="tablist"] { display: flex; width: 100%; flex-wrap: nowrap; }
+  .command-view-switch [role="tab"] { flex: 1; min-width: 0; min-height: 44px; justify-content: center; padding-inline: 8px; font-size: 12px; }
+  .command-replay > button, .command-replay > button > span { width: 100%; }
+  .command-replay > button > span { justify-content: space-between; min-height: 44px; }
+  .command-replay > button > span > span { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
+  .command-replay > button > span > span > span { font-size: 11px; }
+  .command-shell .btn, .imagery-panel summary, .earth-legend summary, .command-shell select { min-height: 44px; }
+  .imagery-panel summary, .earth-legend summary { display: flex; align-items: center; }
+  .command-shell input[type="number"], .command-shell textarea { font-size: 16px; }
+  .command-shell button svg { flex-shrink: 0; }
+  .imagery-panel button, .timeline-panel button { min-height: 44px; }
+  .imagery-panel label:has(input[type="checkbox"]) { min-height: 44px; }
+  .command-shell .maplibregl-ctrl-group button { width: 40px; height: 40px; }
+  .earth-legend { padding: 0; }
+  .earth-legend summary { width: 44px; justify-content: center; }
+  .earth-legend:has(details[open]) { width: min(300px, calc(100% - 24px)); max-height: 45%; overflow: auto; padding: 8px 12px; }
+  .earth-legend details[open] summary { width: auto; justify-content: flex-start; }
+  .earth-legend details[open] summary span { position: static; width: auto; height: auto; clip: auto; white-space: normal; }
+  .timeline-panel [role="tablist"] { display: flex; }
+  .timeline-panel [role="tab"] { min-height: 44px; }
+  .command-drawer { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .command-drawer > div { padding-inline: 16px; }
+  .command-drawer button[aria-label="Close"] { flex-shrink: 0; width: 44px; height: 44px; }
+  .command-drawer table { font-size: 11px; overflow-wrap: anywhere; }
+  .command-drawer .grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
+  .methodology-drawer [role="tablist"] { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .methodology-drawer [role="tab"] { justify-content: center; min-height: 44px; padding-inline: 6px; font-size: 11px; }
+}
+@media (min-width: 700px) and (max-width: 1023px) {
+  .command-view-switch { order: 0; flex: 1; width: auto; }
+}
+@media (max-height: 500px) and (max-width: 1023px) {
+  .command-viewport { min-height: 240px; height: 65dvh; }
+}

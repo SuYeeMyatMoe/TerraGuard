@@ -1,8 +1,8 @@
 "use client";
 
-import { Info, Leaf, Loader2, RefreshCw, Satellite } from "lucide-react";
+import { ChevronDown, Info, Leaf, Loader2, RefreshCw, Satellite } from "lucide-react";
 import type { ImagerySnapshot } from "@/lib/earth-engine";
-import type { ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { RasterState } from "./EarthMap";
 
 export type EarthLayer = "rgb" | "ndvi";
@@ -48,6 +48,8 @@ export function EarthEnginePanel({
   rasterState?: RasterState;
   historicalVisible?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const contentId = useId();
   const data = state.data;
   const analysis = data?.analysis;
   const ready = data?.status === "ready";
@@ -57,15 +59,16 @@ export function EarthEnginePanel({
   return (
     <aside
       aria-label="Earth Engine imagery"
-      className="panel-float absolute left-4 top-4 z-10 max-h-[calc(100%-90px)] w-[300px] overflow-y-auto p-4"
+      className="imagery-panel panel-float absolute left-3 top-3 z-10 max-h-[calc(100%-84px)] w-[300px] max-w-[calc(100%-76px)] overflow-y-auto p-3 lg:left-4 lg:top-4 lg:max-h-[calc(100%-90px)] lg:max-w-none lg:p-4"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-[13px] font-bold">
           <Satellite size={16} className="text-[var(--blue)]" />{" "}
-          {manual ? "Earth View" : "Earth Engine"}
+          <span className="lg:hidden">Imagery &amp; layers</span>
+          <span className="hidden lg:inline">{manual ? "Earth View" : "Earth Engine"}</span>
         </div>
         <span
-          className={`rounded-full px-2 py-1 text-[10px] font-semibold ${ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
+          className={`hidden rounded-full px-2 py-1 text-[10px] font-semibold lg:inline ${ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
         >
           {manual && !rasterState?.before
             ? "Worldwide"
@@ -75,7 +78,13 @@ export function EarthEnginePanel({
                 ? "Setup needed"
                 : "Satellite context"}
         </span>
+        <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 lg:hidden"
+          aria-label={expanded ? "Collapse imagery controls" : "Open imagery controls"}
+          aria-expanded={expanded} aria-controls={contentId} onClick={() => setExpanded(!expanded)}>
+          <ChevronDown size={18} className={expanded ? "rotate-180" : ""} />
+        </button>
       </div>
+      <div id={contentId} className={expanded ? "block" : "hidden lg:block"}>
       <p className="mt-1 text-[11px] text-[var(--ink-2)]">
         {manual
           ? "Worldwide imagery · historical layers follow your view"
@@ -340,6 +349,7 @@ export function EarthEnginePanel({
         greenness; it does not identify fire or forest loss.
       </p>
       {children}
+      </div>
     </aside>
   );
 }
