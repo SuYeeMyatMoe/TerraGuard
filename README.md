@@ -1,16 +1,23 @@
 # TerraGuard AI
 
-**Predict the threat. Test the response. Protect the forest.**
-Track 1 (Predictive Model). Three forest incidents, one available team: which one deserves attention first?
+**Three fires. One team.**
+Track 1 (Predictive Model). TerraGuard shows which incident should get the only field crew, who is left waiting, and keeps a record you can defend.
 
 TerraGuard is a two-page MVP:
 
 - `/`: landing page.
 - `/simulation`: Forest Command Center with two modes:
-  - **Earth View**: real coordinates, protected areas and past-24 h detections.
-  - **3D Simulation**: React Three Fiber forest, driven by a Python cellular automaton.
+  - **Command map** (the default): real coordinates, protected areas, past-24 h detections, and the crew.
+  - **Test the response (3D)**: React Three Fiber forest, driven by a Python cellular automaton.
 
-The flow is: select incident → 48 h prediction → AI briefing → simulate → compare First-alert vs AI-priority → approve action → field brief → notification.
+The default path:
+1. Open the command map: real coordinates, the past 24 h, and three competing incidents.
+2. Pick the incident.
+3. Send the only crew (the hypothetical Borneo Field Verification Crew) with a reason.
+4. The other incidents are shown as unattended, with their 48 h risk.
+5. The decision is recorded: incident, the recommendation at that moment, reason, crew, time, and who was left waiting.
+
+The 3D forest is a secondary "test the response" tool. It compares your assignment against first-alert and AI-priority under identical conditions.
 
 ```
 NASA FIRMS VIIRS + Open-Meteo ──► incidents, labels, past-only features ──► Random Forest (vs baseline)
@@ -43,7 +50,27 @@ npm run dev                        # http://localhost:3000  (proxies /api → :8
 
 The committed data snapshot (`backend/data`) lets the demo run offline. Only the basemap tiles and the LLM calls need the internet, and both degrade gracefully.
 
-Reset decisions before a demo: `backend/.venv/Scripts/python -m app.db --reset` (run from `backend/`).
+## Decision record: SQLite locally, Supabase for deployment
+
+Operational records are coordinator actions (the audit), incident status and crew assignments. They are stored in `backend/data/terraguard.db` by default. Detections, the model and simulation results always stay in the files the backend loads.
+
+To use Supabase:
+1. Run [`backend/supabase/schema.sql`](backend/supabase/schema.sql) once in the Supabase SQL editor.
+   - Part 1 creates the `actions`, `incident_status` and `team_assignments` tables.
+   - Part 2 adds the decision-snapshot columns.
+   - Part 3 enables RLS with no browser policies.
+   - Part 4 makes `actions` append-only.
+2. Put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (the service-role key) in `backend/.env`. Never put the key in the Next.js app.
+3. Restart the backend. `/api/health` reports `record_backend: "supabase"`.
+
+If Supabase becomes unreachable, decisions are saved to SQLite and marked "Saved locally: Supabase unreachable" in the UI.
+
+```bash
+cd backend
+.venv/Scripts/python -m app.records --sync                  # push locally saved fallback decisions to Supabase
+.venv/Scripts/python -m app.records --archive SCN-20250729  # clean demo state; archives, never deletes
+.venv/Scripts/python -m app.records --reset-local           # wipe local SQLite records (development only)
+```
 
 ## Rebuild the data and model
 
@@ -55,7 +82,7 @@ cd backend
 .venv/Scripts/python -m ml.build_scenarios   # replay days (outcome-blind rule)
 .venv/Scripts/python -m ml.policy_backtest   # 357-day policy backtest
 .venv/Scripts/python -m ml.fetch_gee         # optional, needs Earth Engine credentials
-.venv/Scripts/python -m pytest tests         # 21 tests: sim fairness, leakage, AI validator, API
+.venv/Scripts/python -m pytest tests         # 29 tests: sim fairness, leakage, AI validator, API, records (SQLite + mocked Supabase)
 ```
 
 > **Data status:** no FIRMS MAP_KEY was configured, so the current snapshot is **synthetic** data in the FIRMS VIIRS schema, conditioned on real Open-Meteo weather. It is labelled as synthetic everywhere in the UI. Add a free key from https://firms.modaps.eosdis.nasa.gov/api/map_key/ and rerun the pipeline to get real evidence.

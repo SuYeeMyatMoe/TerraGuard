@@ -15,7 +15,9 @@ from ml.fetch_weather import load_weather
 from sim.automaton import H, W, make_plot
 from sim.policies import simulate_policies
 
-from . import db
+from . import db, records
+from .records import DEFAULT_STATUS, STATUS_TEXT, WAITING_STATUS, team_state
+from .team import TEAM
 from .priority import (CATEGORY_TEXT, allocation_order, categorise, evidence_quality, exposure_score,
                        priority_score, recency_score, recommend)
 
@@ -112,15 +114,41 @@ class Store:
         out["missing"] = bool(row.get("weather_missing", 0))
         return out
 
-    def incident(self, incident_id: str, statuses: dict | None = None) -> dict:
-        _, inc = self.inc_index[incident_id]
-        statuses = statuses if statuses is not None else db.status_map()
-        return self.incident_from_candidate(incident_id, inc["candidate_id"], inc["arrival_order"], statuses)
+    # ------------------------------------------------------------------ operational state (records)
+    def operational_state(self, scenario: dict) -> tuple[dict, dict]:
+        """(crew state, {incident_id: {attendance, status, updated_at}}) for a scenario, from the records store."""
+        rec = records.get()
+        actions = rec.list_actions(scenario["scenario_id"])
+        team = team_state(actions)
+        statuses = rec.status_map()
+        assigned = team["assigned_incident_id"]
+        out = {}
+        for inc in scenario["incidents"]:
+            iid = inc["incident_id"]
+            st, ts = statuses.get(iid, (DEFAULT_STATUS, None))
+            if iid == assigned:
+                att, st = "assigned", STATUS_TEXT["ASSIGN_INSPECTION"]
+            elif st == STATUS_TEXT["REQUEST_RECHECK"]:
+                att = "recheck"
+            elif st == STATUS_TEXT["DISMISS"]:
+                att = "dismissed"
+            elif assigned:
+                att, st = "unattended", WAITING_STATUS
+            else:
+                att, st = "open", DEFAULT_STATUS
+            out[iid] = {"attendance": att, "status": st, "updated_at": ts}
+        return team, out
 
-    def incident_from_candidate(self, incident_id: str, candidate_id: str, arrival_order: int, statuses: dict) -> dict:
+    def incident(self, incident_id: str, att: dict | None = None) -> dict:
+        scenario, inc = self.inc_index[incident_id]
+        if att is None:
+            _, att = self.operational_state(scenario)
+        return self.incident_from_candidate(incident_id, inc["candidate_id"], inc["arrival_order"], att)
+
+    def incident_from_candidate(self, incident_id: str, candidate_id: str, arrival_order: int, att: dict) -> dict:
         r = self.cand.loc[candidate_id]
         pa = PROTECTED_AREAS[int(r["pa_index"])]
-        st = statuses.get(incident_id)
+        st = att.get(incident_id, {"attendance": "open", "status": DEFAULT_STATUS, "updated_at": None})
         return {
             "id": incident_id,
             "candidate_id": candidate_id,
@@ -139,21 +167,81 @@ class Store:
             "protected_area": {"id": pa["id"], "name": pa["name"], "distance_km": round(float(r["pa_dist_km"]), 1),
                                "boundary": "approximate"},
             "weather": self._weather(r),
-            "status": st[0] if st else db.DEFAULT_STATUS,
-            "status_updated_at": st[1] if st else None,
+            "status": st["status"],
+            "attendance": st["attendance"],
+            "status_updated_at": st["updated_at"],
         }
 
     def incidents(self, scenario_id: str | None = None) -> dict:
         s = self.scenario(scenario_id)
-        statuses = db.status_map()
+        team, att = self.operational_state(s)
         return {
             "scenario": self.scenario_meta(s),
             "scenarios": [self.scenario_meta(x) for x in self.scen],
             "provenance": {k: self.prov.get(k) for k in ("source", "is_synthetic", "product", "period", "rows", "weather_conditioning")},
-            "incidents": [self.incident(i["incident_id"], statuses) for i in s["incidents"]],
+            "incidents": [self.incident(i["incident_id"], att) for i in s["incidents"]],
             "context_hotspots": self.context_hotspots(s),
-            "teams_available": 1,
+            "team": team,
+            "record_backend": records.get().backend,
         }
+
+    # ------------------------------------------------------------------ decisions
+    def decide(self, incident_id: str, action: str, reason: str) -> dict:
+        scenario, _ = self.inc_index[incident_id]
+        team, att = self.operational_state(scenario)
+        pred = self.predict(incident_id, 1)
+        rec = pred["priority"]["recommendation"]
+        others = [c for c in pred["competing"] if c["incident_id"] != incident_id]
+        followed = {"ASSIGN_INSPECTION": rec == "INSPECT", "REQUEST_RECHECK": rec == "RECHECK"}.get(action)
+        row = {
+            "scenario_id": scenario["scenario_id"], "incident_id": incident_id, "action": action, "reason": reason,
+            "recommendation_at_time": rec, "priority_rank": pred["priority"]["rank"],
+            "priority_score": pred["priority"]["score"], "probability": pred["probability"],
+            "followed_recommendation": followed, "team_name": None, "reassigned_from": None, "left_waiting": None,
+        }
+        updates = {incident_id: STATUS_TEXT[action]}
+        if action == "ASSIGN_INSPECTION":
+            row["team_name"] = TEAM["name"]
+            prev = team["assigned_incident_id"]
+            row["reassigned_from"] = prev if prev and prev != incident_id else None
+            row["left_waiting"] = [{"incident_id": c["incident_id"], "region": c["region"], "probability": c["probability"],
+                                    "rank": c["rank"], "recommendation": c["recommendation"]} for c in others]
+            for c in others:  # everyone not dismissed/rechecked now waits for the only crew
+                if att[c["incident_id"]]["attendance"] not in ("recheck", "dismissed"):
+                    updates[c["incident_id"]] = WAITING_STATUS
+        elif team["assigned_incident_id"] == incident_id:
+            # recheck/dismissal of the crew's incident releases the crew: waiting incidents become open again
+            for c in others:
+                if att[c["incident_id"]]["attendance"] == "unattended":
+                    updates[c["incident_id"]] = DEFAULT_STATUS
+        saved = records.get().record_action(row, updates)
+        team2, att2 = self.operational_state(scenario)
+        return {"action": self._enrich(saved), "incident_status": att2[incident_id]["status"], "team": team2,
+                "attendance": {k: v["attendance"] for k, v in att2.items()}, "record_backend": records.get().backend}
+
+    RETRO = {"positive": "Follow-up detection observed within 48 h",
+             "negative": "No qualifying follow-up detection within 48 h",
+             "uncertain": "Only low-confidence follow-up detections",
+             "censored": "Outside observation record"}
+
+    def _retro(self, incident_id: str) -> str | None:
+        hit = self.inc_index.get(incident_id)
+        if not hit:
+            return None
+        return self.RETRO.get(self.cand.loc[hit[1]["candidate_id"], "label_status"])
+
+    def _enrich(self, a: dict) -> dict:
+        a = dict(a)
+        hit = self.inc_index.get(a["incident_id"])
+        a["incident_region"] = self.cand.loc[hit[1]["candidate_id"], "region"] if hit else None
+        ids = [a["incident_id"]] + [w["incident_id"] for w in (a.get("left_waiting") or [])]
+        a["retrospective"] = {i: self._retro(i) for i in ids}
+        return a
+
+    def actions(self, scenario_id: str | None, include_archived: bool) -> dict:
+        rec = records.get()
+        rows = [self._enrich(a) for a in rec.list_actions(scenario_id, include_archived)]
+        return {"actions": rows, "record_backend": rec.backend}
 
     def context_hotspots(self, s: dict) -> list[dict]:
         """Other detection clusters from the previous 24 h up to the replay time (past-only context for the map)."""
@@ -233,16 +321,20 @@ class Store:
         ids = [i["incident_id"] for i in scenario["incidents"]]
         _, recs, ai_order = self.prioritise(scenario, req.teams)
         arrival_order = [i["incident_id"] for i in sorted(scenario["incidents"], key=lambda x: x["arrival_order"])]
-        statuses = db.status_map()
-        plots, infos = self.build_plots([self.incident(iid, statuses) for iid in ids], req.per_incident)
+        team, att = self.operational_state(scenario)
+        coordinator = req.coordinator_assignment or team["assigned_incident_id"]
+        if coordinator not in ids:
+            coordinator = None
+        plots, infos = self.build_plots([self.incident(iid, att) for iid in ids], req.per_incident)
         res = simulate_policies(plots, arrival_order, ai_order, req.teams, req.response_delay, req.steps,
-                                req.seed, req.n_seeds)
+                                req.seed, req.n_seeds, coordinator=coordinator)
         return {
             "scenario_id": scenario["scenario_id"],
             "grid": {"plots": len(plots), "h": H, "w": W},
             "seed": req.seed, "n_seeds": req.n_seeds, "steps": req.steps, "teams": req.teams,
             "response_delay": req.response_delay,
             "arrival_order": arrival_order, "ai_order": ai_order,
+            "coordinator_assignment": coordinator,
             "plots": infos,
             **res,
             "disclaimer": ("Hypothetical scenario on a procedurally generated forest plot. Not a reconstruction of the "
@@ -283,4 +375,5 @@ class Store:
 @lru_cache(maxsize=1)
 def store() -> Store:
     db.init()
+    records.get()
     return Store()

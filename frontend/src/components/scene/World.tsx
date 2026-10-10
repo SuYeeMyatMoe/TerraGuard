@@ -28,7 +28,7 @@ export function World() {
   const toast = useStore((s) => s.toast);
 
   const plots = sim?.plots ?? [];
-  const pol = sim?.policies[policy];
+  const pol = sim ? (policy === "coordinator" ? sim.policies.coordinator : sim.policies[policy]) : undefined;
   const frameIdx = Math.min(step, (pol?.frames.length ?? 1) - 1);
   const assigned = pol?.assigned ?? [];
   const regionOf = (id: string) => data?.incidents.find((i) => i.id === id)?.region ?? "";
@@ -58,6 +58,7 @@ export function World() {
             sublabel={regionOf(p.incident_id)}
             recommendation={pred?.priority.recommendation}
             rank={pred?.priority.rank}
+            attendance={data?.incidents.find((i) => i.id === p.incident_id)?.attendance}
             picking={picking}
             hasTeam={assigned.includes(p.incident_id) && step >= (sim?.response_delay ?? 0)}
             onSelect={() => select(p.incident_id)}

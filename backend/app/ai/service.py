@@ -9,7 +9,7 @@ import json
 import time
 from collections import defaultdict, deque
 
-from .. import db
+from .. import db, records
 from ..evidence import build_package, package_hash
 from . import fallback
 from .providers import (BRIEFING_SCHEMA, FIELD_BRIEF_SCHEMA, ProviderError, call_grafilab, call_openai,
@@ -110,15 +110,27 @@ def explain(store, incident_id: str, teams: int, simulation: dict | None) -> dic
     return _run("explain", pkg, pred["priority"]["recommendation"], "openai")
 
 
-def field_brief(store, incident_id: str, teams: int, action_id: int | None) -> dict:
+def field_brief(store, incident_id: str, teams: int, action_id: int | None, stored_in: str | None = None) -> dict:
     inc = store.incident(incident_id)
     pred = store.predict(incident_id, teams)
     pkg = build_package(inc, pred, teams)
     rec = pred["priority"]["recommendation"]
     if action_id:
-        a = db.get_action(action_id)
+        a = records.get().get_action(action_id, stored_in)
         if a and a["incident_id"] == incident_id:
+            src = "TerraGuard decision record"
             pkg["facts"].append({"evidence_id": "HUMAN_ACTION", "label": "Coordinator decision",
-                                 "value": f"{a['action']} at {a['created_at']}", "unit": None, "source": "TerraGuard audit log"})
+                                 "value": f"{a['action']} at {a['created_at']}", "unit": None, "source": src})
+            if a.get("reason"):
+                pkg["facts"].append({"evidence_id": "DECISION_REASON", "label": "Coordinator's reason",
+                                     "value": a["reason"], "unit": None, "source": src})
+            if a.get("team_name"):
+                pkg["facts"].append({"evidence_id": "CREW", "label": "Assigned crew", "value": a["team_name"],
+                                     "unit": None, "source": src})
+            waiting = a.get("left_waiting") or []
+            if waiting:
+                pkg["facts"].append({"evidence_id": "LEFT_WAITING", "label": "Incidents left unattended",
+                                     "value": "; ".join(f"{w['incident_id']} ({w.get('region')})" for w in waiting),
+                                     "unit": None, "source": src})
             rec = {"ASSIGN_INSPECTION": "INSPECT", "REQUEST_RECHECK": "RECHECK"}.get(a["action"], rec)
     return _run("field_brief", pkg, rec, "grafilab")

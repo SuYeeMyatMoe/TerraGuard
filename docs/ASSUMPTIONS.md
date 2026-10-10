@@ -1,5 +1,21 @@
 # Assumptions
 
+## The crew
+The scarce resource is one **hypothetical** crew: the *Borneo Field Verification Crew* (4 people, Sibu field station, Sarawak), defined in `backend/app/team.py`. It is not a real unit. Sending it to an incident is an exclusive assignment, and every other incident that is not dismissed or rechecked becomes **unattended**. A recheck or dismissal of the crew's own incident releases the crew. Recheck and dismiss never use the crew.
+
+## The decision record
+Each action stores:
+- the incident;
+- the recommendation, rank, priority score and 48 h probability at that moment;
+- whether the action followed the recommendation;
+- the coordinator's reason (required);
+- the crew;
+- the time;
+- the incidents left waiting, with their risk at that moment;
+- any reassignment.
+
+In Supabase, `actions` is append-only (schema Part 4). A demo reset archives rows rather than deleting them.
+
 ## Layer 2: prioritisation (`backend/app/priority.py`)
 These weights were fixed before any simulation was run. They never use simulation outcomes.
 

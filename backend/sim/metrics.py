@@ -71,6 +71,18 @@ def compare(results: dict) -> dict:
             "seeds_first_alert_better": int((d < 0).sum()),
             "n_seeds": n,
         }
+    if "coordinator" in results:
+        k = results["coordinator"]["metrics"]
+        out["coordinator"] = {
+            name: {"coordinator_mean": round(float(np.mean(k[key])), 2),
+                   "vs_first_alert": round(float(np.mean(np.array(b[key]) - np.array(k[key]))), 2),
+                   "vs_ai_priority": round(float(np.mean(np.array(c[key]) - np.array(k[key]))), 2)}
+            for key, name in (("_loss_per_seed", "loss_index"), ("_prot_per_seed", "protected_cells_burned"),
+                              ("_burned_per_seed", "burned_cells"))
+        }
+        out["coordinator"]["matches"] = ("ai_priority" if results["coordinator"]["assigned"] == results["ai_priority"]["assigned"]
+                                         else "first_alert" if results["coordinator"]["assigned"] == results["first_alert"]["assigned"]
+                                         else None)
     same = results["first_alert"]["assigned"] == results["ai_priority"]["assigned"]
     out["same_allocation"] = bool(same)
     out["note"] = ("Both policies chose the same incidents, so outcomes are identical by construction."

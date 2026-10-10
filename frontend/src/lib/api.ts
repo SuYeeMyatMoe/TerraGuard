@@ -1,5 +1,6 @@
 import type {
   ActionRecord,
+  ActionResponse,
   ActionType,
   AIResult,
   Evaluation,
@@ -57,16 +58,16 @@ export const api = {
     call<IncidentsResponse>(`/api/incidents${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ""}`),
   predict: (incident_id: string, teams: number) => post<Prediction>("/api/predict", { incident_id, teams }),
   simulate: (req: SimulateRequest) => post<SimulateResponse>("/api/simulate", req, 60000),
-  action: (incident_id: string, action: ActionType, reason?: string) =>
-    post<{ action: ActionRecord; incident_status: string }>(
-      `/api/incidents/${encodeURIComponent(incident_id)}/action`,
-      { action, reason },
+  action: (incident_id: string, action: ActionType, reason: string) =>
+    post<ActionResponse>(`/api/incidents/${encodeURIComponent(incident_id)}/action`, { action, reason }),
+  actions: (scenario?: string, includeArchived = false) =>
+    call<{ actions: ActionRecord[]; record_backend: string }>(
+      `/api/actions?${new URLSearchParams({ ...(scenario ? { scenario } : {}), include_archived: String(includeArchived) })}`,
     ),
-  actions: () => call<{ actions: ActionRecord[] }>("/api/actions"),
   evaluation: () => call<Evaluation>("/api/evaluation"),
   geospatial: (incident_id: string) => call<GeoContext>(`/api/geospatial/${encodeURIComponent(incident_id)}`),
   explain: (incident_id: string, teams: number, simulation?: unknown) =>
     post<AIResult<IncidentBriefing>>("/api/ai/explain", { incident_id, teams, simulation }, 70000),
-  fieldBrief: (incident_id: string, teams: number, action_id?: number) =>
-    post<AIResult<FieldBrief>>("/api/ai/field-brief", { incident_id, teams, action_id }, 70000),
+  fieldBrief: (incident_id: string, teams: number, action_id?: number, stored_in?: string) =>
+    post<AIResult<FieldBrief>>("/api/ai/field-brief", { incident_id, teams, action_id, stored_in }, 70000),
 };

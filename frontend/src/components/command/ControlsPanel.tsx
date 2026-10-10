@@ -1,6 +1,6 @@
 "use client";
 
-import { Crosshair, Droplets, Loader2, PanelLeftClose, Play, RotateCcw, SlidersHorizontal, Timer, Users, Wind } from "lucide-react";
+import { Crosshair, Droplets, Loader2, PanelLeftClose, Play, RotateCcw, SlidersHorizontal, Timer, Wind } from "lucide-react";
 import type { ReactNode } from "react";
 import { compass, shortId } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -13,8 +13,6 @@ export function ControlsPanel() {
   const overrides = useStore((s) => s.overrides);
   const setOverride = useStore((s) => s.setOverride);
   const resetOverride = useStore((s) => s.resetOverride);
-  const teams = useStore((s) => s.teams);
-  const setTeams = useStore((s) => s.setTeams);
   const responseDelay = useStore((s) => s.responseDelay);
   const steps = useStore((s) => s.steps);
   const setParam = useStore((s) => s.setParam);
@@ -31,7 +29,7 @@ export function ControlsPanel() {
         <button className="grid h-10 w-10 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[#f1f5f9]" onClick={() => setOpen(true)} title="Simulation controls">
           <SlidersHorizontal size={18} />
         </button>
-        <button className="grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--blue)] text-white disabled:opacity-60" onClick={run} disabled={loading} title="Run simulation">
+        <button className="grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--blue)] text-white disabled:opacity-60" onClick={() => run()} disabled={loading} title="Test response">
           {loading ? <Loader2 size={17} className="animate-spin" /> : <Play size={17} />}
         </button>
       </div>
@@ -48,7 +46,7 @@ export function ControlsPanel() {
     <div className="panel-float slide-in flex max-h-full w-[296px] flex-col">
       <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
         <div className="flex items-center gap-2 text-[13.5px] font-bold">
-          <SlidersHorizontal size={16} className="text-[var(--blue)]" /> Simulation conditions
+          <SlidersHorizontal size={16} className="text-[var(--blue)]" /> Test conditions
         </div>
         <button className="grid h-7 w-7 place-items-center rounded-lg text-[var(--ink-2)] hover:bg-[#f1f5f9]" onClick={() => setOpen(false)} aria-label="Collapse controls">
           <PanelLeftClose size={16} />
@@ -108,20 +106,18 @@ export function ControlsPanel() {
           <div className="space-y-3.5">
             <Slider icon={<Timer size={14} />} label="Response delay" value={responseDelay} min={0} max={16} step={1}
               display={`${responseDelay} steps`} onChange={(v) => setParam("responseDelay", v)} />
-            <Slider icon={<Users size={14} />} label="Available teams" value={teams} min={0} max={3} step={1}
-              display={`${teams}`} onChange={(v) => setTeams(v)} />
-            <Slider icon={<Timer size={14} />} label="Simulation horizon" value={steps} min={24} max={72} step={4}
+            <Slider icon={<Timer size={14} />} label="Test horizon" value={steps} min={24} max={72} step={4}
               display={`${steps} steps`} onChange={(v) => setParam("steps", v)} />
             <p className="text-[11px] leading-snug text-[var(--ink-3)]">
-              1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). Teams are assumed to have suppression capacity.
+              One crew, as in the command map. 1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). The crew is assumed to carry initial suppression kit.
             </p>
           </div>
         </div>
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-[var(--line)] p-3">
-        <button className="btn btn-primary" onClick={run} disabled={loading}>
+        <button className="btn btn-primary" onClick={() => run()} disabled={loading}>
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-          {loading ? "Simulating…" : stale ? "Run updated simulation" : "Run Simulation"}
+          {loading ? "Testing…" : stale ? "Test again" : "Test response"}
         </button>
         <button
           className="btn btn-secondary px-3"

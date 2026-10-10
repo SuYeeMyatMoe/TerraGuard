@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Box, ChevronDown, Info, Layers, Satellite, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Box, ChevronDown, Info, Layers, Satellite, Sparkles, Truck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProviderChip, QualityPill, RecPill, Row, SectionTitle, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -33,7 +33,7 @@ function IncidentList() {
   const data = useStore((s) => s.data)!;
   const predictions = useStore((s) => s.predictions);
   const select = useStore((s) => s.select);
-  const teams = useStore((s) => s.teams);
+  const team = data.team;
   const sorted = [...data.incidents].sort(
     (a, b) => (predictions[a.id]?.priority.rank ?? 9) - (predictions[b.id]?.priority.rank ?? 9),
   );
@@ -42,10 +42,14 @@ function IncidentList() {
       <div className="border-b border-[var(--line)] px-5 pb-4 pt-5">
         <div className="eyebrow">Competing incidents</div>
         <h2 className="mt-1 text-[17px] font-bold leading-snug">
-          {data.incidents.length} incidents. {teams === 1 ? "One team" : `${teams} teams`}. Which first?
+          {team.assigned_incident_id
+            ? `Crew at ${shortId(team.assigned_incident_id)}. ${data.incidents.filter((i) => i.attendance === "unattended").length} waiting.`
+            : `${data.incidents.length} incidents. One crew. Which first?`}
         </h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--ink-2)]">
-          Ranked by the transparent priority score. Select an incident to see the prediction, evidence and recommendation.
+          {team.assigned_incident_id
+            ? `${team.name} is committed. Incidents without the crew stay unattended until you reassign it.`
+            : `${team.name} is the only field crew. Ranked by the transparent priority score.`}
         </p>
       </div>
       <div className="scroll-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
@@ -55,7 +59,9 @@ function IncidentList() {
             <button
               key={inc.id}
               onClick={() => select(inc.id)}
-              className="group flex w-full items-start gap-3 rounded-[12px] border border-[var(--line)] bg-white p-3 text-left transition hover:border-[var(--blue-200)] hover:shadow-[0_4px_14px_rgba(37,99,235,0.08)]"
+              className={`group flex w-full items-start gap-3 rounded-[12px] border bg-white p-3 text-left transition hover:shadow-[0_4px_14px_rgba(37,99,235,0.08)] ${
+                inc.attendance === "assigned" ? "border-[#a5e9f5]" : inc.attendance === "unattended" ? "border-amber-200" : "border-[var(--line)] hover:border-[var(--blue-200)]"
+              }`}
             >
               <span
                 className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold text-white"
@@ -76,11 +82,11 @@ function IncidentList() {
                     <span className="tnum"><b>{pct(p.probability)}</b> <span className="text-[var(--ink-2)]">48 h follow-up</span></span>
                     <span className="text-[var(--line)]">|</span>
                     <span className="text-[var(--ink-2)]">{p.evidence.quality} evidence</span>
-                    {inc.status !== "Awaiting review" && <span className="ml-auto font-semibold text-[var(--green-700)]">{inc.status}</span>}
                   </span>
                 ) : (
                   <Skeleton className="mt-2 h-4 w-40" />
                 )}
+                <AttendanceLine inc={inc} prob={p?.probability} compact />
               </span>
             </button>
           );
@@ -88,6 +94,32 @@ function IncidentList() {
       </div>
     </div>
   );
+}
+
+function AttendanceLine({ inc, prob, compact }: { inc: Incident; prob?: number; compact?: boolean }) {
+  const team = useStore((s) => s.data?.team);
+  if (!team) return null;
+  const base = compact ? "mt-2 rounded-lg px-2.5 py-1.5 text-[11.5px]" : "rounded-[10px] px-3 py-2.5 text-[12.5px]";
+  if (inc.attendance === "assigned")
+    return (
+      <span className={`${base} flex items-center gap-1.5 bg-[var(--cyan-50)] font-semibold text-[#0e7490] ring-1 ring-inset ring-[#a5e9f5]`}>
+        <Truck size={13} className="shrink-0" /> Crew assigned · en route from {team.base.split(",")[0]}
+      </span>
+    );
+  if (inc.attendance === "unattended")
+    return (
+      <span className={`${base} block bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200`}>
+        <b>Unattended</b>: crew committed to {shortId(team.assigned_incident_id ?? "")}
+        {prob != null && (
+          <>
+            {" "}· 48 h follow-up risk <b className="tnum">{pct(prob)}</b>
+          </>
+        )}
+      </span>
+    );
+  if (inc.attendance === "recheck" || inc.attendance === "dismissed")
+    return <span className={`${base} block bg-[#f1f5f9] font-semibold text-[var(--ink-2)]`}>{inc.status}</span>;
+  return null;
 }
 
 function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Prediction; onClose: () => void }) {
@@ -117,6 +149,7 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
       </div>
 
       <div className="scroll-thin min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        <AttendanceLine inc={inc} prob={pred?.probability} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-[#eef2f7] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--ink-2)]">{inc.status}</span>
           {pred && <QualityPill q={pred.evidence.quality} />}
@@ -191,7 +224,7 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
       {view === "earth" && (
         <div className="border-t border-[var(--line)] p-3">
           <button className="btn btn-primary w-full" onClick={() => setView("sim")}>
-            <Box size={16} /> Open 3D Simulation
+            <Box size={16} /> Test the response in 3D
           </button>
         </div>
       )}

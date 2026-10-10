@@ -4,7 +4,9 @@ import type { FeatureCollection } from "geojson";
 
 export type Recommendation = "INSPECT" | "RECHECK" | "MONITOR";
 export type ActionType = "ASSIGN_INSPECTION" | "REQUEST_RECHECK" | "DISMISS";
-export type PolicyKey = "none" | "first_alert" | "ai_priority";
+export type PolicyKey = "none" | "first_alert" | "ai_priority" | "coordinator";
+export type Attendance = "assigned" | "unattended" | "recheck" | "dismissed" | "open";
+export type RecordBackend = "supabase" | "sqlite" | "sqlite_fallback";
 
 export interface Provenance {
   source: string;
@@ -45,7 +47,25 @@ export interface Incident {
   protected_area: { id: string; name: string; distance_km: number; boundary: "approximate" | "verified" };
   weather: Weather;
   status: string;
+  attendance: Attendance;
   status_updated_at: string | null;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  short_name: string;
+  base: string;
+  base_lat: number;
+  base_lon: number;
+  size: number;
+  capability: string;
+  status: "available" | "assigned";
+  assigned_incident_id: string | null;
+  since: string | null;
+  action_id: number | null;
+  stored_in?: string | null;
+  released_from?: string | null;
 }
 
 export interface Scenario {
@@ -71,7 +91,8 @@ export interface IncidentsResponse {
   provenance: Provenance;
   incidents: Incident[];
   context_hotspots: ContextHotspot[];
-  teams_available: number;
+  team: Team;
+  record_backend: RecordBackend;
 }
 
 export interface Factor {
@@ -187,13 +208,20 @@ export interface SimulateResponse {
   arrival_order: string[];
   ai_order: string[];
   plots: PlotInfo[];
-  policies: Record<PolicyKey, PolicyResult>;
+  coordinator_assignment: string | null;
+  policies: Record<"none" | "first_alert" | "ai_priority", PolicyResult> & { coordinator?: PolicyResult };
   comparison: {
     loss_index: ComparisonMetric;
     protected_cells_burned: ComparisonMetric;
     burned_cells: ComparisonMetric;
     same_allocation: boolean;
     note: string;
+    coordinator?: {
+      loss_index: { coordinator_mean: number; vs_first_alert: number; vs_ai_priority: number };
+      protected_cells_burned: { coordinator_mean: number; vs_first_alert: number; vs_ai_priority: number };
+      burned_cells: { coordinator_mean: number; vs_first_alert: number; vs_ai_priority: number };
+      matches: "ai_priority" | "first_alert" | null;
+    };
   };
   assumptions: Record<string, number | string>;
   disclaimer: string;
@@ -216,14 +244,43 @@ export interface SimulateRequest {
   per_incident: Record<string, IncidentOverride>;
 }
 
+export interface WaitingIncident {
+  incident_id: string;
+  region: string | null;
+  probability: number | null;
+  rank: number | null;
+  recommendation: string | null;
+}
+
 export interface ActionRecord {
   id: number;
   scenario_id: string;
   incident_id: string;
+  incident_region: string | null;
   action: ActionType;
   reason: string | null;
-  recommendation_at_time: string | null;
+  recommendation_at_time: Recommendation | null;
   created_at: string;
+  team_name: string | null;
+  priority_rank: number | null;
+  priority_score: number | null;
+  probability: number | null;
+  followed_recommendation: boolean | null;
+  reassigned_from: string | null;
+  left_waiting: WaitingIncident[] | null;
+  archived_at: string | null;
+  stored_in: "supabase" | "sqlite" | "local_fallback";
+  fallback_reason: string | null;
+  snapshot_stored: boolean;
+  retrospective: Record<string, string | null>;
+}
+
+export interface ActionResponse {
+  action: ActionRecord;
+  incident_status: string;
+  team: Team;
+  attendance: Record<string, Attendance>;
+  record_backend: RecordBackend;
 }
 
 export interface BriefSection {
@@ -373,5 +430,6 @@ export interface Health {
   data_source: string;
   is_synthetic: boolean;
   providers: { openai: boolean; openai_model: string | null; grafilab: boolean };
+  record_backend: RecordBackend;
   earth_engine: boolean;
 }

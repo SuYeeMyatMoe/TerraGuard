@@ -4,40 +4,41 @@ import {
   Bot,
   Box,
   BrainCircuit,
+  ClipboardList,
   CloudSun,
+  Database,
   Flame,
   Globe2,
-  Layers,
+  MapPin,
   Satellite,
   ScanSearch,
-  ShieldCheck,
   Sparkles,
   Trees,
-  Users,
+  Truck,
 } from "lucide-react";
 import { Logo } from "@/components/ui";
 import { HeroVisual } from "@/components/landing/HeroVisual";
 
-const CAPABILITIES = [
+const STORY = [
   {
     n: "01",
-    title: "Predict",
-    icon: BrainCircuit,
-    body: "See which observed hotspots are more likely to be followed by another satellite detection within 48 hours. Each estimate comes with its uncertainty and the factors behind it.",
+    title: "Pick the incident",
+    icon: MapPin,
+    body: "Three detections on the map, real coordinates and the past 24 hours. Each one carries a 48-hour follow-up risk, an evidence rating and a transparent priority rank.",
     tone: "fire",
   },
   {
     n: "02",
-    title: "Simulate",
-    icon: Box,
-    body: "Explore hypothetical fire propagation on an interactive 3D forest, then compare response policies under identical conditions.",
+    title: "Send the only crew",
+    icon: Truck,
+    body: "One named field crew. Sending it somewhere is a real assignment, and the command center shows at once which incidents are now unattended and how risky they are.",
     tone: "blue",
   },
   {
     n: "03",
-    title: "Decide",
-    icon: ScanSearch,
-    body: "Prioritise limited field teams with transparent rules, evidence-checked AI briefings and calculated outcomes, then record a human-approved decision.",
+    title: "Record who waits",
+    icon: ClipboardList,
+    body: "Every decision keeps the incident, the recommendation at that moment, your reason, the crew and the time, plus who was left waiting. It is a record you can defend later.",
     tone: "green",
   },
 ] as const;
@@ -45,9 +46,9 @@ const CAPABILITIES = [
 const STEPS = [
   { title: "Satellite data", body: "NASA FIRMS VIIRS hotspots + historical weather", icon: Satellite },
   { title: "Predict risk", body: "48-hour follow-up detection, evidence quality", icon: BrainCircuit },
-  { title: "Explore in 3D", body: "Wind, dryness, ignition and response delay", icon: Box },
-  { title: "Compare strategies", body: "First-alert vs AI-prioritised, same random draws", icon: Layers },
-  { title: "Take action", body: "Inspect, recheck or dismiss, with an audit trail", icon: ShieldCheck },
+  { title: "Rank & recommend", body: "Transparent priority: inspect, recheck or monitor", icon: ScanSearch },
+  { title: "Assign the crew", body: "Human decision, with a reason, recorded", icon: Truck },
+  { title: "Test the response", body: "Optional 3D what-if under identical conditions", icon: Box },
 ];
 
 const TECH = [
@@ -55,10 +56,11 @@ const TECH = [
   { name: "Open-Meteo", role: "Historical weather", icon: CloudSun },
   { name: "Google Earth", role: "Satellite context", icon: Globe2 },
   { name: "Random Forest", role: "48 h prediction", icon: Trees },
-  { name: "Cellular automaton", role: "Fire scenarios", icon: Flame },
+  { name: "NumPy simulator", role: "What-if fire tests", icon: Flame },
   { name: "React Three Fiber", role: "3D forest", icon: Box },
   { name: "OpenAI", role: "Incident briefings", icon: Sparkles },
   { name: "Grafilab", role: "Field briefs", icon: Bot },
+  { name: "Supabase", role: "Decision record", icon: Database },
 ];
 
 const toneCls = {
@@ -78,7 +80,7 @@ export default function Landing() {
             <a href="#how-it-works" className="btn btn-ghost hidden sm:inline-flex">How It Works</a>
             <a href="#technology" className="btn btn-ghost hidden sm:inline-flex">Technology</a>
             <Link href="/simulation" className="btn btn-primary ml-2">
-              Launch Simulation <ArrowRight size={16} />
+              Open command center <ArrowRight size={16} />
             </Link>
           </nav>
         </div>
@@ -90,44 +92,43 @@ export default function Landing() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[12px] font-semibold text-[var(--ink-2)] ring-1 ring-[var(--line)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--green)]" />
-              Forest intervention command center · Malaysia &amp; Indonesia
+              Forest fire command center · Malaysia &amp; Indonesia
             </span>
-            <h1 className="mt-5 text-[44px] font-extrabold leading-[1.05] tracking-[-0.025em] text-[var(--ink)] sm:text-[54px]">
-              Don’t just detect the fire.{" "}
-              <span className="text-[var(--green)]">Decide what to do next.</span>
+            <h1 className="mt-5 text-[48px] font-extrabold leading-[1.02] tracking-[-0.03em] text-[var(--ink)] sm:text-[62px]">
+              Three fires.
+              <br />
+              <span className="text-[var(--green)]">One team.</span>
             </h1>
-            <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-[var(--ink-2)]">
-              TerraGuard AI combines predictive satellite intelligence with an interactive 3D forest simulator. It helps
-              environmental coordinators prioritise incidents, compare potential interventions and make evidence-based
-              decisions.
+            <p className="mt-5 max-w-[520px] text-[17px] leading-relaxed text-[var(--ink-2)]">
+              TerraGuard shows which incident should get the only field crew, who is left waiting, and keeps a record you
+              can defend.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/simulation" className="btn btn-primary h-12 px-6 text-[15px]">
-                Launch Simulation <ArrowRight size={17} />
+                Open command center <ArrowRight size={17} />
               </Link>
-              <a href="#how-it-works" className="btn btn-secondary h-12 px-5 text-[15px]">See How It Works</a>
+              <a href="#how-it-works" className="btn btn-secondary h-12 px-5 text-[15px]">See how it works</a>
             </div>
-            <div className="mt-8 flex items-center gap-3 text-[13px] text-[var(--ink-2)]">
-              <Users size={16} className="text-[var(--ink-3)]" />
-              <span><b className="text-[var(--ink)]">Three incidents. One team.</b> Which one deserves attention first?</span>
-            </div>
+            <p className="mt-6 max-w-[520px] text-[13px] leading-relaxed text-[var(--ink-3)]">
+              Satellite hotspots and a 48-hour prediction inform the choice. A person makes it, and it is recorded.
+            </p>
           </div>
           <HeroVisual />
         </div>
       </section>
 
-      {/* capabilities */}
+      {/* the story: pick, send, record */}
       <section className="mx-auto max-w-[1240px] px-6 py-16">
         <div className="max-w-[640px]">
-          <div className="eyebrow">What it does</div>
+          <div className="eyebrow">The decision</div>
           <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight">A hotspot is not a decision.</h2>
           <p className="mt-3 text-[16px] leading-relaxed text-[var(--ink-2)]">
-            Monitoring systems show where fires have been detected. TerraGuard helps coordinators work out which detections
-            deserve attention, and tests what different allocations of scarce teams might change.
+            Monitoring systems show where fires have been detected. When there is only one crew, someone has to choose where
+            it goes, and accept that the others wait.
           </p>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {CAPABILITIES.map((c) => (
+          {STORY.map((c) => (
             <div key={c.n} className="panel p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]">
               <div className="flex items-center justify-between">
                 <div className={`grid h-11 w-11 place-items-center rounded-[12px] ${toneCls[c.tone]}`}>
@@ -148,7 +149,7 @@ export default function Landing() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <div className="eyebrow">How it works</div>
-              <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight">From satellite pixel to approved action</h2>
+              <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight">From satellite pixel to a recorded decision</h2>
             </div>
             <p className="max-w-[440px] text-[14px] leading-relaxed text-[var(--ink-2)]">
               Prediction, prioritisation, simulation and generative AI are kept separate. Each layer is labelled for what it
@@ -202,10 +203,10 @@ export default function Landing() {
           <div className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-[var(--fire)]/20 blur-3xl" />
           <h2 className="relative text-[34px] font-extrabold leading-tight tracking-tight">One team. Multiple threats. Make the better decision.</h2>
           <p className="relative mx-auto mt-3 max-w-[560px] text-[15px] leading-relaxed text-white/70">
-            Replay historical incidents, test the response and approve the action, all in one command center.
+            Replay a real day of detections, send the only crew, and leave a record of who was left waiting.
           </p>
           <Link href="/simulation" className="btn relative mt-8 h-12 bg-white px-6 text-[15px] text-[var(--ink)] hover:bg-[#eef4ff]">
-            Enter Forest Command Center <ArrowRight size={17} />
+            Open command center <ArrowRight size={17} />
           </Link>
         </div>
       </section>

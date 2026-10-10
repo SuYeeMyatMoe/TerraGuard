@@ -33,7 +33,7 @@ export function Timeline() {
     return () => clearInterval(id);
   }, [playing, speed, steps, sim]);
 
-  const pol = sim?.policies[policy];
+  const pol = sim ? (policy === "coordinator" ? sim.policies.coordinator : sim.policies[policy]) : undefined;
   const arrival = pol && pol.assigned.length ? sim!.response_delay : null;
   const frame = pol?.frames[Math.min(step, pol.frames.length - 1)];
   let burning = 0, burned = 0, intervened = 0;
@@ -50,7 +50,7 @@ export function Timeline() {
     { key: "detect", label: "Initial detection", icon: Satellite, at: 0 },
     { key: "ignite", label: "Ignition", icon: Flame, at: 1 },
     { key: "progress", label: "Fire progression", icon: Flame, at: 2 },
-    { key: "intervene", label: arrival == null ? "No intervention" : "Intervention", icon: arrival == null ? ShieldCheck : Truck, at: arrival ?? Infinity },
+    { key: "intervene", label: arrival == null ? "No crew" : "Crew on site", icon: arrival == null ? ShieldCheck : Truck, at: arrival ?? Infinity },
     { key: "final", label: "Final state", icon: Flag, at: steps },
   ];
   const activeIdx = milestones.reduce((acc, m, i) => (step >= m.at ? i : acc), 0);
@@ -85,9 +85,10 @@ export function Timeline() {
           value={policy}
           onChange={setPolicy}
           options={[
-            { value: "none", label: "No response" },
-            { value: "first_alert", label: "First-alert" },
-            { value: "ai_priority", label: "AI-priority" },
+            ...(sim?.policies.coordinator ? [{ value: "coordinator" as const, label: "Your assignment" }] : []),
+            { value: "first_alert" as const, label: "First-alert" },
+            { value: "ai_priority" as const, label: "AI-priority" },
+            { value: "none" as const, label: "No crew" },
           ]}
         />
       </div>
@@ -97,7 +98,7 @@ export function Timeline() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-[13.5px] font-bold">Fire progression</span>
-            <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[11px] font-semibold text-[var(--ink-2)]">Hypothetical scenario</span>
+            <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[11px] font-semibold text-[var(--ink-2)]">Hypothetical test</span>
           </div>
           <div className="text-[12px] text-[var(--ink-2)] tnum">
             <b className="text-[var(--ink)]">Step {step}</b> / {steps}
