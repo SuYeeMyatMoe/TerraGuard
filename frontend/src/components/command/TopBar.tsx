@@ -19,22 +19,22 @@ export function TopBar() {
   const prov = data?.provenance;
 
   return (
-    <header className="relative z-30 flex h-16 items-center gap-4 border-b border-[var(--line)] bg-white px-5">
-      <Link href="/" className="flex items-center gap-3" aria-label="TerraGuard AI home">
+    <header className="command-header relative z-30 flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--line)] bg-white px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-4 lg:px-5 lg:py-0">
+      <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="TerraGuard AI home">
         <Logo />
       </Link>
-      <span className="h-6 w-px bg-[var(--line)]" />
-      <div className="leading-tight">
+      <span className="hidden h-6 w-px bg-[var(--line)] 2xl:block" />
+      <div className="hidden leading-tight 2xl:block">
         <div className="text-[13.5px] font-bold">Forest Command Center</div>
-        <div className="text-[11.5px] text-[var(--ink-2)]">Malaysia &amp; Indonesia study region</div>
+        <div className="text-[11.5px] text-[var(--ink-2)]">{view === "earth" ? "Worldwide satellite view · regional incident demo" : "Malaysia & Indonesia study region"}</div>
       </div>
 
-      <div className="mx-auto">
+      <div className="command-view-switch order-4 w-full lg:order-none lg:mx-auto lg:w-auto">
         <Segmented
           value={view}
           onChange={setView}
           options={[
-            { value: "earth", label: (<><Globe2 size={15} /> Command map</>), title: "Real coordinates, the past 24 hours and the competing incidents" },
+            { value: "earth", label: (<><Globe2 size={15} /> Earth View</>), title: "Worldwide imagery and historical incident analysis" },
             { value: "sim", label: (<><Box size={15} /> Test the response (3D)</>), title: "Hypothetical forest scenario for testing where the crew goes" },
           ]}
         />
@@ -55,7 +55,7 @@ export function TopBar() {
           </span>
         }
       >
-        <div className="w-[300px] p-1.5">
+        <div className="max-h-[65dvh] w-[300px] max-w-[calc(100vw-24px)] overflow-y-auto p-1.5">
           <div className="px-2.5 pb-1.5 pt-1 text-[11.5px] text-[var(--ink-2)]">
             Replay days from the held-out 2025 test period. Selected by a fixed, outcome-blind rule.
           </div>
@@ -93,19 +93,20 @@ export function TopBar() {
       )}
 
       <button
-        className="relative flex h-9 items-center gap-2 rounded-[10px] border border-[var(--line)] bg-white px-3 text-[12.5px] font-semibold hover:border-[#cdd8e5]"
+        className="relative ml-auto flex h-11 shrink-0 items-center gap-2 rounded-[10px] border border-[var(--line)] bg-white px-3 text-[12.5px] font-semibold hover:border-[#cdd8e5] lg:ml-0 lg:h-9"
         onClick={() => setRecordOpen(true)}
+        aria-label="Decision record"
         title="Decision record: who got the crew, who waited, and why"
       >
         <ClipboardList size={16} className="text-[var(--ink-2)]" />
-        <span className="hidden lg:inline">Decision record</span>
+        <span className="hidden 2xl:inline">Decision record</span>
         {actions.length > 0 && (
           <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--blue)] px-1.5 text-[10.5px] font-bold text-white tnum">
             {actions.length}
           </span>
         )}
       </button>
-      <button className="btn btn-ghost h-9 px-2.5" onClick={() => setMethodology(true)} title="Methodology & evaluation">
+      <button className="btn btn-ghost h-11 shrink-0 px-2.5 lg:h-9" onClick={() => setMethodology(true)} aria-label="Methodology & evaluation" title="Methodology & evaluation">
         <BookOpen size={17} />
         <span className="hidden 2xl:inline">Methodology</span>
       </button>
@@ -141,12 +142,12 @@ function Dropdown({
     };
   }, [open, setOpen]);
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="command-replay relative order-5 w-full lg:order-none lg:w-auto">
       <button onClick={() => setOpen(!open)} aria-expanded={open}>
         {button}
       </button>
       {open && (
-        <div className={`panel-float animate-in absolute top-[calc(100%+8px)] z-50 overflow-hidden ${align === "right" ? "right-0" : "left-0"}`}>
+        <div className={`panel-float animate-in absolute top-[calc(100%+8px)] z-50 max-w-[calc(100vw-24px)] overflow-hidden ${align === "right" ? "right-0" : "left-0"}`}>
           {children}
         </div>
       )}

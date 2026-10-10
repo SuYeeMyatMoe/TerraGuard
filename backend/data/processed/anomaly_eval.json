@@ -1,0 +1,26 @@
+{
+  "method": "Isolation Forest (200 trees) on the 26 model features, fitted on training rows only",
+  "threshold_rule": "Unusual = anomaly score above the 95th percentile of validation-split scores",
+  "threshold": 0.4493,
+  "rules": {
+    "hist_365d_p99": 1613.0,
+    "hist_365d_p75": 141.0,
+    "n_pixels_p95": 4.0,
+    "prior_24h_p95": 12.0,
+    "frp_max_p50": 4.5,
+    "frp_max_p90": 15.36
+  },
+  "validation": {
+    "n": 64565,
+    "flagged_share": 0.05,
+    "followup_rate_flagged": 0.5243,
+    "followup_rate_not_flagged": 0.2565
+  },
+  "test": {
+    "n": 85387,
+    "flagged_share": 0.0651,
+    "followup_rate_flagged": 0.5718,
+    "followup_rate_not_flagged": 0.259
+  },
+  "note": "Descriptive only. 'Unusual' means unlike training observations; it is not a finding of wrongdoing."
+}

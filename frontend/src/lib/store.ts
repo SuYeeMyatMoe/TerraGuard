@@ -10,6 +10,7 @@ import type {
   FieldBrief,
   IncidentBriefing,
   IncidentOverride,
+  IncidentReports,
   IncidentsResponse,
   PolicyKey,
   Prediction,
@@ -58,6 +59,8 @@ interface State {
 
   actions: ActionRecord[];
   archivedActions: ActionRecord[];
+  actionsLoading: boolean;
+  actionsError: string | null;
   toasts: Toast[];
   briefings: Record<string, AIResult<IncidentBriefing>>;
   briefingLoading: Record<string, boolean>;
@@ -68,14 +71,21 @@ interface State {
   cameraCommand: { kind: "zoomIn" | "zoomOut" | "rotateL" | "rotateR" | "reset"; n: number } | null;
 
   load: (scenario?: string) => Promise<void>;
-  loadActions: () => Promise<void>;
+  loadActions: (scenario?: string) => Promise<void>;
   select: (id: string | null) => void;
   setView: (v: View) => void;
   setParam: (k: "responseDelay" | "burnDuration" | "steps", v: number) => void;
   setOverride: (id: string, o: IncidentOverride) => void;
   resetOverride: (id: string) => void;
   setPickingIgnition: (v: boolean) => void;
-  runSimulation: (opts?: { autoplay?: boolean }) => Promise<void>;
+  runSimulation: (opts?: { autoplay?: boolean; openReport?: boolean; coordinator?: string | null }) => Promise<void>;
+  consequence: { incidentId: string; action: ActionType; crewHere: boolean } | null;
+  watchConsequence: (incidentId: string, action: ActionType) => Promise<void>;
+  clearConsequence: () => void;
+  report: { open: boolean; loading: boolean; incidentId: string | null; data: IncidentReports | null; error: string | null; tab: "prediction" | "recommendation" };
+  openReport: (incidentId?: string | null, tab?: "prediction" | "recommendation") => Promise<void>;
+  setReportTab: (tab: "prediction" | "recommendation") => void;
+  closeReport: () => void;
   setPolicy: (p: PolicyKey) => void;
   replay: () => void;
   setStep: (s: number) => void;
@@ -94,6 +104,7 @@ interface State {
 }
 
 let toastId = 0;
+let actionsRequestId = 0;
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
 
 export const useStore = create<State>((set, get) => ({
@@ -122,6 +133,8 @@ export const useStore = create<State>((set, get) => ({
   speed: 1,
   actions: [],
   archivedActions: [],
+  actionsLoading: false,
+  actionsError: null,
   toasts: [],
   briefings: {},
   briefingLoading: {},
@@ -133,11 +146,15 @@ export const useStore = create<State>((set, get) => ({
 
   load: async (scenario) => {
     set({ loading: true, loadError: null });
+    const activeScenario = scenario ?? get().data?.scenario.id;
+    const actionsRequest = get().loadActions(activeScenario);
     try {
-      const data = await api.incidents(scenario);
+      const data = await api.incidents(activeScenario);
       const keep = get().selectedId;
       set({
         data,
+        actions: get().actions.filter((a) => a.scenario_id === data.scenario.id),
+        archivedActions: get().archivedActions.filter((a) => a.scenario_id === data.scenario.id),
         loading: false,
         predictions: {},
         predictionErrors: {},
@@ -148,7 +165,6 @@ export const useStore = create<State>((set, get) => ({
         playing: false,
         selectedId: keep && data.incidents.some((i) => i.id === keep) ? keep : null,
       });
-      get().loadActions();
       await Promise.all(
         data.incidents.map(async (inc) => {
           try {
@@ -162,19 +178,28 @@ export const useStore = create<State>((set, get) => ({
       if (get().view === "sim") get().runSimulation({ autoplay: false });
     } catch (e) {
       set({ loading: false, loadError: errMsg(e) });
+    } finally {
+      await actionsRequest;
     }
   },
 
-  loadActions: async () => {
-    const scen = get().data?.scenario.id;
+  loadActions: async (scenario) => {
+    const scen = scenario ?? get().data?.scenario.id;
+    const requestId = ++actionsRequestId;
+    set({ actionsLoading: true, actionsError: null });
     try {
       const all = await api.actions(scen, true);
+      if (requestId !== actionsRequestId) return;
+      const currentScenario = scen ?? get().data?.scenario.id;
+      const records = all.actions.filter((a) => !currentScenario || a.scenario_id === currentScenario);
       set({
-        actions: all.actions.filter((a) => !a.archived_at),
-        archivedActions: all.actions.filter((a) => !!a.archived_at),
+        actions: records.filter((a) => !a.archived_at),
+        archivedActions: records.filter((a) => !!a.archived_at),
+        actionsLoading: false,
       });
-    } catch {
-      /* the record drawer shows its own error state */
+    } catch (error) {
+      if (requestId !== actionsRequestId) return;
+      set({ actionsLoading: false, actionsError: errMsg(error) });
     }
   },
 
@@ -204,21 +229,64 @@ export const useStore = create<State>((set, get) => ({
     try {
       const sim = await api.simulate({
         scenario_id: s.data.scenario.id,
-        teams: SIMULATION_TEAMS,
+        teams: opts?.coordinator !== undefined ? TEAMS : SIMULATION_TEAMS,
         response_delay: s.responseDelay,
         burn_duration_steps: s.burnDuration,
         steps: s.steps,
         seed: s.seed,
         n_seeds: s.nSeeds,
         per_incident: s.overrides,
+        ...(opts?.coordinator !== undefined ? { coordinator_assignment: opts.coordinator } : {}),
       });
-      const policy: PolicyKey = get().policy === "coordinator" ? "ai_priority" : get().policy;
+      const policy: PolicyKey = sim.teams === 1 && sim.policies.coordinator ? "coordinator" : get().policy === "coordinator" ? "ai_priority" : get().policy;
       set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy });
+      // a user-run response test ends with the Prediction Report for the selected (or top-ranked) incident
+      if (opts?.openReport ?? opts?.autoplay ?? true) {
+        const target = get().selectedId ?? sim.ai_order[0] ?? null;
+        if (target) setTimeout(() => get().openReport(target, "prediction"), 1800);
+      }
     } catch (e) {
       set({ simLoading: false, simError: errMsg(e) });
       get().toast({ tone: "error", title: "Response test failed", body: errMsg(e) });
     }
   },
+  consequence: null,
+  // Play the consequence of a choice in the 3D test: the crew goes here (send crew) or stays where it is recorded
+  // (any other choice), so this incident's plot burns without a crew. Hypothetical simulation, same seeds.
+  watchConsequence: async (incidentId, action) => {
+    const s = get();
+    const crewHere = action === "ASSIGN_INSPECTION";
+    const assignedId = s.data?.team.assigned_incident_id;
+    const elsewhere = assignedId && assignedId !== incidentId ? assignedId : null;
+    set((st) => ({ report: { ...st.report, open: false }, view: "sim", selectedId: incidentId, pickingIgnition: false,
+      consequence: { incidentId, action, crewHere } }));
+    await get().runSimulation({ autoplay: true, openReport: false, coordinator: crewHere ? incidentId : elsewhere });
+    const sim = get().sim;
+    if (!get().simError && sim) set((st) => ({
+      policy: (crewHere || elsewhere) && sim.policies.coordinator ? "coordinator" : "none",
+      step: 0, playing: true, playbackRun: st.playbackRun + 1,
+    }));
+  },
+  clearConsequence: () => set({ consequence: null }),
+  report: { open: false, loading: false, incidentId: null, data: null, error: null, tab: "prediction" },
+  openReport: async (incidentId, tab = "prediction") => {
+    const s = get();
+    const id = incidentId ?? s.selectedId ?? s.sim?.ai_order[0] ?? s.data?.incidents[0]?.id ?? null;
+    if (!id) return;
+    if (s.report.data?.incident_id === id && !s.simStale) {
+      set({ consequence: null, report: { ...s.report, open: true, tab } });
+      return;
+    }
+    set({ consequence: null, report: { open: true, loading: true, incidentId: id, data: null, error: null, tab } });
+    try {
+      const data = await api.reports(id, { response_delay: s.responseDelay, steps: s.steps, seed: s.seed, n_seeds: s.nSeeds, per_incident: s.overrides });
+      if (get().report.incidentId === id) set((st) => ({ report: { ...st.report, loading: false, data } }));
+    } catch (e) {
+      set((st) => ({ report: { ...st.report, loading: false, error: errMsg(e) } }));
+    }
+  },
+  setReportTab: (tab) => set((st) => ({ report: { ...st.report, tab } })),
+  closeReport: () => set((st) => ({ report: { ...st.report, open: false } })),
   setPolicy: (p) => set(s => ({
     policy: p, step: 0, playing: true, pickingIgnition: false,
     playbackRun: s.playbackRun + 1,
@@ -235,7 +303,7 @@ export const useStore = create<State>((set, get) => ({
 
   decide: async (id, action, reason) => {
     try {
-      const r = await api.action(id, action, reason);
+      const r = await api.action(id, action, reason, TEAMS);
       set((s) => ({
         actions: [r.action, ...s.actions],
         simStale: !!s.sim,

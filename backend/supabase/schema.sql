@@ -34,6 +34,7 @@ create table if not exists public.team_assignments (
 -- Makes each row a record someone could defend: the recommendation at that moment, the crew, and who was left waiting.
 -- The backend still works without these columns (it keeps the audit row and reports that the snapshot was not stored).
 alter table public.actions add column if not exists team_name text;
+alter table public.actions add column if not exists teams int; -- resource count used for the recorded recommendation
 alter table public.actions add column if not exists priority_rank int;
 alter table public.actions add column if not exists priority_score real;
 alter table public.actions add column if not exists probability real;
@@ -70,3 +71,9 @@ drop trigger if exists actions_append_only on public.actions;
 create trigger actions_append_only
   before update or delete on public.actions
   for each row execute function public.actions_append_only();
+
+-- ---------------------------------------------------------------- Part 5 · monitoring & coordination actions (additive)
+-- Lets the record keep "Continue monitoring" and "Escalate for coordination" decisions with their reasons.
+alter table public.actions drop constraint if exists actions_action_check;
+alter table public.actions add constraint actions_action_check
+  check (action in ('ASSIGN_INSPECTION', 'REQUEST_RECHECK', 'DISMISS', 'CONTINUE_MONITORING', 'ESCALATE_COORDINATION'));

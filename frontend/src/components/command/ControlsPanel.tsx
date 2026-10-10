@@ -26,9 +26,10 @@ export function ControlsPanel() {
 
   if (!open) {
     return (
-      <div className="panel-float flex flex-col items-center gap-1 p-1.5">
-        <button className="grid h-10 w-10 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[#f1f5f9]" onClick={() => setOpen(true)} title="Simulation controls">
+      <div className="panel-float flex w-full items-center justify-between gap-1 p-1.5 lg:w-auto lg:flex-col">
+        <button className="flex min-h-11 items-center justify-center gap-2 rounded-[10px] px-3 text-[var(--ink-2)] hover:bg-[#f1f5f9] lg:h-10 lg:w-10 lg:px-0" onClick={() => setOpen(true)} aria-label="Simulation controls" title="Simulation controls">
           <SlidersHorizontal size={18} />
+          <span className="text-sm font-semibold lg:hidden">Test conditions</span>
         </button>
         <button className="grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--blue)] text-white disabled:opacity-60" onClick={() => run()} disabled={loading} title="Test response">
           {loading ? <Loader2 size={17} className="animate-spin" /> : <Play size={17} />}
@@ -44,7 +45,7 @@ export function ControlsPanel() {
   const dry = o?.dryness ?? plot?.dryness ?? 0.5;
 
   return (
-    <div className="panel-float slide-in flex max-h-full w-[296px] flex-col">
+    <div className="panel-float slide-in flex max-h-full w-full min-w-0 flex-col lg:w-[296px]">
       <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
         <div className="flex items-center gap-2 text-[13.5px] font-bold">
           <SlidersHorizontal size={16} className="text-[var(--blue)]" /> Test conditions

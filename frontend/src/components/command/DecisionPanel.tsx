@@ -1,10 +1,11 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, CheckCircle2, Eye, FileText, RefreshCw, Send, Truck, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Eye, FileText, Megaphone, RefreshCw, Route, Send, Truck, XCircle } from "lucide-react";
+import { useState } from "react";
 import { RecPill } from "@/components/ui";
 import { num, pct, shortId, utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { ReportButton } from "./ReportCanvas";
 import type { ActionRecord, ActionType, ComparisonMetric, Incident, Prediction, SimulateResponse } from "@/lib/types";
 
 export function DecisionPanel() {
@@ -16,15 +17,20 @@ export function DecisionPanel() {
   const view = useStore((s) => s.view);
   const actions = useStore((s) => s.actions);
   const openFieldBrief = useStore((s) => s.openFieldBrief);
-  const toast = useStore((s) => s.toast);
   const [sheet, setSheet] = useState<ActionType | null>(null);
-  useEffect(() => setSheet(null), [selectedId]);
+  const [sheetIncidentId, setSheetIncidentId] = useState(selectedId);
+  if (sheetIncidentId !== selectedId) {
+    setSheetIncidentId(selectedId);
+    setSheet(null);
+  }
 
   const inc = data?.incidents.find((i) => i.id === selectedId);
   const pred = selectedId ? predictions[selectedId] : undefined;
   const lastAction: ActionRecord | undefined = actions.find((a) => a.incident_id === selectedId);
   const team = data?.team;
   const crewHere = team?.assigned_incident_id === selectedId;
+  const feas = pred?.feasibility;
+  const blocked = !!feas && !feas.actionable;
 
   return (
     <div className="panel-float shrink-0 px-4 py-3.5">
@@ -62,23 +68,29 @@ export function DecisionPanel() {
               </div>
             ) : (
               <>
+                {feas && (
+                  <div className={`mt-2.5 flex items-start gap-2 rounded-[10px] px-3 py-2 text-[11.5px] leading-snug ring-1 ring-inset ${blocked ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-[#f6f8fb] text-[var(--ink-2)] ring-[var(--line)]"}`}>
+                    <Route size={14} className="mt-px shrink-0" />
+                    <span>
+                      <b>{feas.label}</b> · {num(feas.straight_line_km, 0)} km straight-line from the base.{" "}
+                      {blocked ? feas.reasons[0] : "Travel time unavailable."}
+                    </span>
+                  </div>
+                )}
                 {pred.priority.recommendation === "MONITOR" && (
-                  <button
-                    className="btn btn-primary mt-2.5 w-full"
-                    onClick={() =>
-                      toast({
-                        tone: "info",
-                        title: `Continuing to monitor ${shortId(inc.id)}`,
-                        body: "No action recorded. The incident stays on the map and will be re-evaluated if new detections arrive.",
-                      })
-                    }
-                  >
+                  <button className="btn btn-primary mt-2.5 w-full" onClick={() => setSheet("CONTINUE_MONITORING")}>
                     <Eye size={15} /> Continue monitoring
                   </button>
                 )}
+                {pred.priority.recommendation === "INSPECT" && blocked && (
+                  <button className="btn btn-primary mt-2.5 w-full" onClick={() => setSheet("ESCALATE_COORDINATION")}>
+                    <Megaphone size={15} /> Escalate for coordination
+                  </button>
+                )}
                 <button
-                  className={`btn mt-2 w-full ${pred.priority.recommendation === "INSPECT" ? "btn-primary" : "btn-secondary"}`}
+                  className={`btn mt-2 w-full ${pred.priority.recommendation === "INSPECT" && !blocked ? "btn-primary" : "btn-secondary"}`}
                   onClick={() => setSheet("ASSIGN_INSPECTION")}
+                  title={blocked ? "Needs manual feasibility confirmation" : undefined}
                 >
                   <Send size={15} /> Send crew to {shortId(inc.id)}
                 </button>
@@ -101,6 +113,7 @@ export function DecisionPanel() {
                 <FileText size={15} /> Generate field brief for the crew
               </button>
             )}
+            <ReportButton incidentId={inc.id} className="mt-2 w-full" />
             <p className="mt-1.5 text-[10.5px] leading-snug text-[var(--ink-3)]">
               Every decision is recorded with the recommendation at that moment, your reason, and who is left waiting.
             </p>
@@ -151,7 +164,14 @@ function ConfirmSheet({ inc, pred, action, onClose }: { inc: Incident; pred: Pre
   const decide = useStore((s) => s.decide);
   const team = data.team;
   const rec = pred.priority.recommendation;
-  const follows = (action === "ASSIGN_INSPECTION" && rec === "INSPECT") || (action === "REQUEST_RECHECK" && rec === "RECHECK");
+  const follows =
+    (action === "ASSIGN_INSPECTION" && rec === "INSPECT") ||
+    (action === "REQUEST_RECHECK" && rec === "RECHECK") ||
+    (action === "CONTINUE_MONITORING" && rec === "MONITOR") ||
+    (action === "ESCALATE_COORDINATION" && rec === "INSPECT");
+  const feas = pred.feasibility;
+  const needsConfirm = action === "ASSIGN_INSPECTION" && !!feas && !feas.actionable;
+  const [confirmed, setConfirmed] = useState(false);
   const [reason, setReason] = useState(follows ? pred.priority.reason : "");
   const [busy, setBusy] = useState(false);
   const releasing = action !== "ASSIGN_INSPECTION" && team.assigned_incident_id === inc.id;
@@ -163,11 +183,16 @@ function ConfirmSheet({ inc, pred, action, onClose }: { inc: Incident; pred: Pre
       ? `Send ${team.name} to ${shortId(inc.id)}?`
       : action === "REQUEST_RECHECK"
         ? `Request a recheck of ${shortId(inc.id)}?`
-        : `Dismiss ${shortId(inc.id)}?`;
+        : action === "CONTINUE_MONITORING"
+          ? `Continue monitoring ${shortId(inc.id)}?`
+          : action === "ESCALATE_COORDINATION"
+            ? `Escalate ${shortId(inc.id)} for coordination?`
+            : `Dismiss ${shortId(inc.id)}?`;
 
   const submit = async () => {
     setBusy(true);
-    const ok = await decide(inc.id, action, reason.trim());
+    const text = needsConfirm ? `${reason.trim()} [Coordinator confirmed feasibility manually: ${feas!.label}]` : reason.trim();
+    const ok = await decide(inc.id, action, text);
     setBusy(false);
     if (ok) onClose();
   };
@@ -201,9 +226,21 @@ function ConfirmSheet({ inc, pred, action, onClose }: { inc: Incident; pred: Pre
           )}
         </div>
       )}
+      {needsConfirm && (
+        <label className="mt-2 flex items-start gap-2 rounded-[10px] bg-amber-50 p-2.5 text-[11.5px] leading-snug text-amber-900 ring-1 ring-inset ring-amber-200">
+          <input type="checkbox" className="mt-0.5 accent-amber-600" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+          <span>{feas!.reasons[0]} I have confirmed authorisation and access manually.</span>
+        </label>
+      )}
       {action !== "ASSIGN_INSPECTION" && (
         <div className="mt-2 text-[12px] text-[var(--ink-2)]">
-          {releasing ? "The crew is currently here. This releases it and makes it available again." : "This does not use the crew."}
+          {releasing
+            ? "The crew is currently here. This releases it and makes it available again."
+            : action === "CONTINUE_MONITORING"
+              ? "This does not use the crew. Review again when a new detection is associated with this incident."
+              : action === "ESCALATE_COORDINATION"
+                ? "This does not use the crew. It records a request for an authorised local partner or agency."
+                : "This does not use the crew."}
         </div>
       )}
 
@@ -228,7 +265,7 @@ function ConfirmSheet({ inc, pred, action, onClose }: { inc: Incident; pred: Pre
       </label>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <button className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
-        <button className="btn btn-primary" onClick={submit} disabled={busy || !reason.trim()}>
+        <button className="btn btn-primary" onClick={submit} disabled={busy || !reason.trim() || (needsConfirm && !confirmed)}>
           {busy ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
           {action === "ASSIGN_INSPECTION" ? "Confirm & record" : "Record decision"}
         </button>

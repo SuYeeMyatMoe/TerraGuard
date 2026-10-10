@@ -276,3 +276,64 @@ input[type="range"].tg-range::-moz-range-thumb {
 .maplibregl-ctrl-attrib {
   font-size: 10px;
 }
+
+.command-viewport { height: 56dvh; }
+@media (min-width: 1024px) {
+  .command-viewport { height: auto; }
+}
+@media (max-width: 1023px) {
+  .command-header { padding-top: max(8px, env(safe-area-inset-top)); }
+  .command-main { overscroll-behavior-y: contain; padding-bottom: env(safe-area-inset-bottom); }
+  .command-view-switch [role="tablist"] { display: flex; width: 100%; flex-wrap: nowrap; }
+  .command-view-switch [role="tab"] { flex: 1; min-width: 0; min-height: 44px; justify-content: center; padding-inline: 8px; font-size: 12px; }
+  .command-replay > button, .command-replay > button > span { width: 100%; }
+  .command-replay > button > span { justify-content: space-between; min-height: 44px; }
+  .command-replay > button > span > span { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
+  .command-replay > button > span > span > span { font-size: 11px; }
+  .command-shell .btn, .imagery-panel summary, .earth-legend summary, .command-shell select { min-height: 44px; }
+  .imagery-panel summary, .earth-legend summary { display: flex; align-items: center; }
+  .command-shell input[type="number"], .command-shell textarea { font-size: 16px; }
+  .command-shell button svg { flex-shrink: 0; }
+  .imagery-panel button, .timeline-panel button { min-height: 44px; }
+  .imagery-panel label:has(input[type="checkbox"]) { min-height: 44px; }
+  .command-shell .maplibregl-ctrl-group button { width: 40px; height: 40px; }
+  .earth-legend { padding: 0; }
+  .earth-legend summary { width: 44px; justify-content: center; }
+  .earth-legend:has(details[open]) { width: min(300px, calc(100% - 24px)); max-height: 45%; overflow: auto; padding: 8px 12px; }
+  .earth-legend details[open] summary { width: auto; justify-content: flex-start; }
+  .earth-legend details[open] summary span { position: static; width: auto; height: auto; clip: auto; white-space: normal; }
+  .timeline-panel [role="tablist"] { display: flex; }
+  .timeline-panel [role="tab"] { min-height: 44px; }
+  .command-drawer { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .command-drawer > div { padding-inline: 16px; }
+  .command-drawer button[aria-label="Close"] { flex-shrink: 0; width: 44px; height: 44px; }
+  .command-drawer table { font-size: 11px; overflow-wrap: anywhere; }
+  .command-drawer .grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
+  .methodology-drawer [role="tablist"] { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .methodology-drawer [role="tab"] { justify-content: center; min-height: 44px; padding-inline: 6px; font-size: 11px; }
+}
+@media (min-width: 700px) and (max-width: 1023px) {
+  .command-view-switch { order: 0; flex: 1; width: auto; }
+}
+@media (max-height: 500px) and (max-width: 1023px) {
+  .command-viewport { min-height: 240px; height: 65dvh; }
+}
+
+/* Earth View tool accordion (Go to a location · Map layers · Measure) */
+.tool-stack > details { border-top: 1px solid var(--line-2); }
+.tool-stack > details > summary {
+  list-style: none; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 16px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; user-select: none;
+}
+.tool-stack > details > summary::-webkit-details-marker { display: none; }
+.tool-stack > details > summary > svg { color: var(--ink-2); flex-shrink: 0; }
+.tool-stack > details > summary::after {
+  content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3); transform: translateY(-2px) rotate(45deg); transition: transform 0.15s ease;
+}
+.tool-stack > details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.tool-stack > details > summary:hover { background: #f8fafc; }
+.tool-stack > details > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.tool-stack > details > :not(summary) { margin-left: 16px; margin-right: 16px; }
+.tool-stack > details > :last-child:not(summary) { margin-bottom: 14px; }
+@media (prefers-reduced-motion: reduce) { .tool-stack > details > summary::after { transition: none; } }

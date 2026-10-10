@@ -292,21 +292,22 @@ export function LimitationsBlock({ pred }: { pred: Prediction }) {
 }
 
 /* ----------------------------------------------------------------------------- 7. supporting evidence */
-export function TraceBlock({ pred }: { pred: Prediction }) {
-  const t = pred.trace;
-  const Row = ({ k, v }: { k: string; v: ReactNode }) => (
+const TraceRow = ({ k, v }: { k: string; v: ReactNode }) => (
     <div className="flex justify-between gap-3 border-b border-[var(--line-2)] py-1 text-[11.5px] last:border-0">
       <span className="shrink-0 text-[var(--ink-2)]">{k}</span>
       <span className="text-right font-medium">{v}</span>
     </div>
   );
+
+export function TraceBlock({ pred }: { pred: Prediction }) {
+  const t = pred.trace;
   return (
     <section>
       <Disclosure label={<span className="inline-flex items-center gap-1.5"><ListChecks size={13} /> View supporting evidence</span>}>
         <div className="rounded-[10px] border border-[var(--line)] p-3">
-          <Row k="Incident" v={<span className="font-mono">{t.incident_id}</span>} />
-          <Row k="Detection data" v={`${t.firms.product}${t.firms.is_synthetic ? " (synthetic)" : ""}`} />
-          <Row k="Data source" v={t.firms.source} />
+          <TraceRow k="Incident" v={<span className="font-mono">{t.incident_id}</span>} />
+          <TraceRow k="Detection data" v={`${t.firms.product}${t.firms.is_synthetic ? " (synthetic)" : ""}`} />
+          <TraceRow k="Data source" v={t.firms.source} />
           <div className="mt-1.5 text-[11px] text-[var(--ink-3)]">{t.firms.matching_rule}</div>
           <div className="scroll-thin mt-1 max-h-36 overflow-auto">
             <table className="w-full text-[11px] tnum">
@@ -327,16 +328,16 @@ export function TraceBlock({ pred }: { pred: Prediction }) {
             </table>
           </div>
           <div className="mt-2" />
-          <Row k="Weather" v={`${t.weather.source}; tile ${t.weather.tile_lat ?? "—"}, ${t.weather.tile_lon ?? "—"}; ${t.weather.date ?? "—"}`} />
-          <Row k="Weather timing" v={t.weather.alignment} />
-          <Row k="Protected area" v={`${t.protected_area.name} · ${t.protected_area.distance_km} km · ${t.protected_area.boundary} (${t.protected_area.source})`} />
-          <Row k="Model" v={`${t.model.name} ${t.model.version}${t.model.trained_at ? ` · trained ${utc(t.model.trained_at)}` : ""}`} />
-          <Row k="Prediction target" v={t.model.target} />
-          <Row k="Explanation method" v={t.explanation_method} />
-          <Row k="Computed" v={utc(t.inference_time_utc)} />
-          <Row k="Priority policy" v={t.priority_policy_version} />
-          <Row k="Priority components" v={Object.entries(t.priority_components).map(([k, v]) => `${COMP_LABEL[k as PriorityComponent]} ${num(v, 3)}`).join(" · ")} />
-          <Row k="Substituted values" v={t.substituted_values.length ? t.substituted_values.map((s) => `${s.feature} → ${s.substituted_value}`).join("; ") : "None"} />
+          <TraceRow k="Weather" v={`${t.weather.source}; tile ${t.weather.tile_lat ?? "—"}, ${t.weather.tile_lon ?? "—"}; ${t.weather.date ?? "—"}`} />
+          <TraceRow k="Weather timing" v={t.weather.alignment} />
+          <TraceRow k="Protected area" v={`${t.protected_area.name} · ${t.protected_area.distance_km} km · ${t.protected_area.boundary} (${t.protected_area.source})`} />
+          <TraceRow k="Model" v={`${t.model.name} ${t.model.version}${t.model.trained_at ? ` · trained ${utc(t.model.trained_at)}` : ""}`} />
+          <TraceRow k="Prediction target" v={t.model.target} />
+          <TraceRow k="Explanation method" v={t.explanation_method} />
+          <TraceRow k="Computed" v={utc(t.inference_time_utc)} />
+          <TraceRow k="Priority policy" v={t.priority_policy_version} />
+          <TraceRow k="Priority components" v={Object.entries(t.priority_components).map(([k, v]) => `${COMP_LABEL[k as PriorityComponent]} ${num(v, 3)}`).join(" · ")} />
+          <TraceRow k="Substituted values" v={t.substituted_values.length ? t.substituted_values.map((s) => `${s.feature} → ${s.substituted_value}`).join("; ") : "None"} />
         </div>
       </Disclosure>
     </section>

@@ -9,6 +9,7 @@ import { DecisionPanel } from "./DecisionPanel";
 import { IntelligencePanel } from "./IntelligencePanel";
 import { DecisionRecord } from "./DecisionRecord";
 import { MethodologyDrawer } from "./MethodologyDrawer";
+import { ConsequenceBanner, ReportCanvas } from "./ReportCanvas";
 import { FieldBriefModal, Toasts } from "./Overlays";
 import { IncidentRoster } from "./IncidentRoster";
 import { Timeline } from "./Timeline";
@@ -81,7 +82,7 @@ export function CommandCenter() {
 
         {loadError && (
           <div className="absolute inset-0 z-20 grid place-items-center bg-[var(--bg)]/80">
-            <div className="panel w-[420px] p-6 text-center">
+            <div className="panel mx-3 w-full max-w-[420px] p-6 text-center">
               <AlertTriangle className="mx-auto text-[var(--fire)]" />
               <div className="mt-2 text-[15px] font-bold">Can’t reach the TerraGuard API</div>
               <p className="mt-1 text-[13px] text-[var(--ink-2)]">{loadError}</p>
@@ -115,11 +116,13 @@ export function CommandCenter() {
             <div className="studio-detail" hidden={rightTab !== "evidence"}><IntelligencePanel/></div>
           </aside>
         </div> : <div className="map-intelligence"><IntelligencePanel/><DecisionPanel/></div>}
+        <ConsequenceBanner />
       </main>
       <Toasts />
       <FieldBriefModal />
       <MethodologyDrawer />
       <DecisionRecord />
+      <ReportCanvas />
     </div>
   );
 }

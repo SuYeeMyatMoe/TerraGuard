@@ -18,7 +18,7 @@ export function ForestEnvironment({ progress }: { progress: RefObject<number> })
     const image = new Image();
     let layers: HTMLCanvasElement[] = [];
     const makeLayers = () => {
-      if (!image.complete || !image.naturalWidth || !width) return;
+      if (!image.complete || !image.naturalWidth || !width || !height) return;
       // Strip boundaries follow the ground baselines in the generated sheet.
       const strips = [[0, 348], [348, 343], [691, 333]];
       layers = strips.map(([y,h]) => {
@@ -35,7 +35,7 @@ export function ForestEnvironment({ progress }: { progress: RefObject<number> })
       });
     };
     const paint = (time: number) => {
-      if (layers.length !== 3) return;
+      if (!width || !height || layers.length !== 3) return;
       const p=progress.current;
       const { fire, smoke } = sceneAt(p);
       const ignition=ramp(p,.2,.58), aftermath=ramp(p,.76,.96);

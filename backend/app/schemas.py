@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 Recommendation = Literal["INSPECT", "RECHECK", "MONITOR"]
-ActionType = Literal["ASSIGN_INSPECTION", "REQUEST_RECHECK", "DISMISS"]
+ActionType = Literal["ASSIGN_INSPECTION", "REQUEST_RECHECK", "DISMISS", "CONTINUE_MONITORING", "ESCALATE_COORDINATION"]
 Attendance = Literal["assigned", "unattended", "recheck", "dismissed", "open"]
 Policy = Literal["none", "first_alert", "ai_priority"]
 
@@ -161,8 +161,29 @@ class CalibrationNote(BaseModel):
 class Urgency(BaseModel):
     tier: Literal["CRITICAL_REVIEW", "PRIORITY_REVIEW", "ROUTINE_MONITORING", "INSUFFICIENT_EVIDENCE"]
     label: str
+    meaning: str = ""
+    review_window: str = ""
+    review_window_note: str = ""
     reasons: list[str]
     rule_based: bool = True
+
+
+class HeatSignal(BaseModel):
+    level: Literal["Strong", "Moderate", "Weak"]
+    reasons: list[str]
+    note: str
+
+
+class AnomalyAssessment(BaseModel):
+    pattern: str
+    label: str
+    meaning: str
+    anomaly_score: Optional[float] = None
+    anomaly_percentile: Optional[float] = None
+    unusual: bool
+    proof: list[str]
+    requires_verification: bool
+    disclaimer: str
 
 
 class FactorComparison(BaseModel):
@@ -218,6 +239,10 @@ class PredictResponse(BaseModel):
     calibration_note: Optional[CalibrationNote] = None
     decision_summary: str
     urgency: Urgency
+    heat_signal: HeatSignal
+    anomaly: AnomalyAssessment
+    feasibility: Optional[dict[str, Any]] = None
+    footprint: Optional[dict[str, Any]] = None
     explained_factors: list[ExplainedFactor]
     ranking_explanation: dict[str, Any]
     confidence_guidance: list[EvidenceGap]
@@ -296,6 +321,23 @@ class SimulateResponse(BaseModel):
 class ActionRequest(BaseModel):
     action: ActionType
     reason: str = Field(..., max_length=600, description="Required: why the coordinator made this decision.")
+    teams: int = Field(1, ge=0, le=3)
+    team_name: Optional[str] = Field(None, min_length=1, max_length=120)
+
+    @field_validator("team_name")
+    @classmethod
+    def clean_team_name(cls, value: str | None) -> str | None:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("A team name cannot be blank.")
+        return value
+
+    @model_validator(mode="after")
+    def assignment_only(self):
+        if self.team_name is not None and self.action != "ASSIGN_INSPECTION":
+            raise ValueError("team_name is only allowed for ASSIGN_INSPECTION.")
+        return self
 
 
 class WaitingIncident(BaseModel):
@@ -316,6 +358,7 @@ class ActionRecord(BaseModel):
     recommendation_at_time: Optional[str] = None
     created_at: str
     team_name: Optional[str] = None
+    teams: Optional[int] = None
     priority_rank: Optional[int] = None
     priority_score: Optional[float] = None
     probability: Optional[float] = None

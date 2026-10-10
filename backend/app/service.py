@@ -3,22 +3,27 @@ from __future__ import annotations
 
 import json
 import math
+import sqlite3
 from functools import lru_cache
+
+import httpx
 
 import joblib
 import numpy as np
 import pandas as pd
 
 from ml.config import MODEL_DIR, PROCESSED_DIR, PROTECTED_AREAS, RAW_DIR
+from ml import anomaly, footprint, reference
 from ml.explain import explain
 from ml.geo import haversine_km
 from ml.fetch_weather import load_weather
 from sim.automaton import H, W, make_plot
 from sim.policies import simulate_policies
 
-from . import db, records
+from . import db, feasibility, records
 from .records import DEFAULT_STATUS, STATUS_TEXT, WAITING_STATUS, team_state
 from .team import TEAM
+from .operational_store import OperationalStoreError
 from . import explanations as X
 from .priority import (CATEGORY_TEXT, PRIORITY_POLICY_VERSION, allocation_order, categorise, evidence_quality,
                        exposure_score, priority_score, recency_score, recommend)
@@ -178,6 +183,8 @@ class Store:
                 att = "recheck"
             elif st == STATUS_TEXT["DISMISS"]:
                 att = "dismissed"
+            elif st in (STATUS_TEXT["CONTINUE_MONITORING"], STATUS_TEXT["ESCALATE_COORDINATION"]):
+                att = "unattended" if assigned else "open"
             elif assigned:
                 att, st = "unattended", WAITING_STATUS
             else:
@@ -232,22 +239,23 @@ class Store:
         }
 
     # ------------------------------------------------------------------ decisions
-    def decide(self, incident_id: str, action: str, reason: str) -> dict:
+    def decide(self, incident_id: str, action: str, reason: str, teams: int = 1, team_name: str | None = None) -> dict:
         scenario, _ = self.inc_index[incident_id]
         team, att = self.operational_state(scenario)
-        pred = self.predict(incident_id, 1)
+        pred = self.predict(incident_id, teams)
         rec = pred["priority"]["recommendation"]
         others = [c for c in pred["competing"] if c["incident_id"] != incident_id]
-        followed = {"ASSIGN_INSPECTION": rec == "INSPECT", "REQUEST_RECHECK": rec == "RECHECK"}.get(action)
+        followed = {"ASSIGN_INSPECTION": rec == "INSPECT", "REQUEST_RECHECK": rec == "RECHECK",
+                    "CONTINUE_MONITORING": rec == "MONITOR", "ESCALATE_COORDINATION": rec == "INSPECT"}.get(action)
         row = {
-            "scenario_id": scenario["scenario_id"], "incident_id": incident_id, "action": action, "reason": reason,
+            "scenario_id": scenario["scenario_id"], "incident_id": incident_id, "action": action, "reason": reason, "teams": teams,
             "recommendation_at_time": rec, "priority_rank": pred["priority"]["rank"],
             "priority_score": pred["priority"]["score"], "probability": pred["probability"],
             "followed_recommendation": followed, "team_name": None, "reassigned_from": None, "left_waiting": None,
         }
         updates = {incident_id: STATUS_TEXT[action]}
         if action == "ASSIGN_INSPECTION":
-            row["team_name"] = TEAM["name"]
+            row["team_name"] = team_name or TEAM["name"]
             prev = team["assigned_incident_id"]
             row["reassigned_from"] = prev if prev and prev != incident_id else None
             row["left_waiting"] = [{"incident_id": c["incident_id"], "region": c["region"], "probability": c["probability"],
@@ -347,6 +355,9 @@ class Store:
                                      pa_name, pa_dist, hours_since, ex["probability"], ranking, gaps)
         p10, p90 = ex["interval"]
         lims = X.limitations(codes, ood_names, me["evidence"]["corroborated"])
+        frp_cmp = reference.compare("frp_max", raw_vals.get("frp_max"), country, month)
+        heat = X.heat_signal(frp_cmp["rank"] if frp_cmp else None, float(row["n_pixels"]), float(row["conf_h_frac"]))
+        pattern = anomaly.assess(row, me["evidence"]["quality"])
         return {
             "incident_id": incident_id,
             "model": {"name": "Random Forest" if b["chosen"] == "random_forest" else "Historical-frequency baseline",
@@ -361,8 +372,15 @@ class Store:
             "decision_summary": summary,
             "urgency": X.urgency(rec, ex["probability"], float(thr), hours_since, me["evidence"]["corroborated"],
                                  me["evidence"]["quality"],
-                                 # critical review needs more than a single pixel, even when corroborated
-                                 [l["title"] for l in lims if l["severity"] == "high" or l["code"] == "single_pixel"]),
+                                 # critical needs more than a single pixel, even when corroborated
+                                 [l["title"] for l in lims if l["severity"] == "high" or l["code"] == "single_pixel"],
+                                 heat=heat["level"], pattern_label=pattern["label"]),
+            "heat_signal": heat,
+            "anomaly": pattern,
+            # straight-line crew feasibility (no routing); the investigation priority itself is unchanged
+            "feasibility": feasibility.assess(self.incident(incident_id, att={})),
+            # 48 h satellite-detected footprint forecast (quantile model; not mapped burned area)
+            "footprint": footprint.forecast(row, self.inc_index[incident_id][1]["candidate_id"]),
             "explained_factors": views,
             "ranking_explanation": ranking,
             "confidence_guidance": gaps,
@@ -433,11 +451,17 @@ class Store:
         ids = [i["incident_id"] for i in scenario["incidents"]]
         _, recs, ai_order = self.prioritise(scenario, req.teams)
         arrival_order = [i["incident_id"] for i in sorted(scenario["incidents"], key=lambda x: x["arrival_order"])]
-        team, att = self.operational_state(scenario)
-        coordinator = req.coordinator_assignment or team["assigned_incident_id"]
+        coordinator = req.coordinator_assignment
+        if coordinator is None:
+            try:
+                team, _ = self.operational_state(scenario)
+                coordinator = team["assigned_incident_id"]
+            except (records.RecordError, OperationalStoreError, sqlite3.Error, httpx.HTTPError):
+                # File-backed simulations remain available when record reads fail.
+                coordinator = None
         if coordinator not in ids:
             coordinator = None
-        plots, infos = self.build_plots([self.incident(iid, att) for iid in ids], req.per_incident)
+        plots, infos = self.build_plots([self.incident(iid, att={}) for iid in ids], req.per_incident)
         res = simulate_policies(plots, arrival_order, ai_order, req.teams, req.response_delay, req.steps,
                                 req.seed, req.n_seeds, coordinator=coordinator,
                                 burn_duration_steps=req.burn_duration_steps)
