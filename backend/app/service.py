@@ -233,8 +233,8 @@ class Store:
         ids = [i["incident_id"] for i in scenario["incidents"]]
         _, recs, ai_order = self.prioritise(scenario, req.teams)
         arrival_order = [i["incident_id"] for i in sorted(scenario["incidents"], key=lambda x: x["arrival_order"])]
-        statuses = db.status_map()
-        plots, infos = self.build_plots([self.incident(iid, statuses) for iid in ids], req.per_incident)
+        # Administrator status does not affect the file-backed simulation inputs.
+        plots, infos = self.build_plots([self.incident(iid, statuses={}) for iid in ids], req.per_incident)
         res = simulate_policies(plots, arrival_order, ai_order, req.teams, req.response_delay, req.steps,
                                 req.seed, req.n_seeds)
         return {

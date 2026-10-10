@@ -2,7 +2,7 @@
 
 import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Component, ReactNode, useEffect, useState } from "react";
+import { Component, ReactNode, useState, useSyncExternalStore } from "react";
 import { useStore } from "@/lib/store";
 import { World } from "./World";
 
@@ -14,6 +14,11 @@ function webglAvailable() {
     return false;
   }
 }
+
+let webglSupport: boolean | null = null;
+const subscribeWebgl = () => () => {};
+const serverWebgl = () => null;
+const clientWebgl = () => (webglSupport ??= webglAvailable());
 
 class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -40,11 +45,10 @@ function Fallback() {
 }
 
 export default function ForestCanvas() {
-  const [ok, setOk] = useState<boolean | null>(null);
+  const ok = useSyncExternalStore(subscribeWebgl, clientWebgl, serverWebgl);
   const [dpr, setDpr] = useState(1.75);
   // pause rendering when the scene is hidden or fully covered by the methodology drawer
   const active = useStore((s) => s.view === "sim" && !s.methodologyOpen);
-  useEffect(() => setOk(webglAvailable()), []);
   if (ok === null) return null;
   if (!ok) return <Fallback />;
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BookOpen, Box, ChevronDown, Database, Globe2, History } from "lucide-react";
+import { Bell, BookOpen, Box, ChevronDown, Database, Globe2, History, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Logo, Segmented } from "@/components/ui";
@@ -19,6 +19,9 @@ export function TopBar() {
   const setView = useStore((s) => s.setView);
   const load = useStore((s) => s.load);
   const actions = useStore((s) => s.actions);
+  const actionsLoading = useStore((s) => s.actionsLoading);
+  const actionsError = useStore((s) => s.actionsError);
+  const loadActions = useStore((s) => s.loadActions);
   const setMethodology = useStore((s) => s.setMethodology);
   const [bellOpen, setBellOpen] = useState(false);
   const [scenOpen, setScenOpen] = useState(false);
@@ -124,7 +127,12 @@ export function TopBar() {
             <div className="text-[11.5px] text-[var(--ink-2)]">Every coordinator action is saved with a timestamp.</div>
           </div>
           <div className="scroll-thin max-h-[340px] overflow-y-auto p-1.5">
-            {actions.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-[var(--ink-2)]">No decisions recorded yet.</div>}
+            {actionsLoading && <div role="status" className="px-3 py-4 text-[12.5px] text-[var(--ink-2)]">Loading decision log…</div>}
+            {actionsError && <div role="alert" className="rounded-lg bg-red-50 px-3 py-3 text-[12.5px] text-red-700">
+              <p>Could not load the decision log. {actionsError}</p>
+              <button className="btn btn-ghost mt-2 h-8" disabled={actionsLoading} onClick={() => loadActions()}><RefreshCw size={13} /> Retry</button>
+            </div>}
+            {!actionsLoading && !actionsError && actions.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-[var(--ink-2)]">No decisions recorded yet.</div>}
             {actions.map((a) => (
               <div key={a.id} className="rounded-lg px-3 py-2 hover:bg-[#f6f8fb]">
                 <div className="flex items-center justify-between">

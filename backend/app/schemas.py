@@ -207,6 +207,7 @@ class SimulateResponse(BaseModel):
 class ActionRequest(BaseModel):
     action: ActionType
     reason: Optional[str] = Field(None, max_length=500)
+    teams: int = Field(1, ge=0, le=3)
     team_name: Optional[str] = Field(None, min_length=1, max_length=120)
 
     @field_validator("team_name")

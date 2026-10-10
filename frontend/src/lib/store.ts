@@ -51,6 +51,8 @@ interface State {
   speed: number;
 
   actions: ActionRecord[];
+  actionsLoading: boolean;
+  actionsError: string | null;
   toasts: Toast[];
   briefings: Record<string, AIResult<IncidentBriefing>>;
   briefingLoading: Record<string, boolean>;
@@ -60,6 +62,7 @@ interface State {
   cameraCommand: { kind: "zoomIn" | "zoomOut" | "rotateL" | "rotateR" | "reset"; n: number } | null;
 
   load: (scenario?: string) => Promise<void>;
+  loadActions: () => Promise<void>;
   select: (id: string | null) => void;
   setView: (v: View) => void;
   setTeams: (n: number) => void;
@@ -110,6 +113,8 @@ export const useStore = create<State>((set, get) => ({
   playing: false,
   speed: 1,
   actions: [],
+  actionsLoading: false,
+  actionsError: null,
   toasts: [],
   briefings: {},
   briefingLoading: {},
@@ -120,6 +125,7 @@ export const useStore = create<State>((set, get) => ({
 
   load: async (scenario) => {
     set({ loading: true, loadError: null });
+    const actionsRequest = get().loadActions();
     try {
       const data = await api.incidents(scenario);
       set({
@@ -145,9 +151,20 @@ export const useStore = create<State>((set, get) => ({
           }
         }),
       );
-      api.actions().then((r) => set({ actions: r.actions })).catch(() => {});
     } catch (e) {
       set({ loading: false, loadError: errMsg(e) });
+    } finally {
+      await actionsRequest;
+    }
+  },
+
+  loadActions: async () => {
+    set({ actionsLoading: true, actionsError: null });
+    try {
+      const result = await api.actions();
+      set({ actions: result.actions, actionsLoading: false });
+    } catch (error) {
+      set({ actionsLoading: false, actionsError: errMsg(error) });
     }
   },
 
@@ -209,7 +226,7 @@ export const useStore = create<State>((set, get) => ({
 
   takeAction: async (id, action, reason) => {
     try {
-      const r = await api.action(id, action, reason);
+      const r = await api.action(id, action, reason, get().teams);
       set((s) => ({
         actions: [r.action, ...s.actions],
         data: s.data && {

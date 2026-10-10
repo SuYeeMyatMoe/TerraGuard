@@ -40,11 +40,18 @@ def _known(incident_id: str) -> None:
 @app.get("/api/health")
 def health():
     s = store()
-    return {"status": "ok", "model": s.bundle["version"], "served_model": s.bundle["chosen"],
+    result = {"status": "ok", "model": s.bundle["version"], "served_model": s.bundle["chosen"],
             "data_source": s.prov["source"], "is_synthetic": s.prov["is_synthetic"],
             "providers": {"openai": openai_ready(), "openai_model": openai_model() if openai_ready() else None,
                           "grafilab": grafilab_ready()},
             "earth_engine": geospatial._gee() is not None}
+    try:
+        db.check_ready()
+    except OperationalStoreError:
+        result.update(status="degraded", operational_database={"status": "unavailable"})
+        return JSONResponse(status_code=503, content=result)
+    result["operational_database"] = {"status": "ready"}
+    return result
 
 
 @app.get("/api/incidents", response_model=IncidentsResponse)
@@ -76,7 +83,7 @@ def action(incident_id: str, req: ActionRequest):
         raise HTTPException(422, "Dismissing an incident requires a reason.")
     s = store()
     scenario, _ = s.inc_index[incident_id]
-    rec = s.predict(incident_id, 1)["priority"]["recommendation"]
+    rec = s.predict(incident_id, req.teams)["priority"]["recommendation"]
     row = db.record_action(scenario["scenario_id"], incident_id, req.action, req.reason, rec, req.team_name)
     return {"action": row, "incident_status": db.STATUS_TEXT[req.action]}
 

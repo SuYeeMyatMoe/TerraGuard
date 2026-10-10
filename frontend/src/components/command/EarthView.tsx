@@ -1,7 +1,7 @@
 "use client";
 
 import { APIProvider, AdvancedMarker, Map as GMap, useMap } from "@vis.gl/react-google-maps";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Info, Satellite } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -101,6 +101,7 @@ function MapLibreEarth() {
 
   useEffect(() => {
     if (!ref.current) return;
+    maplibregl.setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString());
     const map = new maplibregl.Map({
       container: ref.current,
       style: "https://tiles.openfreemap.org/styles/positron",

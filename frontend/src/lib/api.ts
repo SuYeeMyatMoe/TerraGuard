@@ -57,10 +57,10 @@ export const api = {
     call<IncidentsResponse>(`/api/incidents${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ""}`),
   predict: (incident_id: string, teams: number) => post<Prediction>("/api/predict", { incident_id, teams }),
   simulate: (req: SimulateRequest) => post<SimulateResponse>("/api/simulate", req, 60000),
-  action: (incident_id: string, action: ActionType, reason?: string) =>
+  action: (incident_id: string, action: ActionType, reason?: string, teams = 1) =>
     post<{ action: ActionRecord; incident_status: string }>(
       `/api/incidents/${encodeURIComponent(incident_id)}/action`,
-      { action, reason },
+      { action, reason, teams },
     ),
   actions: () => call<{ actions: ActionRecord[] }>("/api/actions"),
   evaluation: () => call<Evaluation>("/api/evaluation"),

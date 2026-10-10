@@ -62,6 +62,10 @@ def list_actions(limit: int = 50) -> list[dict]:
     return _operations().list_actions(limit)
 
 
+def check_ready() -> None:
+    _operations().check_ready()
+
+
 def get_action(action_id: int) -> dict | None:
     return _operations().get_action(action_id)
 

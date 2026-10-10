@@ -70,3 +70,40 @@ def test_database_outage_returns_sanitized_503(client, monkeypatch):
     response = client.get("/api/actions")
     assert response.status_code == 503
     assert response.json() == {"detail": "Operational records are unavailable. Please try again."}
+
+
+def test_simulation_does_not_depend_on_operational_database(client, monkeypatch):
+    from app.operational_store import OperationalStoreError
+    def unavailable():
+        raise OperationalStoreError("Unavailable")
+    monkeypatch.setattr(db, "status_map", unavailable)
+    response = client.post("/api/simulate", json={"steps": 12, "n_seeds": 1})
+    assert response.status_code == 200
+    assert len(response.json()["policies"]["none"]["frames"]) == 13
+
+
+def test_health_reports_database_unavailable(client, monkeypatch):
+    from app.operational_store import OperationalStoreError
+    def unavailable(*_args, **_kwargs):
+        raise OperationalStoreError("Unavailable")
+    monkeypatch.setattr(db._operations(), "_request", unavailable)
+    response = client.get("/api/health")
+    assert response.status_code == 503
+    assert response.json()["status"] == "degraded"
+    assert response.json()["operational_database"] == {"status": "unavailable"}
+
+
+def test_audit_recommendation_matches_selected_team_count(client):
+    from app.service import store
+    iid = "INC-20250723-A"
+    expected = store().predict(iid, 0)["priority"]["recommendation"]
+    assert expected != store().predict(iid, 1)["priority"]["recommendation"]
+    response = client.post(f"/api/incidents/{iid}/action", json={"action": "REQUEST_RECHECK", "teams": 0})
+    assert response.status_code == 200
+    assert response.json()["action"]["recommendation_at_time"] == expected
+
+
+def test_action_team_count_is_validated(client):
+    iid = "INC-20250723-A"
+    for teams in (-1, 4):
+        assert client.post(f"/api/incidents/{iid}/action", json={"action": "REQUEST_RECHECK", "teams": teams}).status_code == 422

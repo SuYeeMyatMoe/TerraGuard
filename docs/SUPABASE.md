@@ -25,10 +25,10 @@ Copy a `sb_secret_…` key from [project Settings → API Keys](https://supabase
 
 ```bash
 cd backend
-.venv/bin/python -m uvicorn app.main:app --port 8010
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
 
-On Windows use `.venv/Scripts/python`. Startup validates configuration. Remote connectivity or permission errors produce a sanitized HTTP 503, not a SQLite fallback. Do not expose the admin FastAPI endpoints publicly without an authentication layer; this change preserves the existing local demo API access model.
+On Windows use `.venv/Scripts/python`. Startup validates configuration. Remote connectivity or permission errors produce a sanitized HTTP 503, not a SQLite fallback. The user explicitly requested no login page, so the existing local demo API access model is retained. Frontend `dev` and `start` scripts bind to `127.0.0.1`, matching the backend command above. There is no end-user authentication on the admin endpoints; RLS protects direct database access, not callers of FastAPI. Public or LAN deployment needs a separate access boundary and is outside this local setup.
 
 ## Transaction and permissions
 
@@ -43,7 +43,7 @@ Supabase's [RLS enabled without policies advisor](https://supabase.com/docs/guid
 Existing clients can keep sending only action and reason. An optional name adds an assignment:
 
 ```json
-{"action":"ASSIGN_INSPECTION","team_name":"Team Alpha"}
+{"action":"ASSIGN_INSPECTION","team_name":"Team Alpha","teams":1}
 ```
 
 The name must be nonblank, trimmed, and at most 120 characters. It is invalid for REQUEST_RECHECK or DISMISS. The response remains the existing `{action, incident_status}` contract; the assignment refers to `action.id`. This does not add a named-team frontend selector, team roster, capacity tracking, or a current-team read endpoint. `teams` remains the available count (0–3) used by the prediction and simulation code. Assignment rows are historical records; later recheck/dismiss actions update status and do not erase the assignment history.
@@ -64,3 +64,5 @@ After configuring the secret, use the unchanged action API, restart FastAPI, and
 This checkout had no pre-existing SQLite database, so there were no local operational records to import. On an installation with existing actions/statuses, back up its database and import those records before switching the backend. Existing SQLite tables are not deleted, but they are no longer read for operational state. If action IDs are preserved during an import, advance the identity sequence past imported IDs and respect action_id references. The local ai_briefs cache continues to work.
 
 The former `python -m app.db --reset` command now refuses to delete cloud audit history. Use a separate test project or an explicit reviewed database maintenance operation for resets.
+
+Review fixes verified on 2026-10-10: 45 backend tests and 4 frontend regression tests pass. Health now checks database read readiness (200/ready or 503/degraded). Simulations are independent of operational database reads. The frontend passes `teams` (0–3) with each decision, so the backend records a recommendation using the selected count; older clients still default to one team. Audit loading, errors and Retry are visible in the notification list. Live read checks and transactional SQL assertions passed again without leaving records. See [review disposition](REVIEW_2026-10-10_AR.md) for dependency and access limitations.

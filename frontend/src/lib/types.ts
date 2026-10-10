@@ -374,4 +374,5 @@ export interface Health {
   is_synthetic: boolean;
   providers: { openai: boolean; openai_model: string | null; grafilab: boolean };
   earth_engine: boolean;
+  operational_database: { status: "ready" | "unavailable" };
 }

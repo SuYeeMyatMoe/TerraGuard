@@ -73,6 +73,9 @@ class SupabaseOperations:
     def list_actions(self, limit: int = 50) -> list[dict]:
         return self._request("GET", "actions", params={"select": "*", "order": "id.desc", "limit": max(0, limit)})
 
+    def check_ready(self) -> None:
+        self._request("GET", "actions", params={"select": "id", "limit": 1}, timeout=3.0)
+
     def get_action(self, action_id: int) -> dict | None:
         rows = self._request("GET", "actions", params={"select": "*", "id": f"eq.{action_id}", "limit": 1})
         return rows[0] if rows else None
