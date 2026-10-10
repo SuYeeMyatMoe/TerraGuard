@@ -1,5 +1,5 @@
 // Lightweight isometric forest illustration for the landing page (pure SVG, no WebGL).
-import { Activity, ShieldCheck, Truck } from "lucide-react";
+import { Clock, ShieldCheck, Truck } from "lucide-react";
 
 const N = 13;
 const S = 26; // tile size
@@ -153,20 +153,17 @@ export function HeroVisual() {
       </svg>
 
       {/* operational overlay chips */}
-      <div className="panel-float absolute bottom-[8%] left-0 w-[230px] p-3.5 sm:left-2">
+      <div className="panel-float absolute bottom-[8%] left-0 w-[250px] p-3.5 sm:left-2">
         <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-[var(--fire-50)] text-[var(--fire)]"><Activity size={16} /></span>
+          <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-amber-50 text-amber-600"><Clock size={16} /></span>
           <div>
-            <div className="text-[11px] font-semibold text-[var(--ink-2)]">48 h follow-up detection</div>
-            <div className="text-[13px] font-bold">Estimated with uncertainty</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Unattended</div>
+            <div className="text-[13px] font-bold">Incident A is waiting</div>
           </div>
         </div>
-        <div className="mt-3 h-1.5 rounded-full bg-[#eef2f7]">
-          <div className="h-1.5 w-[62%] rounded-full bg-[var(--fire)]" />
-        </div>
-        <div className="mt-2 flex justify-between text-[10.5px] font-semibold text-[var(--ink-3)]">
-          <span>Evidence quality</span>
-          <span className="text-[var(--green-700)]">Shown with every estimate</span>
+        <div className="mt-2.5 flex items-center justify-between text-[11.5px] text-[var(--ink-2)]">
+          <span>48 h follow-up risk</span>
+          <b className="text-[var(--ink)]">shown, and recorded</b>
         </div>
       </div>
       <div className="panel-float absolute right-0 top-[6%] flex items-center gap-2 px-3 py-2 sm:right-4">
@@ -176,8 +173,8 @@ export function HeroVisual() {
       <div className="panel-float absolute bottom-[2%] right-2 flex items-center gap-2.5 px-3 py-2.5 sm:right-8">
         <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-[var(--cyan-50)] text-[var(--cyan)]"><Truck size={16} /></span>
         <div>
-          <div className="text-[11px] font-semibold text-[var(--ink-2)]">One field team</div>
-          <div className="text-[12.5px] font-bold">Compare where it goes first</div>
+          <div className="text-[11px] font-semibold text-[var(--ink-2)]">Borneo Field Verification Crew</div>
+          <div className="text-[12.5px] font-bold">→ Incident B · assigned</div>
         </div>
       </div>
     </div>

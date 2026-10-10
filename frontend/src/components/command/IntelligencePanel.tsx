@@ -1,12 +1,13 @@
 "use client";
 
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Box, ChevronDown, Info, Layers, Satellite, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Box, ChevronDown, Info, Layers, Satellite, Sparkles, Truck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProviderChip, QualityPill, RecPill, Row, SectionTitle, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
 import { coords, pct, shortId, utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import type { GeoContext, Incident, Prediction } from "@/lib/types";
+import { ConfidenceBlock, DecisionHeader, FactorList, LimitationsBlock, PredictionBlock, RankingBlock, TraceBlock } from "./explain/ExplainSections";
 
 export function IntelligencePanel() {
   const data = useStore((s) => s.data);
@@ -33,7 +34,7 @@ function IncidentList() {
   const data = useStore((s) => s.data)!;
   const predictions = useStore((s) => s.predictions);
   const select = useStore((s) => s.select);
-  const teams = useStore((s) => s.teams);
+  const team = data.team;
   const sorted = [...data.incidents].sort(
     (a, b) => (predictions[a.id]?.priority.rank ?? 9) - (predictions[b.id]?.priority.rank ?? 9),
   );
@@ -42,10 +43,14 @@ function IncidentList() {
       <div className="border-b border-[var(--line)] px-5 pb-4 pt-5">
         <div className="eyebrow">Competing incidents</div>
         <h2 className="mt-1 text-[17px] font-bold leading-snug">
-          {data.incidents.length} incidents. {teams === 1 ? "One team" : `${teams} teams`}. Which first?
+          {team.assigned_incident_id
+            ? `Crew at ${shortId(team.assigned_incident_id)}. ${data.incidents.filter((i) => i.attendance === "unattended").length} waiting.`
+            : `${data.incidents.length} incidents. One crew. Which first?`}
         </h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--ink-2)]">
-          Ranked by the transparent priority score. Select an incident to see the prediction, evidence and recommendation.
+          {team.assigned_incident_id
+            ? `${team.name} is committed. Incidents without the crew stay unattended until you reassign it.`
+            : `${team.name} is the only field crew. Ranked by the transparent priority score.`}
         </p>
       </div>
       <div className="scroll-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
@@ -55,7 +60,9 @@ function IncidentList() {
             <button
               key={inc.id}
               onClick={() => select(inc.id)}
-              className="group flex w-full items-start gap-3 rounded-[12px] border border-[var(--line)] bg-white p-3 text-left transition hover:border-[var(--blue-200)] hover:shadow-[0_4px_14px_rgba(37,99,235,0.08)]"
+              className={`group flex w-full items-start gap-3 rounded-[12px] border bg-white p-3 text-left transition hover:shadow-[0_4px_14px_rgba(37,99,235,0.08)] ${
+                inc.attendance === "assigned" ? "border-[#a5e9f5]" : inc.attendance === "unattended" ? "border-amber-200" : "border-[var(--line)] hover:border-[var(--blue-200)]"
+              }`}
             >
               <span
                 className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold text-white"
@@ -76,11 +83,12 @@ function IncidentList() {
                     <span className="tnum"><b>{pct(p.probability)}</b> <span className="text-[var(--ink-2)]">48 h follow-up</span></span>
                     <span className="text-[var(--line)]">|</span>
                     <span className="text-[var(--ink-2)]">{p.evidence.quality} evidence</span>
-                    {inc.status !== "Awaiting review" && <span className="ml-auto font-semibold text-[var(--green-700)]">{inc.status}</span>}
                   </span>
                 ) : (
                   <Skeleton className="mt-2 h-4 w-40" />
                 )}
+                {p && <span className="mt-1.5 line-clamp-2 block text-[11.5px] leading-snug text-[var(--ink-2)]">{p.decision_summary}</span>}
+                <AttendanceLine inc={inc} prob={p?.probability} compact />
               </span>
             </button>
           );
@@ -88,6 +96,32 @@ function IncidentList() {
       </div>
     </div>
   );
+}
+
+function AttendanceLine({ inc, prob, compact }: { inc: Incident; prob?: number; compact?: boolean }) {
+  const team = useStore((s) => s.data?.team);
+  if (!team) return null;
+  const base = compact ? "mt-2 rounded-lg px-2.5 py-1.5 text-[11.5px]" : "rounded-[10px] px-3 py-2.5 text-[12.5px]";
+  if (inc.attendance === "assigned")
+    return (
+      <span className={`${base} flex items-center gap-1.5 bg-[var(--cyan-50)] font-semibold text-[#0e7490] ring-1 ring-inset ring-[#a5e9f5]`}>
+        <Truck size={13} className="shrink-0" /> Crew assigned · en route from {team.base.split(",")[0]}
+      </span>
+    );
+  if (inc.attendance === "unattended")
+    return (
+      <span className={`${base} block bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200`}>
+        <b>Unattended</b>: crew committed to {shortId(team.assigned_incident_id ?? "")}
+        {prob != null && (
+          <>
+            {" "}· 48 h follow-up risk <b className="tnum">{pct(prob)}</b>
+          </>
+        )}
+      </span>
+    );
+  if (inc.attendance === "recheck" || inc.attendance === "dismissed")
+    return <span className={`${base} block bg-[#f1f5f9] font-semibold text-[var(--ink-2)]`}>{inc.status}</span>;
+  return null;
 }
 
 function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Prediction; onClose: () => void }) {
@@ -117,55 +151,27 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
       </div>
 
       <div className="scroll-thin min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#eef2f7] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--ink-2)]">{inc.status}</span>
-          {pred && <QualityPill q={pred.evidence.quality} />}
-          {pred && <RecPill rec={pred.priority.recommendation} />}
-        </div>
-
-        {/* prediction */}
-        <section>
-          <SectionTitle right={<span className="text-[11px] text-[var(--ink-3)]">{pred?.model.name} {pred?.model.version}</span>}>
-            48-hour follow-up detection
-          </SectionTitle>
-          {predError && <div className="rounded-lg bg-[var(--red-50)] p-3 text-[12.5px] text-[var(--red-700)]">{predError}</div>}
-          {!pred && !predError && <Skeleton className="h-20 w-full" />}
-          {pred && <ProbabilityBlock pred={pred} />}
-        </section>
-
+        <AttendanceLine inc={inc} prob={pred?.probability} />
+        {predError && <div className="rounded-lg bg-[var(--red-50)] p-3 text-[12.5px] text-[var(--red-700)]">{predError}</div>}
+        {!pred && !predError && (
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        )}
         {pred && (
-          <section>
-            <SectionTitle>Why this estimate</SectionTitle>
-            <ul className="space-y-1.5">
-              {pred.factors.map((f) => (
-                <li key={f.feature} className="flex items-start gap-2 text-[12.5px] leading-snug">
-                  {f.direction === "up" ? (
-                    <ArrowUpRight size={15} className="mt-px shrink-0 text-[var(--fire)]" />
-                  ) : (
-                    <ArrowDownRight size={15} className="mt-px shrink-0 text-[var(--green)]" />
-                  )}
-                  <span>{f.text.replace(/ — (raises|lowers) the estimate$/, "")}</span>
-                </li>
-              ))}
-            </ul>
-            {(pred.missing_features.length > 0 || pred.ood_features.length > 0 || pred.evidence.flags.length > 0) && (
-              <div className="mt-3 rounded-[10px] bg-amber-50/70 p-3 ring-1 ring-inset ring-amber-200/70">
-                <div className="mb-1 flex items-center gap-1.5 text-[11.5px] font-bold text-amber-800">
-                  <AlertTriangle size={13} /> Evidence limitations
-                </div>
-                <ul className="list-disc space-y-0.5 pl-4 text-[12px] text-amber-900/90">
-                  {pred.evidence.flags.map((f) => <li key={f}>{f}</li>)}
-                  {pred.missing_features.length > 0 && <li>Missing inputs filled with typical values</li>}
-                </ul>
-              </div>
-            )}
-          </section>
+          <>
+            <DecisionHeader pred={pred} />
+            <PredictionBlock pred={pred} />
+            <FactorList pred={pred} />
+            <RankingBlock pred={pred} />
+            <ConfidenceBlock pred={pred} />
+            <LimitationsBlock pred={pred} />
+          </>
         )}
 
-        {pred && <PrioritySection pred={pred} />}
-
         <section>
-          <SectionTitle>Observation</SectionTitle>
+          <SectionTitle>Observation details</SectionTitle>
           <Row label="Coordinates"><span className="font-mono text-[12px]">{coords(inc.lat, inc.lon)}</span></Row>
           <Row label="Observed">{utc(inc.observed_at)}</Row>
           <Row label="Satellite">{inc.satellite} · {inc.daynight}</Row>
@@ -185,78 +191,18 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
         </section>
 
         <GeoSection geo={geo} />
+        {pred && <TraceBlock pred={pred} />}
         <AIBriefing incidentId={inc.id} />
       </div>
 
       {view === "earth" && (
         <div className="border-t border-[var(--line)] p-3">
           <button className="btn btn-primary w-full" onClick={() => setView("sim")}>
-            <Box size={16} /> Open 3D Simulation
+            <Box size={16} /> Test the response in 3D
           </button>
         </div>
       )}
     </div>
-  );
-}
-
-function ProbabilityBlock({ pred }: { pred: Prediction }) {
-  const [lo, hi] = pred.interval;
-  return (
-    <div className="rounded-[12px] border border-[var(--line)] p-3.5">
-      <div className="flex items-end justify-between">
-        <div className="text-[30px] font-extrabold leading-none tracking-tight tnum">{pct(pred.probability)}</div>
-        <div className="text-right text-[11.5px] leading-tight text-[var(--ink-2)]">
-          tree range {pct(lo)}–{pct(hi)}
-          <br />
-          alert threshold {pct(pred.threshold)}
-        </div>
-      </div>
-      <div className="relative mt-3 h-2 rounded-full bg-[#eef2f7]">
-        <div className="absolute inset-y-0 rounded-full bg-[var(--fire-200)]" style={{ left: `${lo * 100}%`, width: `${Math.max((hi - lo) * 100, 1)}%` }} />
-        <div className="absolute -top-1 h-4 w-1 rounded-full bg-[var(--fire)]" style={{ left: `calc(${pred.probability * 100}% - 2px)` }} />
-        <div className="absolute -top-1.5 h-5 w-px bg-[var(--ink-3)]" style={{ left: `${pred.threshold * 100}%` }} title="Alert threshold" />
-      </div>
-      <p className="mt-3 text-[12px] leading-relaxed text-[var(--ink-2)]">
-        Chance of another qualifying satellite detection within 2 km in a later pass (3–48 h). It is not a measure of
-        spread or damage. {pred.uncertainty_note}
-      </p>
-    </div>
-  );
-}
-
-function PrioritySection({ pred }: { pred: Prediction }) {
-  const comps = pred.priority.components;
-  const label: Record<string, string> = { prediction: "Prediction", exposure: "Protected-area exposure", recency: "Recency", evidence: "Evidence quality" };
-  return (
-    <section>
-      <SectionTitle right={<span className="text-[12px] font-bold tnum">{pred.priority.score.toFixed(2)}</span>}>
-        Operational priority · rank {pred.priority.rank} of {pred.priority.of}
-      </SectionTitle>
-      <div className="flex h-2 overflow-hidden rounded-full bg-[#eef2f7]">
-        {Object.entries(comps).map(([k, v], i) => (
-          <div key={k} title={`${label[k]}: ${v.toFixed(2)}`} style={{ width: `${v * 100}%`, background: ["#ff8a35", "#22a06b", "#2563eb", "#06b6d4"][i] }} />
-        ))}
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
-        {Object.entries(comps).map(([k, v], i) => (
-          <div key={k} className="flex items-center gap-1.5 text-[11.5px] text-[var(--ink-2)]">
-            <span className="h-2 w-2 rounded-sm" style={{ background: ["#ff8a35", "#22a06b", "#2563eb", "#06b6d4"][i] }} />
-            {label[k]} <b className="ml-auto text-[var(--ink)] tnum">{v.toFixed(2)}</b>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--ink-2)]">{pred.priority.reason}</p>
-      <div className="mt-2.5 space-y-1">
-        {pred.competing.map((c) => (
-          <div key={c.incident_id} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] ${c.incident_id === pred.incident_id ? "bg-[var(--blue-50)]" : "bg-[#f7f9fc]"}`}>
-            <b className="w-4 tnum">{c.rank}</b>
-            <span className="flex-1 truncate">{shortId(c.incident_id)} · {c.region}</span>
-            <span className="tnum text-[var(--ink-2)]">{c.priority_score.toFixed(2)}</span>
-            <RecPill rec={c.recommendation} size="sm" />
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -297,11 +243,13 @@ function AIBriefing({ incidentId }: { incidentId: string }) {
   const [open, setOpen] = useState(true);
   const [showEvidence, setShowEvidence] = useState(false);
   const sections: [string, keyof NonNullable<typeof brief>["content"]][] = [
-    ["Summary", "summary"],
-    ["Why it matters", "why_matters"],
-    ["What the prediction means", "prediction_interpretation"],
+    ["Incident summary", "incident_summary"],
+    ["Why this estimate", "why_prediction"],
+    ["Why this priority", "why_priority"],
+    ["Compared with the next incident", "comparison_with_next_incident"],
+    ["Uncertainties", "uncertainties"],
+    ["What would improve confidence", "what_would_improve_confidence"],
     ["Recommended next step", "recommended_next_step"],
-    ["Uncertainty", "uncertainty"],
   ];
   return (
     <section className="rounded-[12px] border border-[var(--blue-200)] bg-gradient-to-b from-[var(--blue-50)] to-white">

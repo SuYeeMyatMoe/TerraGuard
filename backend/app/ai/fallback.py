@@ -24,36 +24,50 @@ def _ids(f: dict, keys) -> list[str]:
 
 def briefing(pkg: dict, rec: str) -> dict:
     f = facts_by_id(pkg)
-    factors = [f[k]["value"] for k in ("FACTOR_1", "FACTOR_2") if k in f]
-    flags = [x["value"] for k, x in f.items() if k.startswith("EVID_FLAG_")]
+    factor_ids = [k for k in ("FACTOR_1", "FACTOR_2", "FACTOR_3") if k in f]
+    factors = [str(f[k]["value"]) for k in factor_ids]
+    flag_ids = [k for k in f if k.startswith("EVID_FLAG_")][:3]
+    gap_ids = [k for k in f if k.startswith("GAP_")][:2]
+    unc = [str(f[k]["value"]) for k in flag_ids]
+    if "TREE_VARIATION" in f:
+        unc.append(f"individual model trees ranged {f['TREE_VARIATION']['value']} (variation within the model, "
+                   "not a statistically validated confidence interval)")
     return {
-        "summary": {
+        "incident_summary": {
             "text": (f"{_v(f, 'OBS_SAT')} detected {_v(f, 'OBS_PIXELS')} of hotspot activity in {_v(f, 'OBS_REGION')} "
                      f"at {_v(f, 'OBS_TIME')}, with peak radiative power of {_v(f, 'OBS_FRP')}."),
             "evidence_ids": _ids(f, ("OBS_SAT", "OBS_PIXELS", "OBS_REGION", "OBS_TIME", "OBS_FRP")),
         },
-        "why_matters": {
-            "text": (f"It ranks {_v(f, 'PRIORITY_RANK')} on the transparent priority score ({_v(f, 'PRIORITY_SCORE')}). "
-                     f"Category: {_v(f, 'CATEGORY')}. Nearest protected area: {_v(f, 'PA_NAME')}, about {_v(f, 'PA_DIST')} away."
-                     + (f" Main model factors: {'; '.join(factors)}." if factors else "")),
-            "evidence_ids": _ids(f, ("PRIORITY_RANK", "PRIORITY_SCORE", "CATEGORY", "PA_NAME", "PA_DIST", "FACTOR_1", "FACTOR_2")),
+        "why_prediction": {
+            "text": (f"The model estimates a {_v(f, 'PRED_PROB')} chance of another qualifying satellite detection nearby within "
+                     "48 hours. " + (f"Main model factors: {'; '.join(factors)}. " if factors else "")
+                     + "This concerns continued satellite-observed activity, not fire spread or damage."),
+            "evidence_ids": _ids(f, ("PRED_PROB", "PRED_TARGET", *factor_ids)),
         },
-        "prediction_interpretation": {
-            "text": (f"The model estimates a {_v(f, 'PRED_PROB')} chance that another qualifying satellite detection occurs "
-                     f"nearby within 48 hours (tree range {_v(f, 'PRED_RANGE')}). This is about continued satellite-observed "
-                     "activity, not fire spread or damage, and a low value does not confirm the fire is out."),
-            "evidence_ids": _ids(f, ("PRED_PROB", "PRED_RANGE", "PRED_TARGET")),
+        "why_priority": {
+            "text": f"{_v(f, 'SUMMARY')} It ranks {_v(f, 'PRIORITY_RANK')} on the transparent priority score ({_v(f, 'PRIORITY_SCORE')}).",
+            "evidence_ids": _ids(f, ("SUMMARY", "PRIORITY_RANK", "PRIORITY_SCORE")),
+        },
+        "comparison_with_next_incident": {
+            "text": (f"{_v(f, 'COMPARE_TEXT')} {_v(f, 'COMPARE_RESOURCE', '')}".strip() if "COMPARE_TEXT" in f
+                     else "There is no competing incident to compare with."),
+            "evidence_ids": _ids(f, ("COMPARE_TEXT", "COMPARE_RESOURCE", "RANK_ORDER")),
+        },
+        "uncertainties": {
+            "text": ("Evidence quality is " + _v(f, "EVID_QUALITY") + "."
+                     + (f" Points to keep in mind: {'; '.join(unc)}." if unc else "")
+                     + " A human review is required before any operational conclusion."),
+            "evidence_ids": _ids(f, ("EVID_QUALITY", *flag_ids, "TREE_VARIATION")),
+        },
+        "what_would_improve_confidence": {
+            "text": (" ".join(str(f[k]["value"]) for k in gap_ids) if gap_ids
+                     else "No specific evidence gaps were flagged by the rules; routine observation continues."),
+            "evidence_ids": _ids(f, tuple(gap_ids) or ("EVID_QUALITY",)),
         },
         "recommended_next_step": {
             "text": f"{REC_TEXT[rec]} {_v(f, 'RECOMMENDATION_REASON', '')}".strip(),
             "evidence_ids": _ids(f, ("RECOMMENDATION", "RECOMMENDATION_REASON", "RESOURCES")),
             "recommendation": rec,
-        },
-        "uncertainty": {
-            "text": ("Evidence quality is " + _v(f, "EVID_QUALITY") + "."
-                     + (f" Limitations: {'; '.join(flags)}." if flags else "")
-                     + " Ground verification by a human team is required before any operational conclusion."),
-            "evidence_ids": _ids(f, ("EVID_QUALITY", *[k for k in f if k.startswith("EVID_FLAG_")], "LIMIT_2")),
         },
     }
 

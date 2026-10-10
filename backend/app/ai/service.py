@@ -9,7 +9,7 @@ import json
 import time
 from collections import defaultdict, deque
 
-from .. import db
+from .. import db, records
 from ..evidence import build_package, package_hash
 from . import fallback
 from .providers import (BRIEFING_SCHEMA, FIELD_BRIEF_SCHEMA, ProviderError, call_grafilab, call_openai,
@@ -48,8 +48,11 @@ def _run(kind: str, pkg: dict, rec: str, primary: str) -> dict:
     if cached:
         return {**cached, "cached": True}
     schema, name = (BRIEFING_SCHEMA, "incident_briefing") if kind == "explain" else (FIELD_BRIEF_SCHEMA, "field_brief")
-    task = ("Write an incident briefing with sections summary, why_matters, prediction_interpretation, "
-            "recommended_next_step (repeat the deterministic RECOMMENDATION exactly), uncertainty."
+    task = ("Write an incident briefing with sections incident_summary, why_prediction (use the FACTOR facts; they explain "
+            "the model estimate only), why_priority (use PRIORITY and SUMMARY facts), comparison_with_next_incident (use "
+            "COMPARE facts and RANK_ORDER; never contradict the order), uncertainties (EVID_FLAG, TREE_VARIATION, CALIBRATION; "
+            "tree variation is not a confidence interval), what_would_improve_confidence (GAP facts; never promise certainty), "
+            "recommended_next_step (repeat the deterministic RECOMMENDATION exactly; do not restate the urgency differently)."
             if kind == "explain" else
             "Write a concise English field-team verification brief. The verification task must match the "
             "deterministic RECOMMENDATION and must not add orders beyond verification. Mark it as a draft for human review.")
@@ -110,15 +113,27 @@ def explain(store, incident_id: str, teams: int, simulation: dict | None) -> dic
     return _run("explain", pkg, pred["priority"]["recommendation"], "openai")
 
 
-def field_brief(store, incident_id: str, teams: int, action_id: int | None) -> dict:
+def field_brief(store, incident_id: str, teams: int, action_id: int | None, stored_in: str | None = None) -> dict:
     inc = store.incident(incident_id)
     pred = store.predict(incident_id, teams)
     pkg = build_package(inc, pred, teams)
     rec = pred["priority"]["recommendation"]
     if action_id:
-        a = db.get_action(action_id)
+        a = records.get().get_action(action_id, stored_in)
         if a and a["incident_id"] == incident_id:
+            src = "TerraGuard decision record"
             pkg["facts"].append({"evidence_id": "HUMAN_ACTION", "label": "Coordinator decision",
-                                 "value": f"{a['action']} at {a['created_at']}", "unit": None, "source": "TerraGuard audit log"})
+                                 "value": f"{a['action']} at {a['created_at']}", "unit": None, "source": src})
+            if a.get("reason"):
+                pkg["facts"].append({"evidence_id": "DECISION_REASON", "label": "Coordinator's reason",
+                                     "value": a["reason"], "unit": None, "source": src})
+            if a.get("team_name"):
+                pkg["facts"].append({"evidence_id": "CREW", "label": "Assigned crew", "value": a["team_name"],
+                                     "unit": None, "source": src})
+            waiting = a.get("left_waiting") or []
+            if waiting:
+                pkg["facts"].append({"evidence_id": "LEFT_WAITING", "label": "Incidents left unattended",
+                                     "value": "; ".join(f"{w['incident_id']} ({w.get('region')})" for w in waiting),
+                                     "unit": None, "source": src})
             rec = {"ASSIGN_INSPECTION": "INSPECT", "REQUEST_RECHECK": "RECHECK"}.get(a["action"], rec)
     return _run("field_brief", pkg, rec, "grafilab")

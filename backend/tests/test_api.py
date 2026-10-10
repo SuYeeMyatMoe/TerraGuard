@@ -1,15 +1,17 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app import db
+from app import records
 from app.main import app
+from app.records import Records, SqliteStore
 
 
 @pytest.fixture(scope="module")
-def client():
+def client(tmp_path_factory):
+    records.set_records(Records(SqliteStore(tmp_path_factory.mktemp("rec") / "rec.db")))
     with TestClient(app) as c:
         yield c
-    db.reset()
+    records.set_records(None)
 
 
 def test_incident_to_action_flow(client):
@@ -21,7 +23,7 @@ def test_incident_to_action_flow(client):
     s = client.post("/api/simulate", json={"n_seeds": 3, "steps": 20}).json()
     assert len(s["policies"]["none"]["frames"]) == 21
     assert client.post(f"/api/incidents/{iid}/action", json={"action": "DISMISS"}).status_code == 422
-    a = client.post(f"/api/incidents/{iid}/action", json={"action": "REQUEST_RECHECK"}).json()
+    a = client.post(f"/api/incidents/{iid}/action", json={"action": "REQUEST_RECHECK", "reason": "need a second pass"}).json()
     assert a["incident_status"] == "Recheck requested"
     again = client.get("/api/incidents").json()
     assert next(i for i in again["incidents"] if i["id"] == iid)["status"] == "Recheck requested"

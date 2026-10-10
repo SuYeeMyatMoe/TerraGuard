@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 Recommendation = Literal["INSPECT", "RECHECK", "MONITOR"]
 ActionType = Literal["ASSIGN_INSPECTION", "REQUEST_RECHECK", "DISMISS"]
+Attendance = Literal["assigned", "unattended", "recheck", "dismissed", "open"]
 Policy = Literal["none", "first_alert", "ai_priority"]
 
 
@@ -56,7 +57,25 @@ class Incident(BaseModel):
     protected_area: ProtectedArea
     weather: Weather
     status: str
+    attendance: Attendance
     status_updated_at: Optional[str] = None
+
+
+class Team(BaseModel):
+    id: str
+    name: str
+    short_name: str
+    base: str
+    base_lat: float
+    base_lon: float
+    size: int
+    capability: str
+    status: Literal["available", "assigned"]
+    assigned_incident_id: Optional[str] = None
+    since: Optional[str] = None
+    action_id: Optional[int] = None
+    stored_in: Optional[str] = None
+    released_from: Optional[str] = None
 
 
 class Scenario(BaseModel):
@@ -82,7 +101,8 @@ class IncidentsResponse(BaseModel):
     provenance: Provenance
     incidents: list[Incident]
     context_hotspots: list[ContextHotspot]
-    teams_available: int
+    team: Team
+    record_backend: Literal["supabase", "sqlite", "sqlite_fallback"]
 
 
 class PredictRequest(BaseModel):
@@ -125,6 +145,64 @@ class CompetingIncident(BaseModel):
     recommendation: Recommendation
 
 
+class TreeVariation(BaseModel):
+    p10: float
+    p90: float
+    note: str
+
+
+class CalibrationNote(BaseModel):
+    band: str
+    observed_rate: float
+    n: int
+    text: str
+
+
+class Urgency(BaseModel):
+    tier: Literal["CRITICAL_REVIEW", "PRIORITY_REVIEW", "ROUTINE_MONITORING", "INSUFFICIENT_EVIDENCE"]
+    label: str
+    reasons: list[str]
+    rule_based: bool = True
+
+
+class FactorComparison(BaseModel):
+    rank: int
+    phrase: str
+    scope_label: str
+    n: int
+    text: str
+
+
+class ExplainedFactor(BaseModel):
+    feature: str
+    name: str
+    meaning: str
+    value_text: str
+    comparison: Optional[FactorComparison] = None
+    comparison_text: Optional[str] = None
+    direction: Literal["up", "down"]
+    effect_text: str
+    influence: float = Field(..., description="Relative influence |c|/max|c| among shown factors; not a probability share.")
+    influence_label: Literal["Strong", "Moderate", "Smaller"]
+    contribution_pp: float = Field(..., description="Technical detail: Saabas contribution in probability points.")
+    imputed: bool
+
+
+class EvidenceGap(BaseModel):
+    code: str
+    missing: str
+    why_it_matters: str
+    verification_step: str
+    keep_cautious: bool
+
+
+class EvidenceLimitation(BaseModel):
+    code: str
+    severity: Literal["high", "medium", "low"]
+    title: str
+    text: str
+
+
 class ModelInfo(BaseModel):
     name: str
     version: str
@@ -136,7 +214,15 @@ class PredictResponse(BaseModel):
     incident_id: str
     model: ModelInfo
     probability: float
-    interval: list[float]
+    tree_variation: TreeVariation
+    calibration_note: Optional[CalibrationNote] = None
+    decision_summary: str
+    urgency: Urgency
+    explained_factors: list[ExplainedFactor]
+    ranking_explanation: dict[str, Any]
+    confidence_guidance: list[EvidenceGap]
+    evidence_limitations: list[EvidenceLimitation]
+    trace: dict[str, Any]
     threshold: float
     above_alert_threshold: bool
     category: str
@@ -148,7 +234,7 @@ class PredictResponse(BaseModel):
     priority: Priority
     competing: list[CompetingIncident]
     uncertainty_note: str
-    limitations: list[str]
+    model_limitations: list[str]
     retrospective_label: Optional[str] = Field(None, description="What was actually observed in the next 48 h (historical replay only).")
 
 
@@ -167,6 +253,7 @@ class SimulateRequest(BaseModel):
     seed: int = 7
     n_seeds: int = Field(30, ge=1, le=60)
     per_incident: dict[str, IncidentOverride] = Field(default_factory=dict)
+    coordinator_assignment: Optional[str] = Field(None, description="Defaults to the crew's current recorded assignment.")
 
 
 class PlotInfo(BaseModel):
@@ -197,6 +284,7 @@ class SimulateResponse(BaseModel):
     response_delay: int
     arrival_order: list[str]
     ai_order: list[str]
+    coordinator_assignment: Optional[str] = None
     plots: list[PlotInfo]
     policies: dict[str, PolicyResult]
     comparison: dict[str, Any]
@@ -206,22 +294,51 @@ class SimulateResponse(BaseModel):
 
 class ActionRequest(BaseModel):
     action: ActionType
-    reason: Optional[str] = Field(None, max_length=500)
+    reason: str = Field(..., max_length=600, description="Required: why the coordinator made this decision.")
+
+
+class WaitingIncident(BaseModel):
+    incident_id: str
+    region: Optional[str] = None
+    probability: Optional[float] = None
+    rank: Optional[int] = None
+    recommendation: Optional[str] = None
 
 
 class ActionRecord(BaseModel):
     id: int
     scenario_id: str
     incident_id: str
+    incident_region: Optional[str] = None
     action: ActionType
-    reason: Optional[str]
-    recommendation_at_time: Optional[str]
+    reason: Optional[str] = None
+    recommendation_at_time: Optional[str] = None
     created_at: str
+    team_name: Optional[str] = None
+    priority_rank: Optional[int] = None
+    priority_score: Optional[float] = None
+    probability: Optional[float] = None
+    followed_recommendation: Optional[bool] = None
+    reassigned_from: Optional[str] = None
+    left_waiting: Optional[list[WaitingIncident]] = None
+    archived_at: Optional[str] = None
+    stored_in: str = "sqlite"
+    fallback_reason: Optional[str] = None
+    snapshot_stored: bool = True
+    retrospective: dict[str, Optional[str]] = Field(default_factory=dict)
 
 
 class ActionResponse(BaseModel):
     action: ActionRecord
     incident_status: str
+    team: Team
+    attendance: dict[str, Attendance]
+    record_backend: str
+
+
+class ActionsResponse(BaseModel):
+    actions: list[ActionRecord]
+    record_backend: str
 
 
 class ExplainRequest(BaseModel):
@@ -234,3 +351,4 @@ class FieldBriefRequest(BaseModel):
     incident_id: str
     teams: int = Field(1, ge=0, le=3)
     action_id: Optional[int] = None
+    stored_in: Optional[str] = None

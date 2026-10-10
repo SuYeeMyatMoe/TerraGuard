@@ -7,6 +7,7 @@ import { useStore } from "@/lib/store";
 import { ControlsPanel } from "./ControlsPanel";
 import { DecisionPanel } from "./DecisionPanel";
 import { IntelligencePanel } from "./IntelligencePanel";
+import { DecisionRecord } from "./DecisionRecord";
 import { MethodologyDrawer } from "./MethodologyDrawer";
 import { FieldBriefModal, MapControls, Toasts } from "./Overlays";
 import { StatCards } from "./StatCards";
@@ -36,24 +37,21 @@ export function CommandCenter() {
     });
   }, [load]);
 
-  // prepare the initial scenario (step 0, paused) so the forest is ready when the user switches views
+  // deep links for demos / backup recordings: ?view=sim&incident=…&step=…&policy=…
+  const applied = useRef(false);
   useEffect(() => {
-    if (data && !sim && !simLoading) {
-      useStore
-        .getState()
-        .runSimulation()
-        .then(() => {
-          const q = new URLSearchParams(window.location.search);
-          const st = Number(q.get("step") ?? 0);
-          const pol = q.get("policy");
-          useStore.setState({
-            playing: false,
-            step: Number.isFinite(st) ? st : 0,
-            ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" ? { policy: pol } : {}),
-          });
-        });
-    }
-  }, [data, sim, simLoading]);
+    if (!sim || applied.current) return;
+    applied.current = true;
+    const q = new URLSearchParams(window.location.search);
+    const st = Number(q.get("step") ?? NaN);
+    const pol = q.get("policy");
+    if (Number.isFinite(st) || pol)
+      useStore.setState({
+        playing: false,
+        ...(Number.isFinite(st) ? { step: st } : {}),
+        ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" || pol === "coordinator" ? { policy: pol } : {}),
+      });
+  }, [sim]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--bg)]">
@@ -65,7 +63,7 @@ export function CommandCenter() {
           {simLoading && !sim && (
             <div className="absolute inset-0 grid place-items-center">
               <div className="panel flex items-center gap-2.5 px-4 py-3 text-[13px] font-semibold">
-                <Loader2 size={16} className="animate-spin text-[var(--blue)]" /> Preparing the forest scenario…
+                <Loader2 size={16} className="animate-spin text-[var(--blue)]" /> Preparing the response test…
               </div>
             </div>
           )}
@@ -136,6 +134,7 @@ export function CommandCenter() {
       <Toasts />
       <FieldBriefModal />
       <MethodologyDrawer />
+      <DecisionRecord />
     </div>
   );
 }
