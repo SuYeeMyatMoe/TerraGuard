@@ -8,12 +8,13 @@ import { RecPill } from "@/components/ui";
 export function IncidentRoster() {
   const data = useStore(s => s.data);
   const predictions = useStore(s => s.predictions);
+  const sim = useStore(s => s.sim);
   const selectedId = useStore(s => s.selectedId);
   const select = useStore(s => s.select);
   return <section className="incident-roster">
     <div className="roster-heading"><Radio size={15}/><span>INCIDENT QUEUE</span><b>{data?.incidents.length ?? "—"}</b></div>
-    <h2>Three incidents.<br/>Three response crews.</h2>
-    <p className="roster-intro">A dedicated vehicle and suppression crew for A, B and C.</p>
+    <h2>Three incidents.<br/>{sim?.teams === 1 ? "One response crew." : "Three response crews."}</h2>
+    <p className="roster-intro">{sim?.teams === 1 ? "Preview the recorded crew assignment and its consequences." : "A dedicated vehicle and suppression crew for A, B and C."}</p>
     <div className="roster-cards">{data?.incidents.map(inc => {
       const prediction = predictions[inc.id];
       return <button key={inc.id} className="roster-card" aria-pressed={selectedId === inc.id} onClick={() => select(inc.id)}>
@@ -22,6 +23,6 @@ export function IncidentRoster() {
         <div className="roster-card-bottom"><span><b>{prediction ? pct(prediction.probability) : "—"}</b><small>48 h follow-up</small></span>{prediction && <RecPill rec={prediction.priority.recommendation} size="sm"/>}</div>
       </button>;
     }) ?? <p>Loading incidents…</p>}</div>
-    <div className="roster-resource"><Truck size={15}/><span>3D response test · one crew per incident</span></div>
+    <div className="roster-resource"><Truck size={15}/><span>{sim?.teams === 1 ? "Decision preview · one shared crew" : "3D response test · one crew per incident"}</span></div>
   </section>;
 }

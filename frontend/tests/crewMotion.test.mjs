@@ -5,9 +5,9 @@ import ts from 'typescript';
 
 const source=readFileSync(new URL('../src/lib/crewMotion.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}});
-const module={exports:{}};
-new Function('module','exports',compiled.outputText)(module,module.exports);
-const {getCrewPlan,getCrewPose}=module.exports;
+const testModule={exports:{}};
+new Function('module','exports',compiled.outputText)(testModule,testModule.exports);
+const {getCrewPlan,getCrewPose}=testModule.exports;
 const plot={incident_id:'B',fuel:Array.from({length:400},(_,id)=>Math.floor(id/20)===10?'0':'1').join(''),protected:'0'.repeat(400),ignition:[[9,10]]};
 const result={assigned:['B'],events:[{incident_id:'B',type:'dispatch',step:0},{incident_id:'B',type:'arrival',step:4}],metrics:{per_incident:[]}};
 

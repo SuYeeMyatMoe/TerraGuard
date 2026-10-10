@@ -157,7 +157,7 @@ function Forest({ cells, crew }: { cells: Cell[]; crew: CrewPlan }) {
 }
 
 function Landscape() {
-  const geometry = useMemo(makeLandscape, []);
+  const geometry = useMemo(() => makeLandscape(), []);
   const placements = useMemo(() => Array.from({ length: 1000 }, (_, i) => {
     const x = (seed(i * 5) - .5) * 67, z = (seed(i * 11) - .5) * 55 - 5;
     const height = landscapeHeight(x, z);

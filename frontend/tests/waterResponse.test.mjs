@@ -5,9 +5,9 @@ import ts from 'typescript';
 
 const source=readFileSync(new URL('../src/lib/waterResponse.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}});
-const module={exports:{}};
-new Function('module','exports',compiled.outputText)(module,module.exports);
-const {getWaterResponse}=module.exports;
+const testModule={exports:{}};
+new Function('module','exports',compiled.outputText)(testModule,testModule.exports);
+const {getWaterResponse}=testModule.exports;
 const plan={assigned:true,dispatch:0,arrival:4,station:[6,10],route:[[1,10],[6,10]]};
 const result={frames:[],events:[],metrics:{per_incident:[]}};
 const frame={tick:0,assigned:true,arrived:false,team:[2,18],cells:[{id:210,x:10,z:10,state:'burning'}]};

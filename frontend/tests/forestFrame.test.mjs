@@ -5,9 +5,9 @@ import ts from 'typescript';
 
 const source = readFileSync(new URL('../src/lib/forestFrame.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } });
-const module = { exports: {} };
-new Function('module', 'exports', compiled.outputText)(module, module.exports);
-const { toForestFrame } = module.exports;
+const testModule = { exports: {} };
+new Function('module', 'exports', compiled.outputText)(testModule, testModule.exports);
+const { toForestFrame } = testModule.exports;
 const plot = { incident_id:'B', fuel:'1'.repeat(400), protected:'1' + '0'.repeat(399), ignition:[[7,13]] };
 const result = {
   assigned:['B'], frames:[['0'.repeat(400), '12340' + '1'.repeat(395)], ['0'.repeat(400), '32340' + '1'.repeat(395)]],

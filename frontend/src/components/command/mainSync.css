@@ -1,0 +1,8 @@
+.studio-earth-viewport {position:absolute;inset:0}
+@media(max-width:899px) {
+  .map-mode {height:auto;min-height:100svh;overflow:visible}
+  .map-mode .studio-main {display:flex;flex-direction:column}
+  .studio-earth-viewport {position:relative;height:clamp(320px,65svh,520px);flex-shrink:0}
+  .map-mode .map-intelligence {position:relative;inset:auto;width:auto;margin:12px;min-height:0}
+  .map-mode .map-intelligence > .panel-float:first-child {height:600px;flex:none}
+}
