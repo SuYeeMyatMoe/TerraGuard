@@ -274,6 +274,7 @@ class SimulateRequest(BaseModel):
     scenario_id: Optional[str] = None
     teams: int = Field(1, ge=0, le=3)
     response_delay: int = Field(4, ge=0, le=24)
+    burn_duration_steps: int = Field(2, ge=2, le=24, description="Hypothetical fuel residence time per cell; shared by every policy.")
     steps: int = Field(48, ge=12, le=72)
     seed: int = 7
     n_seeds: int = Field(30, ge=1, le=60)

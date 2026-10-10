@@ -138,7 +138,7 @@ function ModelTab({ ev }: { ev: Evaluation }) {
               <CartesianGrid stroke="#eef2f7" />
               <XAxis dataKey="recall" type="number" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
               <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
-              <Tooltip formatter={(v: number) => pct(v)} labelFormatter={(v) => `Recall ${pct(Number(v))}`} />
+              <Tooltip formatter={(v) => pct(typeof v === "number" ? v : undefined)} labelFormatter={(v) => `Recall ${pct(Number(v))}`} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Line dataKey="rf" name="Random Forest" stroke="#22a06b" strokeWidth={2.2} dot={false} />
               <Line dataKey="base" name="Historical-frequency baseline" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 4" dot={false} />
@@ -154,7 +154,7 @@ function ModelTab({ ev }: { ev: Evaluation }) {
               <CartesianGrid stroke="#eef2f7" />
               <XAxis dataKey="x" type="number" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
               <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
-              <Tooltip formatter={(v: number) => pct(v)} labelFormatter={(v) => `Predicted ${pct(Number(v))}`} />
+              <Tooltip formatter={(v) => pct(typeof v === "number" ? v : undefined)} labelFormatter={(v) => `Predicted ${pct(Number(v))}`} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Line dataKey="ideal" name="Perfect calibration" stroke="#cbd5e1" dot={false} strokeDasharray="4 4" />
               <Line dataKey="observed" name="Observed rate" stroke="#2563eb" strokeWidth={2.2} />

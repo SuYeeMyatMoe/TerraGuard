@@ -19,8 +19,9 @@ import type {
 
 export type View = "earth" | "sim";
 
-/** One named crew is the scarce resource; the model and simulation are always run for a single team. */
+/** The operational map has one crew; the 3D response test gives each incident its own crew. */
 export const TEAMS = 1;
+export const SIMULATION_TEAMS = 3;
 
 export interface Toast {
   id: number;
@@ -39,6 +40,7 @@ interface State {
   view: View;
 
   responseDelay: number;
+  burnDuration: number;
   steps: number;
   seed: number;
   nSeeds: number;
@@ -51,6 +53,7 @@ interface State {
   simStale: boolean;
   policy: PolicyKey;
   step: number;
+  playbackRun: number;
   playing: boolean;
   speed: number;
 
@@ -71,7 +74,7 @@ interface State {
   loadActions: (scenario?: string) => Promise<void>;
   select: (id: string | null) => void;
   setView: (v: View) => void;
-  setParam: (k: "responseDelay" | "steps", v: number) => void;
+  setParam: (k: "responseDelay" | "burnDuration" | "steps", v: number) => void;
   setOverride: (id: string, o: IncidentOverride) => void;
   resetOverride: (id: string) => void;
   setPickingIgnition: (v: boolean) => void;
@@ -84,6 +87,7 @@ interface State {
   setReportTab: (tab: "prediction" | "recommendation") => void;
   closeReport: () => void;
   setPolicy: (p: PolicyKey) => void;
+  replay: () => void;
   setStep: (s: number) => void;
   setPlaying: (v: boolean) => void;
   setSpeed: (v: number) => void;
@@ -111,7 +115,8 @@ export const useStore = create<State>((set, get) => ({
   predictionErrors: {},
   selectedId: null,
   view: "earth",
-  responseDelay: 4,
+  responseDelay: 1,
+  burnDuration: 8,
   steps: 48,
   seed: 7,
   nSeeds: 30,
@@ -123,6 +128,7 @@ export const useStore = create<State>((set, get) => ({
   simStale: false,
   policy: "ai_priority",
   step: 0,
+  playbackRun: 0,
   playing: false,
   speed: 1,
   actions: [],
@@ -223,15 +229,16 @@ export const useStore = create<State>((set, get) => ({
     try {
       const sim = await api.simulate({
         scenario_id: s.data.scenario.id,
-        teams: TEAMS,
+        teams: opts?.coordinator !== undefined ? TEAMS : SIMULATION_TEAMS,
         response_delay: s.responseDelay,
+        burn_duration_steps: s.burnDuration,
         steps: s.steps,
         seed: s.seed,
         n_seeds: s.nSeeds,
         per_incident: s.overrides,
         ...(opts?.coordinator !== undefined ? { coordinator_assignment: opts.coordinator } : {}),
       });
-      const policy: PolicyKey = sim.policies.coordinator ? "coordinator" : get().policy === "coordinator" ? "ai_priority" : get().policy;
+      const policy: PolicyKey = sim.teams === 1 && sim.policies.coordinator ? "coordinator" : get().policy === "coordinator" ? "ai_priority" : get().policy;
       set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy });
       // a user-run response test ends with the Prediction Report for the selected (or top-ranked) incident
       if (opts?.openReport ?? opts?.autoplay ?? true) {
@@ -249,11 +256,16 @@ export const useStore = create<State>((set, get) => ({
   watchConsequence: async (incidentId, action) => {
     const s = get();
     const crewHere = action === "ASSIGN_INSPECTION";
-    const elsewhere = s.data?.team.assigned_incident_id && s.data.team.assigned_incident_id !== incidentId ? s.data.team.assigned_incident_id : null;
+    const assignedId = s.data?.team.assigned_incident_id;
+    const elsewhere = assignedId && assignedId !== incidentId ? assignedId : null;
     set((st) => ({ report: { ...st.report, open: false }, view: "sim", selectedId: incidentId, pickingIgnition: false,
       consequence: { incidentId, action, crewHere } }));
     await get().runSimulation({ autoplay: true, openReport: false, coordinator: crewHere ? incidentId : elsewhere });
-    if (get().sim) set({ policy: crewHere || elsewhere ? "coordinator" : "none", step: 0, playing: true });
+    const sim = get().sim;
+    if (!get().simError && sim) set((st) => ({
+      policy: (crewHere || elsewhere) && sim.policies.coordinator ? "coordinator" : "none",
+      step: 0, playing: true, playbackRun: st.playbackRun + 1,
+    }));
   },
   clearConsequence: () => set({ consequence: null }),
   report: { open: false, loading: false, incidentId: null, data: null, error: null, tab: "prediction" },
@@ -275,7 +287,12 @@ export const useStore = create<State>((set, get) => ({
   },
   setReportTab: (tab) => set((st) => ({ report: { ...st.report, tab } })),
   closeReport: () => set((st) => ({ report: { ...st.report, open: false } })),
-  setPolicy: (p) => set({ policy: p, step: 0, playing: true }),
+  setPolicy: (p) => set(s => ({
+    policy: p, step: 0, playing: true, pickingIgnition: false,
+    playbackRun: s.playbackRun + 1,
+    selectedId: s.sim?.policies[p]?.assigned[0] ?? s.selectedId,
+  })),
+  replay: () => set(s => ({ step: 0, playing: true, playbackRun: s.playbackRun + 1 })),
   setStep: (step) => set({ step }),
   setPlaying: (playing) => {
     const s = get();

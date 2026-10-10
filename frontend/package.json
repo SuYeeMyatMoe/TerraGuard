@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint",
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test tests/*.test.cjs tests/*.test.mjs"
   },
   "dependencies": {
+    "@dgreenheck/ez-tree": "^1.1.0",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
     "@vis.gl/react-google-maps": "^1.5.5",

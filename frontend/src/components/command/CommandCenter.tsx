@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { ControlsPanel } from "./ControlsPanel";
 import { DecisionPanel } from "./DecisionPanel";
@@ -10,12 +10,16 @@ import { IntelligencePanel } from "./IntelligencePanel";
 import { DecisionRecord } from "./DecisionRecord";
 import { MethodologyDrawer } from "./MethodologyDrawer";
 import { ConsequenceBanner, ReportCanvas } from "./ReportCanvas";
-import { FieldBriefModal, MapControls, Toasts } from "./Overlays";
-import { StatCards } from "./StatCards";
+import { FieldBriefModal, Toasts } from "./Overlays";
+import { IncidentRoster } from "./IncidentRoster";
 import { Timeline } from "./Timeline";
 import { TopBar } from "./TopBar";
+import { RecPill } from "@/components/ui";
+import { pct, shortId } from "@/lib/format";
+import "./studio.css";
+import "./mainSync.css";
 
-const ForestCanvas = dynamic(() => import("@/components/scene/ForestCanvas"), { ssr: false });
+const ForestStudio = dynamic(() => import("@/components/scene/ForestStudio").then(m => m.ForestStudio), { ssr: false });
 const EarthView = dynamic(() => import("./EarthView").then((m) => m.EarthView), { ssr: false });
 
 export function CommandCenter() {
@@ -24,17 +28,34 @@ export function CommandCenter() {
   const loadError = useStore((s) => s.loadError);
   const view = useStore((s) => s.view);
   const sim = useStore((s) => s.sim);
-  const simLoading = useStore((s) => s.simLoading);
   const started = useRef(false);
+  const [leftTab, setLeftTab] = useState<"incidents" | "conditions">("incidents");
+  const [rightTab, setRightTab] = useState<"decision" | "evidence">("decision");
+  const [expanded, setExpanded] = useState(false);
+  const selectedId = useStore(s => s.selectedId);
+  const predictions = useStore(s => s.predictions);
+  const prediction = selectedId ? predictions[selectedId] : undefined;
+
+  useEffect(() => {
+    if (!expanded) return;
+    const exit = (event: KeyboardEvent) => { if (event.key === "Escape") setExpanded(false); };
+    window.addEventListener("keydown", exit);
+    return () => window.removeEventListener("keydown", exit);
+  }, [expanded]);
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
     const q = new URLSearchParams(window.location.search);
-    if (q.get("view") === "sim") useStore.getState().setView("sim");
+    useStore.getState().setView(q.get("view") === "earth" ? "earth" : "sim");
     load(q.get("scenario") ?? undefined).then(() => {
       const sel = q.get("incident");
       if (sel) useStore.getState().select(sel);
+      else {
+        const store = useStore.getState();
+        const first = Object.values(store.predictions).sort((a, b) => a.priority.rank - b.priority.rank)[0];
+        if (first) store.select(first.incident_id);
+      }
     });
   }, [load]);
 
@@ -50,27 +71,15 @@ export function CommandCenter() {
       useStore.setState({
         playing: false,
         ...(Number.isFinite(st) ? { step: st } : {}),
-        ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" || pol === "coordinator" ? { policy: pol } : {}),
+        ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" || (pol === "coordinator" && sim.teams === 1) ? { policy: pol } : {}),
       });
   }, [sim]);
 
   return (
-    <div className="command-shell flex h-dvh flex-col overflow-hidden bg-[var(--bg)]">
+    <div className={`forest-command ${view === "sim" ? "studio-mode" : "map-mode"}`}>
       <TopBar />
-      <main className="command-main relative flex min-h-0 flex-1 flex-col overflow-y-auto lg:block lg:overflow-hidden">
-        <div className="command-viewport relative min-h-[320px] shrink-0 overflow-hidden lg:absolute lg:inset-0 lg:min-h-0">
-        {/* main view: the 3D canvas stays mounted so switching back is instant */}
-        <div className={`absolute inset-0 ${view === "sim" ? "visible" : "invisible"}`} aria-hidden={view !== "sim"}>
-          <ForestCanvas />
-          {simLoading && !sim && (
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="panel flex items-center gap-2.5 px-4 py-3 text-[13px] font-semibold">
-                <Loader2 size={16} className="animate-spin text-[var(--blue)]" /> Preparing the response test…
-              </div>
-            </div>
-          )}
-        </div>
-        {view === "earth" && <EarthView />}
+      <main className="studio-main">
+        {view === "earth" && <div className="studio-earth-viewport"><EarthView /></div>}
 
         {loadError && (
           <div className="absolute inset-0 z-20 grid place-items-center bg-[var(--bg)]/80">
@@ -85,56 +94,30 @@ export function CommandCenter() {
           </div>
         )}
 
-        {/* camera controls */}
-        {view === "sim" && (
-          <div className="absolute right-3 top-3 z-10 lg:right-[412px] lg:top-4">
-            <MapControls />
-          </div>
-        )}
-
-        </div>
-
-        {/* left: controls (3D only) */}
-        {view === "sim" && (
-          <div className="order-2 mx-3 my-3 flex lg:pointer-events-none lg:absolute lg:bottom-[156px] lg:left-4 lg:top-4 lg:z-10 lg:m-0">
-            <div className="pointer-events-auto flex w-full max-h-full lg:w-auto">
-              <ControlsPanel />
+        {view === "sim" ? <div className={`studio-workspace ${expanded ? "studio-expanded" : ""}`}>
+          <aside className="studio-conditions" aria-label="Incidents and conditions">
+            <div className="studio-tabs" aria-label="Left panel">
+              <button aria-pressed={leftTab === "incidents"} onClick={() => setLeftTab("incidents")}>Incidents</button>
+              <button aria-pressed={leftTab === "conditions"} onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Test conditions</button>
             </div>
-          </div>
-        )}
-
-        {/* top: stat cards (3D only) */}
-        {view === "sim" && (
-          <div className="pointer-events-none absolute left-[332px] right-[468px] top-4 z-10 hidden justify-start xl:flex">
-            <div className="pointer-events-auto">
-              <StatCards />
+            <div hidden={leftTab !== "incidents"}><IncidentRoster/></div>
+            <div className="studio-control-content" hidden={leftTab !== "conditions"}><ControlsPanel/></div>
+            <div className="studio-workflow-note"><span>01 / COMPARE THE INCIDENTS</span><p>{sim?.teams === 1 ? "Preview the decision with one shared crew. Select an incident to review its response." : "Watch a dedicated crew respond to each of A, B and C. Select an incident to review its evidence and live response."}</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
+          </aside>
+          <div className="studio-center"><ForestStudio expanded={expanded} onExpand={() => setExpanded(!expanded)}/><div className="studio-timeline"><Timeline/></div></div>
+          <aside className="studio-intelligence" aria-label="Recommendations and decision">
+            <div className="studio-tabs" aria-label="Right panel">
+              <button aria-pressed={rightTab === "decision"} onClick={() => setRightTab("decision")}>Decision & comparison</button>
+              <button aria-pressed={rightTab === "evidence"} onClick={() => setRightTab("evidence")}>Evidence</button>
             </div>
-          </div>
-        )}
-
-        {/* right column: intelligence + decision */}
-        <div className="order-3 mx-3 mb-4 mt-3 flex min-w-0 flex-col gap-3 lg:pointer-events-none lg:absolute lg:bottom-4 lg:right-4 lg:top-4 lg:z-10 lg:m-0 lg:w-[380px]">
-          <div className="pointer-events-auto flex max-h-[75dvh] min-h-[320px] flex-1 flex-col lg:max-h-none lg:min-h-[240px]">
-            <IntelligencePanel />
-          </div>
-          <div className="pointer-events-auto">
-            <DecisionPanel />
-          </div>
-        </div>
-
-        {/* bottom timeline (3D only) */}
-        {view === "sim" && (
-          <div className="order-1 mx-3 mt-3 lg:absolute lg:bottom-4 lg:left-4 lg:right-[412px] lg:z-10 lg:m-0">
-            <Timeline />
-          </div>
-        )}
-
+            <div className="studio-decision-content" hidden={rightTab !== "decision"}>
+              {prediction && <section className="studio-recommendation"><div className="eyebrow">RECOMMENDATION · {shortId(prediction.incident_id)}</div><div className="studio-rec-score"><strong>{pct(prediction.probability)}</strong><RecPill rec={prediction.priority.recommendation}/></div><p className="studio-rec-caption">Probability of a 48 h follow-up detection</p><p>{prediction.priority.reason}</p><button onClick={() => setRightTab("evidence")}>Review evidence →</button></section>}
+              <DecisionPanel/>
+            </div>
+            <div className="studio-detail" hidden={rightTab !== "evidence"}><IntelligencePanel/></div>
+          </aside>
+        </div> : <div className="map-intelligence"><IntelligencePanel/><DecisionPanel/></div>}
         <ConsequenceBanner />
-        {view === "sim" && sim && (
-          <div className="order-4 px-4 pb-4 text-center text-[11px] font-medium text-[var(--ink-3)] lg:pointer-events-none lg:absolute lg:bottom-[160px] lg:left-1/2 lg:z-[5] lg:-translate-x-1/2 lg:p-0">
-            Hypothetical scenario on procedurally generated plots · not a reconstruction of the real sites
-          </div>
-        )}
       </main>
       <Toasts />
       <FieldBriefModal />

@@ -488,6 +488,7 @@ export interface SimulateRequest {
   scenario_id?: string;
   teams: number;
   response_delay: number;
+  burn_duration_steps?: number;
   steps: number;
   seed: number;
   n_seeds: number;

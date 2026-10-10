@@ -170,7 +170,7 @@ test("API uses the selected historical window and handles no-selection status", 
   assert.deepEqual(urls, ["/api/earth-engine/INC%2FA?days=60", "/api/earth-engine", "/api/earth-engine/A?days=14&refresh=true"]);
 });
 
-test("imagery panel distinguishes missing data from numeric vegetation evidence", () => {
+test("true-colour imagery panel shows clear coverage without the removed NDVI controls", () => {
   const { renderToStaticMarkup } = require("react-dom/server");
   const { createElement } = require("react");
   const { EarthEnginePanel } = loadModule("src/components/command/EarthEnginePanel.tsx");
@@ -179,16 +179,16 @@ test("imagery panel distinguishes missing data from numeric vegetation evidence"
     loading: false, error: null, data: { status: "ready", analysis: { scene_count: 2, ndvi_mean: -0.3,
       valid_coverage_pct: 42, acquisition_start: "2025-07-01", acquisition_end: "2025-07-28" } },
   }}));
-  assert.match(ready, /-0\.30/);
-  assert.match(ready, /42\.0/);
-  assert.match(ready, /Limited clear coverage/);
+  assert.match(ready, /42%/);
+  assert.match(ready, /Clear view · 1 km/);
+  assert.match(ready, /2025-07-01/);
   assert.match(ready, /Satellite opacity/);
-  assert.match(ready, /0–0\.2 · low NDVI/);
-  assert.match(ready, /Gray gaps have no clear observations/);
+  assert.doesNotMatch(ready, /Mean NDVI|low NDVI|Imagery layer/);
   const empty = renderToStaticMarkup(createElement(EarthEnginePanel, { ...props, state: {
     loading: false, error: null, data: { status: "no_data", reason: "No clear satellite pixels", analysis: { ndvi_mean: null, valid_coverage_pct: 0 } },
   }}));
-  assert.match(empty, /No clear satellite pixels/);
+  assert.match(empty, /Basemap only/);
+  assert.match(empty, /Retry loading satellite imagery/);
   assert.doesNotMatch(empty, /Mean NDVI|Connected/);
 });
 
@@ -227,16 +227,16 @@ test('comparison readiness requires matching cameras and a frame for the current
   assert.notEqual(cameraKey(camera(113)),cameraKey(camera(112)));
 });
 
-test('overview hides incident statistics and comparison exposes independent retrospective dates', () => {
+test('overview hides incident statistics and shows only pre-incident acquisition dates', () => {
   const {renderToStaticMarkup}=require('react-dom/server');
   const {createElement}=require('react');
   const {EarthEnginePanel}=loadModule('src/components/command/EarthEnginePanel.tsx');
   const analysis={scene_count:2,ndvi_mean:.5,valid_coverage_pct:80,acquisition_start:'2025-07-01',acquisition_end:'2025-07-28'};
   const props={layer:'rgb',setLayer(){},days:30,setDays(){},opacity:1,setOpacity(){},retry(){},tileError:false,mode:'compare',overview:true,state:{loading:false,error:null,data:{status:'ready',analysis,display:analysis,comparison:{status:'ready',analysis,display:{...analysis,acquisition_start:'2025-08-03',acquisition_end:'2025-08-28'},window:{start:'2025-07-29',end:'2025-08-28'}}}}};
   const html=renderToStaticMarkup(createElement(EarthEnginePanel,props));
-  assert.match(html,/2025-08-03/);
-  assert.match(html,/retrospective/);
-  assert.match(html,/Never used for the incident prediction/);
+  assert.match(html,/2025-07-01/);
+  assert.doesNotMatch(html,/2025-08-03|retrospective|Clear view · 1 km/);
+  assert.match(html,/Scenes/);
   assert.doesNotMatch(html,/Mean NDVI|1 km mean NDVI/);
 });
 
@@ -244,10 +244,10 @@ test('a failed tile keeps available acquisition dates and valid analysis visible
   const {renderToStaticMarkup}=require('react-dom/server');const {createElement}=require('react');
   const {EarthEnginePanel}=loadModule('src/components/command/EarthEnginePanel.tsx');
   const html=renderToStaticMarkup(createElement(EarthEnginePanel,{layer:'rgb',setLayer(){},days:30,setDays(){},opacity:1,setOpacity(){},retry(){},tileError:true,state:{loading:false,error:null,data:{status:'ready',analysis:{scene_count:2,ndvi_mean:.5,valid_coverage_pct:80,acquisition_start:'2025-07-01',acquisition_end:'2025-07-28'}}}}));
-  assert.match(html,/Satellite tiles could not load/);assert.match(html,/2025-07-01/);assert.match(html,/Mean NDVI/);
+  assert.match(html,/title="Some satellite tiles could not load\./);assert.match(html,/2025-07-01/);assert.match(html,/80%/);assert.match(html,/Basemap only/);assert.match(html,/Retry loading satellite imagery/);
 });
 
-test('automatic panel removes the extra analysis step and explains control-triggered loading', () => {
+test('automatic panel offers the period selector without the removed analysis step', () => {
   const { renderToStaticMarkup } = require('react-dom/server');
   const { createElement } = require('react');
   const { EarthEnginePanel } = loadModule('src/components/command/EarthEnginePanel.tsx');
@@ -257,7 +257,9 @@ test('automatic panel removes the extra analysis step and explains control-trigg
     setMode() {}, retry() {}, tileError: false,
   }));
   assert.doesNotMatch(html, /Analyze this view/);
-  assert.match(html, /loads automatically/);
+  assert.match(html, /Imagery period/);
+  assert.match(html, /14 days/);
+  assert.match(html, /Satellite context only, not live fire detection/);
 });
 
 test("map layers can change while tiles are pending and stale style listeners are removed", () => {

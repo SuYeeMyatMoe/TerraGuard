@@ -154,3 +154,48 @@ test("actions API encodes replay and archive inclusion; omitted resource count d
   assert.equal(body.teams, 1);
   assert.equal(body.reason, "Review");
 });
+
+
+test("ABC comparisons keep three crews while a decision consequence uses one crew", async () => {
+  const requests = [];
+  const store = makeStore({ simulate: async request => {
+    requests.push(request);
+    return { teams: request.teams, ai_order: ["I1"], policies: { ai_priority: {}, none: {}, coordinator: request.coordinator_assignment ? {} : undefined } };
+  } });
+  store.setState({ data: { scenario: { id: "S1" }, incidents: [], team: { assigned_incident_id: null } } });
+  await store.getState().runSimulation({ autoplay: false });
+  assert.equal(requests[0].teams, 3);
+  assert.equal("coordinator_assignment" in requests[0], false);
+  await store.getState().watchConsequence("I1", "ASSIGN_INSPECTION");
+  assert.equal(requests[1].teams, 1);
+  assert.equal(requests[1].coordinator_assignment, "I1");
+  assert.equal(store.getState().policy, "coordinator");
+  assert.equal(store.getState().selectedId, "I1");
+  assert.equal(store.getState().playbackRun, 1);
+  await store.getState().runSimulation({ autoplay: false });
+  assert.equal(requests[2].teams, 3);
+  assert.equal(store.getState().policy, "ai_priority");
+});
+
+test("a consequence without a crew uses the no-intervention policy", async () => {
+  let request;
+  const store = makeStore({ simulate: async input => {
+    request = input;
+    return { teams: 1, ai_order: [], policies: { ai_priority: {}, none: {} } };
+  } });
+  store.setState({ data: { scenario: { id: "S1" }, incidents: [], team: { assigned_incident_id: null } } });
+  await store.getState().watchConsequence("I1", "DISMISS");
+  assert.equal(request.teams, 1);
+  assert.equal(request.coordinator_assignment, null);
+  assert.equal(store.getState().policy, "none");
+});
+
+test("a failed consequence request does not resume an old simulation", async () => {
+  const store = makeStore({ simulate: async () => { throw new ApiError(503, "Simulation unavailable"); } });
+  store.setState({ data: { scenario: { id: "S1" }, incidents: [], team: { assigned_incident_id: null } },
+    sim: { teams: 3, ai_order: [], policies: {} }, step: 7, playing: true });
+  await store.getState().watchConsequence("I1", "DISMISS");
+  assert.equal(store.getState().playing, false);
+  assert.equal(store.getState().step, 7);
+  assert.equal(store.getState().simError, "Simulation unavailable");
+});

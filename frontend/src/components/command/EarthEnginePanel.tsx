@@ -117,13 +117,13 @@ export function EarthEnginePanel({
           <div className="truncate text-[11px] text-[var(--ink-3)]">{subtitle}</div>
         </div>
         <span
-          className={`hidden shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-2 text-[10.5px] font-bold lg:inline-flex ${chip.cls} ${!ready && !state.loading ? "pr-0.5" : "pr-2"}`}
+          className={`hidden shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-2 text-[10.5px] font-bold lg:inline-flex ${chip.cls} ${(!ready || !!problem) && !state.loading ? "pr-0.5" : "pr-2"}`}
           title={problem ?? undefined}
           role="status"
         >
           {state.loading ? <Loader2 size={10} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />}
           {chip.text}
-          {!ready && !state.loading && (
+          {(!ready || !!problem) && !state.loading && (
             <button
               type="button"
               onClick={retry}

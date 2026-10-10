@@ -81,7 +81,8 @@ test('period resources load automatically and global panning or layer switches n
   assert.equal(view.calls[0].signal.aborted, false);
   view.map().onViewport([46.4, 24.4, 47, 25]); await view.flush();
   assert.equal(view.calls.length, 1, 'panning must not start another analysis');
-  view.panel().setMode('compare'); await view.flush();
+  assert.equal(view.panel().mode, 'context', 'Earth View displays the pre-incident period');
+  assert.equal(view.panel().setMode, undefined, 'comparison is no longer a UI control');
   assert.equal(view.calls.length, 1);
   assert.equal(view.calls[0].mode, 'compare');
   assert.equal(view.calls[0].background, true);
@@ -113,7 +114,8 @@ test('world-scale viewing keeps the same on-demand period resources', async () =
   assert.equal(view.panel().analysisError, undefined);
   view.map().onViewport([-180, -70, 180, 70]); await view.flush();
   assert.equal(view.calls.length, 1);
-  view.panel().setMode('compare'); await view.flush();
+  assert.equal(view.panel().mode, 'context', 'Earth View displays the pre-incident period');
+  assert.equal(view.panel().setMode, undefined, 'comparison is no longer a UI control');
   assert.equal(view.calls.length, 1);
   assert.equal(view.panel().analysisError, undefined);
 });
