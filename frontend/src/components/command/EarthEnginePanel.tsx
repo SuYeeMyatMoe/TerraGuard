@@ -235,13 +235,18 @@ export function EarthEnginePanel({
                 className="h-2 rounded-full"
                 style={{
                   background:
-                    "linear-gradient(to right,#2563eb,#e8dfb2,#a3cb68,#176b35)",
+                    "linear-gradient(to right,#2563eb 0%,#517ba2 10%,#7b8c9a 20%,#a4a4a0 30%,#c2bdb0 40%,#d6c7a1 50%,#c3ac78 60%,#a3cb68 70%,#5aa23c 80%,#23762f 90%,#0d5429 100%)",
                 }}
               />
               <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-                <span>−1 · lower NDVI</span>
-                <span>+1 · higher NDVI</span>
+                <span>−1</span>
+                <span>0–0.2 · low NDVI</span>
+                <span>+1</span>
               </div>
+              <p className="mt-2 text-[10px] text-[var(--ink-2)]">
+                Sand tones: low NDVI; green: higher NDVI. This is a continuous
+                index, not a land-cover classification. Transparent gaps show the basemap, not NDVI.
+              </p>
             </div>
           )}
           <label className="flex items-center justify-between gap-3">

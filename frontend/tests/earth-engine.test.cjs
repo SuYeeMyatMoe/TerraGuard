@@ -157,6 +157,8 @@ test("imagery panel distinguishes missing data from numeric vegetation evidence"
   assert.match(ready, /42\.0/);
   assert.match(ready, /Limited clear coverage/);
   assert.match(ready, /Satellite opacity/);
+  assert.match(ready, /0–0\.2 · low NDVI/);
+  assert.match(ready, /Transparent gaps show the basemap, not NDVI/);
   const empty = renderToStaticMarkup(createElement(EarthEnginePanel, { ...props, state: {
     loading: false, error: null, data: { status: "no_data", reason: "No clear satellite pixels", analysis: { ndvi_mean: null, valid_coverage_pct: 0 } },
   }}));

@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import pytest
 
 INCIDENT = dict(id="INC-test", lat=3.5, lon=113.0, observed_at="2025-07-29T05:30:00Z")
@@ -177,6 +178,19 @@ def test_real_sdk_graph_masks_clouds_and_reports_empty_pixels(module, monkeypatc
         assert '"scale": {"constantValue": 20}' in computations[-1]
         assert len(result["tiles"]) == 2
         assert len(maps) == 2
+        # Check the real map's color ramp, not the raw NDVI calculation: bare
+        # soil values must stay neutral rather than looking like vegetation.
+        visualization = next(v['functionInvocationValue']['arguments']
+                             for v in json.loads(maps[1])['values'].values()
+                             if v.get('functionInvocationValue', {}).get('functionName') == 'Image.visualize')
+        colors = visualization['palette']['constantValue']
+        low, high = (visualization[k]['constantValue'] for k in ('min', 'max'))
+        for value in (0, 0.1, 0.2, 0.6):
+            position = (value - low) / (high - low) * (len(colors) - 1)
+            index, fraction = int(position), position % 1
+            left, right = (bytes.fromhex(colors[i].lstrip('#')) for i in (index, index + 1))
+            red, green, _ = [a * (1 - fraction) + b * fraction for a, b in zip(left, right)]
+            assert (green <= red) if value <= 0.2 else (green > red), f'Misleading NDVI color at {value}'
     finally:
         ee.Reset()
 

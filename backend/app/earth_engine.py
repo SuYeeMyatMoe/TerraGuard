@@ -19,6 +19,10 @@ SENTINEL = "COPERNICUS/S2_SR_HARMONIZED"
 CLOUD_SCORE = "GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED"
 ATTRIBUTION = "Contains modified Copernicus Sentinel data · ESA · Google Earth Engine"
 STUDY_BOUNDS = [95.0, -4.5, 119.5, 7.5]
+# Equal 0.2 NDVI steps from -1 to +1. Keep 0–0.2 soil-like values
+# sandy/neutral; the former four-color ramp already looked green at zero.
+NDVI_PALETTE = ["#2563eb", "#517ba2", "#7b8c9a", "#a4a4a0", "#c2bdb0",
+                "#d6c7a1", "#c3ac78", "#a3cb68", "#5aa23c", "#23762f", "#0d5429"]
 
 
 def iso(value: datetime) -> str:
@@ -108,7 +112,7 @@ class EarthEngineProvider:
         rgb = display_collection.select(["B4", "B3", "B2"]).median().clip(display)
         ndvi = ndvi_composite(display_collection).clip(display)
         visualizations = {"rgb": (rgb, {"bands": ["B4", "B3", "B2"], "min": 0, "max": 3000}),
-                          "ndvi": (ndvi, {"min": -1, "max": 1, "palette": ["#2563eb", "#e8dfb2", "#a3cb68", "#176b35"]})}
+                          "ndvi": (ndvi, {"min": -1, "max": 1, "palette": NDVI_PALETTE})}
         for layer, (image, params) in visualizations.items():
             result["tiles"][layer] = image.getMapId(params)["tile_fetcher"].url_format
         return result
