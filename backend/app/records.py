@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -35,6 +36,8 @@ DB_PATH = DATA_DIR / "terraguard.db"
 STATUS_TEXT = {
     "ASSIGN_INSPECTION": "Crew assigned",
     "REQUEST_RECHECK": "Recheck requested",
+    "CONTINUE_MONITORING": "Monitoring",
+    "ESCALATE_COORDINATION": "Coordination requested",
     "DISMISS": "Dismissed",
 }
 WAITING_STATUS = "Unattended — waiting"
@@ -79,7 +82,8 @@ class SqliteStore:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 scenario_id TEXT NOT NULL,
                 incident_id TEXT NOT NULL,
-                action TEXT NOT NULL CHECK (action IN ('ASSIGN_INSPECTION','REQUEST_RECHECK','DISMISS')),
+                action TEXT NOT NULL CHECK (action IN ('ASSIGN_INSPECTION','REQUEST_RECHECK','DISMISS',
+                                                       'CONTINUE_MONITORING','ESCALATE_COORDINATION')),
                 reason TEXT,
                 recommendation_at_time TEXT,
                 created_at TEXT NOT NULL
@@ -99,6 +103,16 @@ class SqliteStore:
                 archived_at TEXT
             );
             """)
+            sql = c.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='actions'").fetchone()[0]
+            # migrate older databases whose CHECK lacks the new actions (rows preserved)
+            if "'DISMISS')" in sql and "CONTINUE_MONITORING" not in sql:
+                new_sql = sql.replace("'DISMISS')", "'DISMISS','CONTINUE_MONITORING','ESCALATE_COORDINATION')", 1)
+                new_sql = re.sub(r'CREATE TABLE\s+"?actions"?', "CREATE TABLE actions_new", new_sql, count=1)
+                c.execute("PRAGMA foreign_keys=OFF")
+                c.execute(new_sql)
+                c.execute("INSERT INTO actions_new SELECT * FROM actions")
+                c.execute("DROP TABLE actions")
+                c.execute("ALTER TABLE actions_new RENAME TO actions")
             have = {r["name"] for r in c.execute("PRAGMA table_info(actions)")}
             extra = {"teams": "INTEGER", "team_name": "TEXT", "priority_rank": "INTEGER", "priority_score": "REAL", "probability": "REAL",
                      "followed_recommendation": "INTEGER", "reassigned_from": "TEXT", "left_waiting": "TEXT",

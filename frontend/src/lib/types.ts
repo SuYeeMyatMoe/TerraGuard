@@ -3,7 +3,7 @@ import type { FeatureCollection } from "geojson";
 // Mirrors backend/app/schemas.py — keep in sync.
 
 export type Recommendation = "INSPECT" | "RECHECK" | "MONITOR";
-export type ActionType = "ASSIGN_INSPECTION" | "REQUEST_RECHECK" | "DISMISS";
+export type ActionType = "ASSIGN_INSPECTION" | "REQUEST_RECHECK" | "DISMISS" | "CONTINUE_MONITORING" | "ESCALATE_COORDINATION";
 export type PolicyKey = "none" | "first_alert" | "ai_priority" | "coordinator";
 export type Attendance = "assigned" | "unattended" | "recheck" | "dismissed" | "open";
 export type RecordBackend = "supabase" | "sqlite" | "sqlite_fallback";
@@ -112,6 +112,9 @@ export interface Prediction {
   calibration_note: { band: string; observed_rate: number; n: number; text: string } | null;
   decision_summary: string;
   urgency: Urgency;
+  heat_signal?: HeatSignal;
+  anomaly?: AnomalyAssessment;
+  feasibility?: Feasibility;
   explained_factors: ExplainedFactor[];
   ranking_explanation: RankingExplanation;
   confidence_guidance: EvidenceGap[];
@@ -151,8 +154,111 @@ export type UrgencyTier = "CRITICAL_REVIEW" | "PRIORITY_REVIEW" | "ROUTINE_MONIT
 export interface Urgency {
   tier: UrgencyTier;
   label: string;
+  meaning?: string;
+  review_window?: string;
+  review_window_note?: string;
   reasons: string[];
   rule_based: boolean;
+}
+
+export interface HeatSignal {
+  level: "Strong" | "Moderate" | "Weak";
+  reasons: string[];
+  note: string;
+}
+
+export interface AnomalyAssessment {
+  pattern: string;
+  label: string;
+  meaning: string;
+  anomaly_score: number | null;
+  anomaly_percentile: number | null;
+  unusual: boolean;
+  proof: string[];
+  requires_verification: boolean;
+  disclaimer: string;
+}
+
+export interface Feasibility {
+  status: "FEASIBLE" | "REQUIRES_COORDINATION" | "UNKNOWN" | "UNAVAILABLE";
+  label: string;
+  straight_line_km: number;
+  distance_label: string;
+  crew_base: string;
+  crew_base_jurisdiction: string;
+  incident_jurisdiction: string;
+  cross_border: boolean;
+  travel_time: null;
+  travel_note: string;
+  access_note: string;
+  reasons: string[];
+  actionable: boolean;
+}
+
+export type ReportAction = "SEND_CREW" | "ESCALATE" | "RECHECK" | "MONITOR";
+
+export interface MeanCI {
+  mean: number;
+  ci95: number;
+}
+
+export interface PredictionReport {
+  title: string;
+  incident: {
+    id: string; region: string; country: string; lat: number; lon: number; first_detected: string; satellite: string;
+    protected_area: { name: string; distance_km: number; boundary: string };
+    recent_detections: { previous_24h: string; previous_7d: string };
+    weather: Weather;
+  };
+  prediction: {
+    probability: number; threshold: number; above_threshold: boolean; risk_category: "Low" | "Medium" | "High"; risk_rule: string;
+    evidence_quality: "Strong" | "Moderate" | "Weak"; target: string;
+    calibration_note: { text: string } | null; tree_variation: { p10: number; p90: number; note: string };
+  };
+  anomaly: AnomalyAssessment;
+  heat_signal: HeatSignal;
+  proof: string[];
+  reliability: {
+    missing_weather: boolean; unusual_inputs: boolean; satellite_evidence: string; confidence_note: string;
+    noise: { available: boolean; samples?: number; perturbation?: string; range_5_95?: [number, number];
+      same_side_of_threshold?: number; stable?: boolean; text?: string };
+    limitations: EvidenceLimitation[];
+    improve_confidence: EvidenceGap[];
+  };
+  false_alarms: { precision: number; false_positive_rate: number; recall: number; threshold: number; n: number; period: string; text: string };
+  limits: string[];
+}
+
+export interface RecommendationReport {
+  title: string;
+  action: ReportAction;
+  action_label: string;
+  record_action: ActionType;
+  deterministic_recommendation: Recommendation;
+  urgency: Urgency;
+  urgency_table: { level: string; meaning: string; action: string; window: string }[];
+  why: string;
+  why_points: string[];
+  ranking: RankingExplanation;
+  feasibility: Feasibility;
+  consequences: {
+    under_response: string[];
+    over_response: string[];
+    simulation: {
+      crew_here: MeanCI; no_crew_here: MeanCI; difference_cells: number; runs: number; response_delay_steps: number;
+      crew_benefit_by_incident: { incident_id: string; label: string; cells: number }[];
+      tradeoff: string | null; note: string;
+    };
+  };
+  waiting: { incident_id: string; label: string; region: string; rank: number; probability: number; recommendation: Recommendation;
+    unattended_burned_cells: MeanCI; simulated_crew_benefit_cells: number }[];
+  options: { action: ReportAction; label: string; record: ActionType; recommended: boolean }[];
+}
+
+export interface IncidentReports {
+  incident_id: string;
+  prediction_report: PredictionReport;
+  recommendation_report: RecommendationReport;
 }
 
 export interface ExplainedFactor {

@@ -293,13 +293,45 @@ def limitations(codes: list[str], ood_names: list[str], corroborated: bool = Fal
 
 
 # ----------------------------------------------------------------------------- urgency (rule-based)
-URGENCY_LABEL = {"CRITICAL_REVIEW": "Critical review", "PRIORITY_REVIEW": "Priority review",
-                 "ROUTINE_MONITORING": "Routine monitoring", "INSUFFICIENT_EVIDENCE": "Insufficient evidence"}
+# Four practical levels. Codes are kept stable for the API; labels are what coordinators see.
+URGENCY_LABEL = {"CRITICAL_REVIEW": "Critical", "PRIORITY_REVIEW": "High",
+                 "INSUFFICIENT_EVIDENCE": "Moderate", "ROUTINE_MONITORING": "Low"}
+URGENCY_MEANING = {
+    "CRITICAL_REVIEW": "High risk with strong, corroborated evidence.",
+    "PRIORITY_REVIEW": "A concerning case that should be reviewed quickly.",
+    "INSUFFICIENT_EVIDENCE": "Needs verification or follow-up before a confident decision.",
+    "ROUTINE_MONITORING": "Lower evidence or lower priority under current capacity.",
+}
+URGENCY_WINDOW = {   # prototype administrative review targets, not official firefighting guidance
+    "CRITICAL_REVIEW": "Act now",
+    "PRIORITY_REVIEW": "Review within the next operational cycle",
+    "INSUFFICIENT_EVIDENCE": "Recheck after the next satellite observation",
+    "ROUTINE_MONITORING": "Continue monitoring",
+}
+
+
+def heat_signal(frp_rank: float | None, n_pixels: float, conf_h: float) -> dict:
+    """Satellite heat-signal level from recorded FRP (training percentile), pixels and confidence.
+
+    Describes the satellite signal only; it does not confirm an open flame on the ground.
+    """
+    reasons = []
+    if (frp_rank is not None and frp_rank >= 90) or (n_pixels >= 3 and conf_h >= 0.5):
+        level = "Strong"
+    elif (frp_rank is not None and frp_rank >= 50) or n_pixels >= 2:
+        level = "Moderate"
+    else:
+        level = "Weak"
+    if frp_rank is not None:
+        reasons.append(f"Strongest recorded heat output is above {frp_rank:.0f}% of comparable training detections.")
+    reasons.append(f"{int(n_pixels)} pixel{'s' if n_pixels != 1 else ''} detected; {conf_h * 100:.0f}% high confidence.")
+    return {"level": level, "reasons": reasons,
+            "note": "Satellite heat signal only; it does not confirm an open flame on the ground."}
 
 
 def urgency(rec: str, prob: float, threshold: float, hours_since: float, corroborated: bool, evidence_quality: str,
-            high_concerns: list[str] | None = None) -> dict:
-    """Operational urgency tier: separate from the probability and the priority score. No deadlines implied."""
+            high_concerns: list[str] | None = None, heat: str = "Weak", pattern_label: str | None = None) -> dict:
+    """Operational urgency: separate from the probability and the priority score. No official deadlines implied."""
     high_concerns = high_concerns or []
     above = prob >= threshold
     recent = hours_since <= 12
@@ -307,11 +339,12 @@ def urgency(rec: str, prob: float, threshold: float, hours_since: float, corrobo
     if rec == "RECHECK":
         tier = "INSUFFICIENT_EVIDENCE"
         reasons.append("Evidence is uncertain or unusual, so verification comes before a confident urgency level.")
-    elif rec == "INSPECT" and above and recent and corroborated and evidence_quality == "High" and not high_concerns:
+    elif (rec == "INSPECT" and above and recent and corroborated and not high_concerns
+          and (evidence_quality == "High" or heat == "Strong")):
         tier = "CRITICAL_REVIEW"
         reasons += ["Recommended for the available crew.", "Model estimate is above the validated alert threshold.",
-                    f"Detected {hours_since:.1f} hours before the review time.", "Supported by earlier or second-satellite detections.",
-                    "Evidence quality is high."]
+                    f"Detected {hours_since:.1f} hours before the review time.", "Supported by earlier or second-satellite detections."]
+        reasons.append("Strong satellite heat signal." if heat == "Strong" else "Evidence quality is high.")
     elif rec == "INSPECT" or above:
         tier = "PRIORITY_REVIEW"
         reasons.append("Recommended for the available crew." if rec == "INSPECT" else "Model estimate is above the validated alert threshold.")
@@ -321,14 +354,18 @@ def urgency(rec: str, prob: float, threshold: float, hours_since: float, corrobo
             reasons.append(f"Detected {hours_since:.1f} hours before the review time.")
         if not corroborated:
             reasons.append("No earlier or second-satellite detection nearby.")
-        if evidence_quality != "High":
-            reasons.append(f"Evidence quality is {evidence_quality.lower()}.")
+        if evidence_quality != "High" and heat != "Strong":
+            reasons.append(f"Evidence quality is {evidence_quality.lower()} and the heat signal is {heat.lower()}.")
         for hc in high_concerns:
             reasons.append(f"Open evidence concern: {hc[0].lower() + hc[1:]}.")
     else:
         tier = "ROUTINE_MONITORING"
         reasons += ["Model estimate is below the validated alert threshold.", "Not recommended for the crew under current capacity."]
-    return {"tier": tier, "label": URGENCY_LABEL[tier], "reasons": reasons, "rule_based": True}
+    if pattern_label and tier in ("ROUTINE_MONITORING", "PRIORITY_REVIEW") and pattern_label not in ("Normal isolated hotspot",):
+        reasons.append(f"Observation pattern: {pattern_label.lower()} (verification aid, not a finding).")
+    return {"tier": tier, "label": URGENCY_LABEL[tier], "meaning": URGENCY_MEANING[tier],
+            "review_window": URGENCY_WINDOW[tier], "review_window_note": "Prototype review target, not official firefighting guidance.",
+            "reasons": reasons, "rule_based": True}
 
 
 # ----------------------------------------------------------------------------- calibration note

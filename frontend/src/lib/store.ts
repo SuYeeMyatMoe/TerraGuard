@@ -10,6 +10,7 @@ import type {
   FieldBrief,
   IncidentBriefing,
   IncidentOverride,
+  IncidentReports,
   IncidentsResponse,
   PolicyKey,
   Prediction,
@@ -75,6 +76,10 @@ interface State {
   resetOverride: (id: string) => void;
   setPickingIgnition: (v: boolean) => void;
   runSimulation: (opts?: { autoplay?: boolean }) => Promise<void>;
+  report: { open: boolean; loading: boolean; incidentId: string | null; data: IncidentReports | null; error: string | null; tab: "prediction" | "recommendation" };
+  openReport: (incidentId?: string | null, tab?: "prediction" | "recommendation") => Promise<void>;
+  setReportTab: (tab: "prediction" | "recommendation") => void;
+  closeReport: () => void;
   setPolicy: (p: PolicyKey) => void;
   setStep: (s: number) => void;
   setPlaying: (v: boolean) => void;
@@ -224,11 +229,35 @@ export const useStore = create<State>((set, get) => ({
       });
       const policy: PolicyKey = sim.policies.coordinator ? "coordinator" : get().policy === "coordinator" ? "ai_priority" : get().policy;
       set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy });
+      // a user-run response test ends with the Prediction Report for the selected (or top-ranked) incident
+      if (opts?.autoplay ?? true) {
+        const target = get().selectedId ?? sim.ai_order[0] ?? null;
+        if (target) setTimeout(() => get().openReport(target, "prediction"), 1800);
+      }
     } catch (e) {
       set({ simLoading: false, simError: errMsg(e) });
       get().toast({ tone: "error", title: "Response test failed", body: errMsg(e) });
     }
   },
+  report: { open: false, loading: false, incidentId: null, data: null, error: null, tab: "prediction" },
+  openReport: async (incidentId, tab = "prediction") => {
+    const s = get();
+    const id = incidentId ?? s.selectedId ?? s.sim?.ai_order[0] ?? s.data?.incidents[0]?.id ?? null;
+    if (!id) return;
+    if (s.report.data?.incident_id === id && !s.simStale) {
+      set({ report: { ...s.report, open: true, tab } });
+      return;
+    }
+    set({ report: { open: true, loading: true, incidentId: id, data: null, error: null, tab } });
+    try {
+      const data = await api.reports(id, { response_delay: s.responseDelay, steps: s.steps, seed: s.seed, n_seeds: s.nSeeds, per_incident: s.overrides });
+      if (get().report.incidentId === id) set((st) => ({ report: { ...st.report, loading: false, data } }));
+    } catch (e) {
+      set((st) => ({ report: { ...st.report, loading: false, error: errMsg(e) } }));
+    }
+  },
+  setReportTab: (tab) => set((st) => ({ report: { ...st.report, tab } })),
+  closeReport: () => set((st) => ({ report: { ...st.report, open: false } })),
   setPolicy: (p) => set({ policy: p, step: 0, playing: true }),
   setStep: (step) => set({ step }),
   setPlaying: (playing) => {

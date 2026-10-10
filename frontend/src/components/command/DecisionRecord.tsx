@@ -11,6 +11,8 @@ const ACTION_TEXT: Record<string, string> = {
   ASSIGN_INSPECTION: "Crew sent",
   REQUEST_RECHECK: "Recheck requested",
   DISMISS: "Dismissed",
+  CONTINUE_MONITORING: "Monitoring",
+  ESCALATE_COORDINATION: "Coordination requested",
 };
 
 export function DecisionRecord() {

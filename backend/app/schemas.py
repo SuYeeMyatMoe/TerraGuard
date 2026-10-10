@@ -6,7 +6,7 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 Recommendation = Literal["INSPECT", "RECHECK", "MONITOR"]
-ActionType = Literal["ASSIGN_INSPECTION", "REQUEST_RECHECK", "DISMISS"]
+ActionType = Literal["ASSIGN_INSPECTION", "REQUEST_RECHECK", "DISMISS", "CONTINUE_MONITORING", "ESCALATE_COORDINATION"]
 Attendance = Literal["assigned", "unattended", "recheck", "dismissed", "open"]
 Policy = Literal["none", "first_alert", "ai_priority"]
 
@@ -161,8 +161,29 @@ class CalibrationNote(BaseModel):
 class Urgency(BaseModel):
     tier: Literal["CRITICAL_REVIEW", "PRIORITY_REVIEW", "ROUTINE_MONITORING", "INSUFFICIENT_EVIDENCE"]
     label: str
+    meaning: str = ""
+    review_window: str = ""
+    review_window_note: str = ""
     reasons: list[str]
     rule_based: bool = True
+
+
+class HeatSignal(BaseModel):
+    level: Literal["Strong", "Moderate", "Weak"]
+    reasons: list[str]
+    note: str
+
+
+class AnomalyAssessment(BaseModel):
+    pattern: str
+    label: str
+    meaning: str
+    anomaly_score: Optional[float] = None
+    anomaly_percentile: Optional[float] = None
+    unusual: bool
+    proof: list[str]
+    requires_verification: bool
+    disclaimer: str
 
 
 class FactorComparison(BaseModel):
@@ -218,6 +239,9 @@ class PredictResponse(BaseModel):
     calibration_note: Optional[CalibrationNote] = None
     decision_summary: str
     urgency: Urgency
+    heat_signal: HeatSignal
+    anomaly: AnomalyAssessment
+    feasibility: Optional[dict[str, Any]] = None
     explained_factors: list[ExplainedFactor]
     ranking_explanation: dict[str, Any]
     confidence_guidance: list[EvidenceGap]

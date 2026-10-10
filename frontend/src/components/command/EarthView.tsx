@@ -195,8 +195,8 @@ export function EarthView() {
         anchor={id}
         retry={retry}
       >
-        <details className="mt-3 border-t border-slate-200 pt-3">
-          <summary className="cursor-pointer text-xs font-bold">
+        <details className="border-b border-[var(--line-2)] py-2.5 last:border-0">
+          <summary className="cursor-pointer text-[12.5px] font-semibold text-[var(--ink)]">
             Go to a location
           </summary>
           <form
@@ -206,7 +206,7 @@ export function EarthView() {
               navigate();
             }}
           >
-            <label className="block text-[11px]">
+            <label className="block text-[11.5px] font-semibold text-[var(--ink-2)]">
               Latitude
               <input
                 aria-label="Latitude"
@@ -216,12 +216,12 @@ export function EarthView() {
                 max="85"
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value)}
-                className="mt-1 w-full rounded border px-2 py-1"
+                className="mt-1 h-8 w-full rounded-[8px] border border-[var(--line)] px-2.5 text-[12px] outline-none focus:border-[var(--blue)]"
                 placeholder="37.7749"
                 required
               />
             </label>
-            <label className="block text-[11px]">
+            <label className="block text-[11.5px] font-semibold text-[var(--ink-2)]">
               Longitude
               <input
                 aria-label="Longitude"
@@ -231,12 +231,12 @@ export function EarthView() {
                 max="180"
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value)}
-                className="mt-1 w-full rounded border px-2 py-1"
+                className="mt-1 h-8 w-full rounded-[8px] border border-[var(--line)] px-2.5 text-[12px] outline-none focus:border-[var(--blue)]"
                 placeholder="-122.4194"
                 required
               />
             </label>
-            <button className="rounded bg-blue-600 px-3 py-1.5 text-[11px] text-white">
+            <button className="btn btn-primary h-8 w-full px-3 text-[12px]">
               Go to coordinates
             </button>
           </form>
@@ -246,14 +246,14 @@ export function EarthView() {
             </p>
           )}
           <button
-            className="mt-2 text-[11px] text-blue-600"
+            className="mt-2 text-[11.5px] font-semibold text-[var(--blue)] hover:underline"
             onClick={() => setDestination({ center: [0, 20], zoom: 2 })}
           >
             World view
           </button>
         </details>
-        <details className="mt-3 border-t border-slate-200 pt-3" open>
-          <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-bold">
+        <details className="border-b border-[var(--line-2)] py-2.5 last:border-0" open>
+          <summary className="flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-[var(--ink)]">
             <Layers size={13} />
             Map layers
           </summary>
@@ -262,7 +262,7 @@ export function EarthView() {
               (k) => (
                 <label
                   key={k}
-                  className="flex items-center gap-1.5 text-[10px]"
+                  className="flex items-center gap-1.5 text-[11.5px] text-[var(--ink-2)]"
                 >
                   <input
                     type="checkbox"
@@ -278,8 +278,8 @@ export function EarthView() {
             )}
           </div>
         </details>
-        <details className="mt-3 border-t border-slate-200 pt-3">
-          <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-bold">
+        <details className="border-b border-[var(--line-2)] py-2.5 last:border-0">
+          <summary className="flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-[var(--ink)]">
             <Ruler size={13} />
             Measure distance / area
           </summary>
@@ -288,7 +288,7 @@ export function EarthView() {
               <button
                 key={kind}
                 aria-pressed={measurement.drawing && measurement.kind === kind}
-                className="rounded border px-3 py-1.5 text-[11px] aria-pressed:bg-blue-50"
+                className="btn btn-secondary h-8 flex-1 px-3 text-[12px] aria-pressed:border-[var(--blue)] aria-pressed:text-[var(--blue)]"
                 onClick={() => {
                   setMeasureError(null);
                   setMeasurement({ kind, points: [], drawing: true });
@@ -298,7 +298,7 @@ export function EarthView() {
               </button>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-slate-600">
+          <p className="mt-2 text-[11.5px] text-[var(--ink-2)]">
             {measurement.drawing
               ? "Click the map to add points, then finish."
               : "Choose a tool to draw on the map."}
@@ -310,7 +310,7 @@ export function EarthView() {
             <button
               disabled={!measurement.drawing}
               onClick={finish}
-              className="rounded bg-blue-600 px-2 py-1 text-white disabled:opacity-40"
+              className="btn btn-primary h-8 px-3 text-[12px]"
             >
               Finish
             </button>
@@ -324,7 +324,7 @@ export function EarthView() {
                   points: m.points.slice(0, -1),
                 }));
               }}
-              className="rounded border px-2 py-1 disabled:opacity-40"
+              className="btn btn-secondary h-8 px-3 text-[12px]"
             >
               Undo point
             </button>
@@ -333,7 +333,7 @@ export function EarthView() {
                 setMeasureError(null);
                 setMeasurement((m) => ({ ...m, points: [], drawing: false }));
               }}
-              className="rounded border px-2 py-1"
+              className="btn btn-secondary h-8 px-3 text-[12px]"
             >
               Clear
             </button>
@@ -343,7 +343,7 @@ export function EarthView() {
               {measureError}
             </p>
           )}
-          <p className="mt-2 text-[10px] text-slate-500">
+          <p className="mt-2 text-[10.5px] text-[var(--ink-3)]">
             Approximate geodesic measurement. Your drawn area is not a detected
             fire perimeter.
           </p>
@@ -386,7 +386,7 @@ export function EarthView() {
             hotspots · green: protected boundaries · blue ring: 1 km statistics. Cyan:
             crew base and allocation line · amber badge: waiting without a crew.
           </p>
-          <p className="mt-2 text-[10px] text-slate-500">
+          <p className="mt-2 text-[10.5px] text-[var(--ink-3)]">
             Global basemap: Esri World Imagery (mixed acquisition dates; not the
             replay date). Roads / places: OpenFreeMap / OpenStreetMap. Dated
             Sentinel-2 and NDVI: Earth Engine. Cloud gaps in the scientific

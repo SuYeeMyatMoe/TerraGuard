@@ -9,6 +9,7 @@ import type {
   GeoContext,
   Health,
   IncidentBriefing,
+  IncidentReports,
   IncidentsResponse,
   Prediction,
   RecordBackend,
@@ -108,6 +109,8 @@ export const api = {
       },
     );
   },
+  reports: (incident_id: string, req?: Partial<SimulateRequest>) =>
+    post<IncidentReports>(`/api/reports/${encodeURIComponent(incident_id)}`, req ?? {}, 90000),
   explain: (incident_id: string, teams: number, simulation?: unknown) =>
     post<AIResult<IncidentBriefing>>("/api/ai/explain", { incident_id, teams, simulation }, 70000),
   fieldBrief: (incident_id: string, teams: number, action_id?: number, stored_in?: string) =>

@@ -10,7 +10,7 @@ PKG = {"incident_id": "INC-1", "facts": [
     {"evidence_id": "RECOMMENDATION", "label": "Rec", "value": "INSPECT", "unit": None, "source": "x"},
     {"evidence_id": "EVID_QUALITY", "label": "Evidence", "value": "High", "unit": None, "source": "x"},
     {"evidence_id": "RANK_ORDER", "label": "Order", "value": "INC-20250723-A > INC-20250723-B", "unit": None, "source": "x"},
-    {"evidence_id": "URGENCY", "label": "Urgency", "value": "Priority review", "unit": None, "source": "x"},
+    {"evidence_id": "URGENCY", "label": "Urgency", "value": "High", "unit": None, "source": "x"},
 ]}
 
 
@@ -87,7 +87,7 @@ def test_wrong_ranking_claim_rejected():
 
 def test_unknown_incident_and_restated_urgency_rejected():
     b = _good()
-    b["why_priority"]["text"] = "Compared with INC-20250723-Z this is a critical review case."
+    b["why_priority"]["text"] = "Compared with INC-20250723-Z this case has critical urgency."
     ok, problems = validate_briefing(b, PKG, "INSPECT")
     assert ok is None
     assert any("not in the evidence" in p for p in problems) and any("urgency" in p for p in problems)
@@ -105,3 +105,10 @@ def test_causation_claims_rejected():
     b = _good()
     b["why_prediction"]["text"] = "The fire was caused by land clearing near the road."
     assert validate_briefing(b, PKG, "INSPECT")[0] is None
+
+
+def test_matching_urgency_and_ordinary_words_are_allowed():
+    b = _good()
+    b["why_priority"]["text"] = "This incident has high urgency; the model estimate is low compared with its high evidence quality."
+    ok, problems = validate_briefing(b, PKG, "INSPECT")
+    assert ok is not None, problems

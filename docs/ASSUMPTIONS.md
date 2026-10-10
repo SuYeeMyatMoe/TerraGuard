@@ -76,3 +76,14 @@ Every sentence shown to coordinators is generated from a computed value. No LLM 
   - Routine monitoring: otherwise.
 - **Evidence gaps:** a fixed rule table keyed by flag code. Each code gives the missing information, why it matters, a verification step and whether to stay cautious. The wording never promises certainty.
 - **Tree variation:** the 10th–90th percentile of individual tree estimates, labelled "variation within the model, not a statistically validated confidence interval". The main panel instead shows the held-out calibration band for the score (from `evaluation.json`, n ≥ 100).
+
+## Reports, urgency and feasibility (prototype rules)
+- **Urgency levels:**
+  - Critical: act now.
+  - High: next operational cycle.
+  - Moderate: after the next satellite observation.
+  - Low: continue monitoring.
+  These are prototype review targets, not official firefighting guidance. Critical additionally needs a strong heat signal or high evidence quality.
+- **Feasibility:** the crew base is a hypothetical field base near Sibu, Sarawak. Jurisdiction comes from the incident's region label. The 250 km straight-line planning radius is a prototype assumption. No routing or ETA is computed.
+- **Anomaly layer:** an Isolation Forest is fitted on training rows; its threshold is the 95th percentile of validation scores. The pattern rules use training percentiles. On the 2025 test set, 6.5% of incidents were flagged unusual (follow-up rate 57% flagged vs 26% not flagged). Patterns describe observations only.
+- **Consequences:** the simulated burned cells come from a procedural plot. The simulator does not use the ML estimate, so the simulated crew benefit can disagree with the evidence-based priority; the report discloses this when it happens.

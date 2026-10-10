@@ -9,6 +9,7 @@ import { DecisionPanel } from "./DecisionPanel";
 import { IntelligencePanel } from "./IntelligencePanel";
 import { DecisionRecord } from "./DecisionRecord";
 import { MethodologyDrawer } from "./MethodologyDrawer";
+import { ReportCanvas } from "./ReportCanvas";
 import { FieldBriefModal, MapControls, Toasts } from "./Overlays";
 import { StatCards } from "./StatCards";
 import { Timeline } from "./Timeline";
@@ -138,6 +139,7 @@ export function CommandCenter() {
       <FieldBriefModal />
       <MethodologyDrawer />
       <DecisionRecord />
+      <ReportCanvas />
     </div>
   );
 }

@@ -12,7 +12,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from . import geospatial, records, earth_engine
+from . import geospatial, records, earth_engine, reports
 from .ai import service as ai
 from .ai.providers import grafilab_ready, openai_model, openai_ready
 from .schemas import (ActionRequest, ActionResponse, ActionsResponse, ExplainRequest, FieldBriefRequest, IncidentsResponse,
@@ -90,6 +90,13 @@ async def simulate(req: SimulateRequest):
         return await run_in_threadpool(store().simulate, req)
     except KeyError:
         raise HTTPException(404, f"Unknown scenario {req.scenario_id}")
+
+
+@app.post("/api/reports/{incident_id}")
+async def incident_reports(incident_id: str, req: SimulateRequest | None = None):
+    """Prediction Report + Recommendation Report (deterministic; consequences from a matched-seed simulation)."""
+    _known(incident_id)
+    return await run_in_threadpool(reports.build, store(), incident_id, req)
 
 
 @app.post("/api/incidents/{incident_id}/action", response_model=ActionResponse)

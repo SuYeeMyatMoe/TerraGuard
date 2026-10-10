@@ -71,3 +71,9 @@ drop trigger if exists actions_append_only on public.actions;
 create trigger actions_append_only
   before update or delete on public.actions
   for each row execute function public.actions_append_only();
+
+-- ---------------------------------------------------------------- Part 5 · monitoring & coordination actions (additive)
+-- Lets the record keep "Continue monitoring" and "Escalate for coordination" decisions with their reasons.
+alter table public.actions drop constraint if exists actions_action_check;
+alter table public.actions add constraint actions_action_check
+  check (action in ('ASSIGN_INSPECTION', 'REQUEST_RECHECK', 'DISMISS', 'CONTINUE_MONITORING', 'ESCALATE_COORDINATION'));

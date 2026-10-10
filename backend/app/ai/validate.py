@@ -63,7 +63,8 @@ CI = re.compile(r"\bconfidence\s+interval", re.I)
 INC_ID = re.compile(r"\bINC-\d{8}-[A-Z]\b")
 RANK_CLAIM = re.compile(r"(Incident [A-Z]|INC-\d{8}-[A-Z])\s+(?:ranks?|is ranked|comes)\s+(above|ahead of|higher than|below|lower than)\s+"
                         r"(Incident [A-Z]|INC-\d{8}-[A-Z])", re.I)
-URGENCY_LABELS = ["critical review", "priority review", "routine monitoring", "insufficient evidence"]
+URGENCY_LABELS = ["critical", "high", "moderate", "low"]
+URGENCY_CTX = re.compile(r"\b(critical|high|moderate|low)\s+urgency\b|\burgency\s+(?:level\s+|tier\s+)?(?:is\s+|of\s+)?(critical|high|moderate|low)\b", re.I)
 NEGATED_FORECAST = re.compile(r"\bnot\s+(a\s+)?(validated\s+)?(real[- ]world\s+)?(wildfire\s+)?(forecast|prediction of spread)", re.I)
 FORECAST = re.compile(r"\b(wildfire|fire)\s+forecast|\bforecasts?\s+(that|the fire)", re.I)
 NUM = re.compile(r"(?<![A-Za-z])-?\d+(?:[.,]\d+)?")
@@ -129,10 +130,10 @@ def check_structure_claims(texts: list[str], pkg: dict) -> list[str]:
             claims_above = rel.lower() in ("above", "ahead of", "higher than")
             if claims_above != (ra < rb):
                 problems.append(f"Ranking claim contradicts the deterministic order: '{a} {rel} {b}'")
-        low = t.lower()
-        for lab in URGENCY_LABELS:
-            if lab in low and urgency and lab != urgency:
-                problems.append(f"Restates the urgency tier as '{lab}' (deterministic tier: {urgency})")
+        for m in URGENCY_CTX.finditer(t):
+            lab = (m.group(1) or m.group(2) or "").lower()
+            if urgency and lab != urgency:
+                problems.append(f"Restates the urgency level as '{lab}' (deterministic level: {urgency})")
     return problems
 
 

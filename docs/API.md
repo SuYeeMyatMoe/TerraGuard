@@ -38,3 +38,20 @@ Earth View imagery is separate from extracted geospatial context. Metadata state
 | `trace` | FIRMS rows matched to the cluster (product, version, type, confidence, FRP), weather tile and date, protected-area source, model version, inference time, priority policy version, substituted values. |
 
 `model_limitations` replaces the old `limitations` string list.
+
+## `POST /api/reports/{incident_id}`
+
+Body: an optional `SimulateRequest` (`response_delay`, `steps`, `seed`, `n_seeds`, `per_incident`). It returns `{incident_id, prediction_report, recommendation_report}`. The UI opens it automatically after a user-run response test.
+
+| Section | Contents |
+|---|---|
+| `prediction_report.prediction` | Same probability as `/api/predict`, risk category relative to the alert threshold (High ≥ threshold, Medium ≥ half), evidence quality, calibration note. |
+| `prediction_report.anomaly` | Observation pattern (isolated normal, persistent/recurring, cluster anomaly, suspected clearing-related burning, static-source-like, insufficient evidence), Isolation Forest percentile, proof lines and a disclaimer. Patterns are verification aids and never findings of cause or illegality. |
+| `prediction_report.heat_signal` | Strong / Moderate / Weak from FRP rank, pixel count and high-confidence share. A satellite heat signal only. |
+| `prediction_report.reliability.noise` | 50 perturbed copies of the inputs: the 5–95% range of estimates and the share staying on the same side of the threshold. |
+| `prediction_report.false_alarms` | Precision, false-positive rate and recall at the threshold on the held-out 2025 test set. |
+| `recommendation_report.action` | `SEND_CREW` (INSPECT and feasible), `ESCALATE` (INSPECT, not feasible), `RECHECK`, `MONITOR`. `record_action` maps it to `ASSIGN_INSPECTION`, `ESCALATE_COORDINATION`, `REQUEST_RECHECK` or `CONTINUE_MONITORING`. |
+| `recommendation_report.feasibility` | Straight-line km from the crew base, jurisdiction (cross-border / other state means coordination is required; beyond 250 km means unknown). `travel_time` is always `null`. |
+| `recommendation_report.consequences` | Under- and over-response statements tied to the estimate and to matched-seed simulation runs (crew here vs not), the per-incident crew benefit, and a `tradeoff` disclosure when the simulation favours another incident. |
+
+`/api/predict` also returns `heat_signal`, `anomaly` and `feasibility`. `POST /api/incidents/{id}/action` accepts `CONTINUE_MONITORING` and `ESCALATE_COORDINATION` (Supabase: run `schema.sql` Part 5; SQLite migrates itself).

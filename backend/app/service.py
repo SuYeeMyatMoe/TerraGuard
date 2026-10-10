@@ -13,13 +13,14 @@ import numpy as np
 import pandas as pd
 
 from ml.config import MODEL_DIR, PROCESSED_DIR, PROTECTED_AREAS, RAW_DIR
+from ml import anomaly, reference
 from ml.explain import explain
 from ml.geo import haversine_km
 from ml.fetch_weather import load_weather
 from sim.automaton import H, W, make_plot
 from sim.policies import simulate_policies
 
-from . import db, records
+from . import db, feasibility, records
 from .records import DEFAULT_STATUS, STATUS_TEXT, WAITING_STATUS, team_state
 from .team import TEAM
 from .operational_store import OperationalStoreError
@@ -182,6 +183,8 @@ class Store:
                 att = "recheck"
             elif st == STATUS_TEXT["DISMISS"]:
                 att = "dismissed"
+            elif st in (STATUS_TEXT["CONTINUE_MONITORING"], STATUS_TEXT["ESCALATE_COORDINATION"]):
+                att = "unattended" if assigned else "open"
             elif assigned:
                 att, st = "unattended", WAITING_STATUS
             else:
@@ -242,7 +245,8 @@ class Store:
         pred = self.predict(incident_id, teams)
         rec = pred["priority"]["recommendation"]
         others = [c for c in pred["competing"] if c["incident_id"] != incident_id]
-        followed = {"ASSIGN_INSPECTION": rec == "INSPECT", "REQUEST_RECHECK": rec == "RECHECK"}.get(action)
+        followed = {"ASSIGN_INSPECTION": rec == "INSPECT", "REQUEST_RECHECK": rec == "RECHECK",
+                    "CONTINUE_MONITORING": rec == "MONITOR", "ESCALATE_COORDINATION": rec == "INSPECT"}.get(action)
         row = {
             "scenario_id": scenario["scenario_id"], "incident_id": incident_id, "action": action, "reason": reason, "teams": teams,
             "recommendation_at_time": rec, "priority_rank": pred["priority"]["rank"],
@@ -351,6 +355,9 @@ class Store:
                                      pa_name, pa_dist, hours_since, ex["probability"], ranking, gaps)
         p10, p90 = ex["interval"]
         lims = X.limitations(codes, ood_names, me["evidence"]["corroborated"])
+        frp_cmp = reference.compare("frp_max", raw_vals.get("frp_max"), country, month)
+        heat = X.heat_signal(frp_cmp["rank"] if frp_cmp else None, float(row["n_pixels"]), float(row["conf_h_frac"]))
+        pattern = anomaly.assess(row, me["evidence"]["quality"])
         return {
             "incident_id": incident_id,
             "model": {"name": "Random Forest" if b["chosen"] == "random_forest" else "Historical-frequency baseline",
@@ -365,8 +372,13 @@ class Store:
             "decision_summary": summary,
             "urgency": X.urgency(rec, ex["probability"], float(thr), hours_since, me["evidence"]["corroborated"],
                                  me["evidence"]["quality"],
-                                 # critical review needs more than a single pixel, even when corroborated
-                                 [l["title"] for l in lims if l["severity"] == "high" or l["code"] == "single_pixel"]),
+                                 # critical needs more than a single pixel, even when corroborated
+                                 [l["title"] for l in lims if l["severity"] == "high" or l["code"] == "single_pixel"],
+                                 heat=heat["level"], pattern_label=pattern["label"]),
+            "heat_signal": heat,
+            "anomaly": pattern,
+            # straight-line crew feasibility (no routing); the investigation priority itself is unchanged
+            "feasibility": feasibility.assess(self.incident(incident_id, att={})),
             "explained_factors": views,
             "ranking_explanation": ranking,
             "confidence_guidance": gaps,
