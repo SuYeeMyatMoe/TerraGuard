@@ -32,7 +32,7 @@ function sharedHeight(x: number, z: number) {
 /** Shared natural forest, joined by terrain and two clearings. */
 export function SharedLandscape() {
   const geometry = useMemo(() => {
-    const ground = new PlaneGeometry(230, 165, 230, 165);
+    const ground = new PlaneGeometry(230, 165, 115, 83);
     ground.rotateX(-Math.PI / 2);
     const points = ground.getAttribute("position");
     const colors = new Float32Array(points.count * 3);
@@ -64,7 +64,7 @@ export function SharedLandscape() {
   }, []);
   return <>
     <mesh geometry={geometry} receiveShadow><meshStandardMaterial vertexColors roughness={1} envMapIntensity={0}/></mesh>
-    <NaturalTrees placements={placements} shadows={false}/>
+    <NaturalTrees placements={placements} shadows={false} background/>
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[52, .18, -16.25]} scale={[1, 1.8, 1]}><circleGeometry args={[12, 80]}/><meshStandardMaterial color="#2c6977" roughness={.25} metalness={.45}/></mesh>
   </>;
 }

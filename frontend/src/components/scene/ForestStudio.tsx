@@ -9,6 +9,9 @@ import { getWaterResponse } from "@/lib/waterResponse";
 import { getCrewPlan } from "@/lib/crewMotion";
 import ForestScene from "./ForestScene";
 import ForestOverview, { overviewPosition, type OverviewPlot } from "./ForestOverview";
+import { SceneQualityProvider } from "./SceneQuality";
+import type { QualityMode } from "@/lib/sceneQuality";
+import { getFireHistory } from "@/lib/fireLifetime";
 
 export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpand: () => void }) {
   const data = useStore(s => s.data);
@@ -25,6 +28,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   const [showHabitat, setHabitat] = useState(true);
   const [resetKey, setReset] = useState(0);
   const [focusKey, setFocus] = useState(0);
+  const [quality, setQuality] = useState<QualityMode>("auto");
   const loading=useStore(s=>s.simLoading);
   const selectedIndex = sim?.plots.findIndex(p => p.incident_id === selectedId) ?? -1;
   const index = selectedIndex >= 0 ? selectedIndex : Math.max(0, sim?.plots.findIndex(p => p.incident_id === sim.ai_order[0]) ?? 0);
@@ -47,6 +51,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
         return {
           id: plot.incident_id, region: data?.incidents.find(inc => inc.id === plot.incident_id)?.region ?? "Forest plot",
           position: overviewPosition(index), frame, crew, water: getWaterResponse(frame, result, crew, index),
+          fireHistory: getFireHistory(result,index),
           ignition: plot.ignition, label: shortId(plot.incident_id), playing, active: true,
           showHabitat, showGrid, resetKey, focusKey, picking: false, onPick: () => {},
         };
@@ -60,9 +65,9 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   const minutesPerStep=Number(sim?.assumptions.minutes_per_step??30);
   const endedBeforeArrival=!!(crew?.assigned&&crew.arrival!=null&&crew.arrival>0&&!result?.frames[Math.min(crew.arrival,result.frames.length-1)]?.[index]?.includes("2")&&!result?.frames.slice(0,crew.arrival+1).some(step=>step[index]?.includes("4")));
   const waterStatus=water?.phase==="suppression"?(frame?.value?.metrics.burning?"Water suppression · crew on site":"Cooling suppressed cells · crew on site"):water?.phase==="en-route"?`Crew en route · arrival at ${((crew?.arrival??0)*minutesPerStep/60).toFixed(1)} h`:water?.phase==="complete"?"Crew on site · no active fire":assignedElsewhere?`Crew sent to ${shortId(assignedElsewhere)}`:"Monitoring only · no crew dispatched";
-  return <section className={`forest-stage ${overviewVisible ? "forest-overview" : ""}`} aria-label="Interactive forest simulation">
+  return <SceneQualityProvider mode={quality}><section className={`forest-stage ${overviewVisible ? "forest-overview" : ""}`} aria-label="Interactive forest simulation">
     {overviewVisible && overview.plots.length > 0 && <ForestOverview plots={overview.plots} selectedId={selectedId} resetKey={resetKey} focusKey={focusKey} playing={playing}/>}
-    {!overviewVisible && frame?.value && plot && water && crew && <ForestScene frame={frame.value} water={water} crew={crew} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
+    {!overviewVisible && frame?.value && plot && result && water && crew && <ForestScene frame={frame.value} fireHistory={getFireHistory(result,index)} water={water} crew={crew} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
       if (plot.fuel[row * 20 + col] === "0") return;
       const store = useStore.getState();
       store.setOverride(plot.incident_id, { ignition: [[row, col]] });
@@ -71,6 +76,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
     }} />}
     <div className="forest-stage-heading"><span className="forest-kicker">FOREST DECISION STUDIO / {sim?.teams ?? 3} RESPONSE {sim?.teams === 1 ? "CREW" : "CREWS"}</span><h1>{overviewVisible ? "Forest response map" : incident?.region ?? "Forest simulation"}</h1><p>{overviewVisible ? "A · B · C / live comparison" : "20 × 20 cells"} · {frame?.value ? `Step ${frame.value.tick}` : "Preparing scenario"} · {policy === "ai_priority" ? "AI-prioritized" : policy === "first_alert" ? "First-alert-first" : policy === "coordinator" ? "Your assignment" : "No intervention"}</p></div>
     <div className="forest-view-switch" aria-label="Forest view"><button aria-pressed={overviewVisible} onClick={() => { setAllIncidents(true); useStore.getState().setPickingIgnition(false); }}>All incidents</button><button aria-pressed={!overviewVisible} onClick={() => setAllIncidents(false)}>Selected incident</button></div>
+    <div className="forest-quality"><label htmlFor="forest-quality">Quality</label><select id="forest-quality" value={quality} onChange={event => setQuality(event.target.value as QualityMode)}><option value="auto">Auto</option><option value="economy">Economy</option><option value="balanced">Balanced</option><option value="high">High</option></select></div>
     <div className="forest-tools" aria-label="Scene controls">
       <button aria-label={expanded ? "Restore studio layout" : "Expand map"} aria-pressed={expanded} onClick={onExpand} title={expanded ? "Restore layout (Esc)" : "Expand map"}>{expanded ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}</button>
       <button aria-label="Focus crew and fire" onClick={() => setFocus(n => n + 1)} title="Focus crew and fire"><Crosshair size={16}/></button>
@@ -102,5 +108,5 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
     </button>)}</div>}
     <div className="forest-legend" aria-label="Forest legend"><span><i className="legend-healthy"/>Healthy</span><span><i className="legend-burning"/>Burning</span><span><i className="legend-burned"/>Burned</span><span><i className="legend-bare"/>Non-vegetated</span><span><i className="legend-protected"/>Protected</span></div>
     <div className="forest-scene-note">{overviewVisible ? "One policy · same simulation step · 20 × 20 cells per incident. Placement is schematic." : "Backend simulation · selected incident plot. Landscape and crew route are schematic."}</div>
-  </section>;
+  </section></SceneQualityProvider>;
 }

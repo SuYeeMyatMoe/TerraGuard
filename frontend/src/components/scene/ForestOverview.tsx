@@ -11,6 +11,7 @@ import { worldPosition } from "./forestGeometry";
 import { SharedLandscape, SHARED_PLOT_POSITIONS } from "./SharedLandscape";
 import { ForestSceneContent, SceneBoundary, type ForestSceneProps } from "./ForestScene";
 import { SceneReflections } from "./SceneReflections";
+import { SceneQualityRuntime, useSceneQuality } from "./SceneQuality";
 
 export interface OverviewPlot extends ForestSceneProps {
   id: string;
@@ -71,6 +72,7 @@ export default function ForestOverview({ plots, selectedId, resetKey, focusKey, 
   const portal = useRef<HTMLDivElement>(null!);
   const [contextLost, setContextLost] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const { settings, visible } = useSceneQuality();
   const fallback = <div className="overview-fallback">
     <p>3D unavailable · synchronized forest grids</p>
     <button className="btn" onClick={() => { setContextLost(false); setAttempt(n => n + 1); }}>Retry 3D view</button>
@@ -79,16 +81,17 @@ export default function ForestOverview({ plots, selectedId, resetKey, focusKey, 
   if (contextLost) return fallback;
   return <div className="scene-canvas overview-canvas" ref={portal}>
     <SceneBoundary key={attempt} fallback={fallback}>
-      <Canvas eventSource={portal} shadows dpr={2} frameloop={playing ? "always" : "demand"} camera={{ position: [5, 49, 42], fov: 50, near: .1, far: 300 }} gl={{ antialias: true }} onCreated={({ gl }) => {
+      <Canvas eventSource={portal} shadows dpr={settings.dpr} frameloop={!visible ? "never" : playing ? "always" : "demand"} camera={{ position: [5, 49, 42], fov: 50, near: .1, far: 300 }} gl={{ antialias: true }} onCreated={({ gl }) => {
         gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); setContextLost(true); });
       }}>
+        <SceneQualityRuntime playing={playing}/>
         <color attach="background" args={["#94b4bf"]}/>
         <fog attach="fog" args={["#a0bdc7", 130, 290]}/>
         <Sky distance={450000} sunPosition={[-30, 25, 10]} inclination={.5} azimuth={.25} turbidity={3.5} rayleigh={.8}/>
         <SceneReflections/>
         <ambientLight intensity={.45}/>
         <hemisphereLight args={["#d7efff", "#4b5331", .8]}/>
-        <directionalLight position={[-24, 50, 20]} intensity={2.5} color="#fff1cf" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={40} shadow-camera-bottom={-40} shadow-camera-far={130} shadow-normalBias={.025}/>
+        <directionalLight key={settings.shadowSize} position={[-24, 50, 20]} intensity={2.5} color="#fff1cf" castShadow shadow-mapSize={[settings.shadowSize, settings.shadowSize]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={40} shadow-camera-bottom={-40} shadow-camera-far={130} shadow-normalBias={.025}/>
         <SharedLandscape/>
         <OverviewPlots plots={plots} selectedId={selectedId} resetKey={resetKey} focusKey={focusKey} portal={portal}/>
       </Canvas>

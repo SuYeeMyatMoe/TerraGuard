@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Tree } from "@dgreenheck/ez-tree";
 import { useThree } from "@react-three/fiber";
 import { Box3, Color, DoubleSide, InstancedMesh, MeshPhongMaterial, MeshStandardMaterial, Object3D } from "three";
+import { createSceneResourceCache } from "@/lib/sceneResources";
+import { useSceneQuality } from "./SceneQuality";
 
 export interface TreePlacement {
   position: [number, number, number];
@@ -14,7 +16,8 @@ export interface TreePlacement {
   shade: number;
 }
 
-function makeTree(preset: string) {
+function makeTree(key: string) {
+  const [preset, detail] = key.split("|");
   const tree = new Tree();
   tree.loadPreset(preset);
   // Shared geometry keeps every plot affordable; each instance has its own
@@ -32,6 +35,16 @@ function makeTree(preset: string) {
   tree.options.branch.sections = { 0: 10, 1: 5, 2: 4, 3: 2 };
   tree.options.branch.segments = { 0: 7, 1: 5, 2: 3, 3: 3 };
   tree.options.leaves.tint = 0xffffff;
+  if (detail === "low") {
+    // Preserve textured crowns, but omit fine branches invisible in the overview.
+    tree.options.branch.levels = 2;
+    tree.options.branch.children[0] = 5;
+    tree.options.branch.children[1] = 2;
+    tree.options.branch.sections = { 0: 6, 1: 3, 2: 2, 3: 1 };
+    tree.options.branch.segments = { 0: 5, 1: 3, 2: 3, 3: 3 };
+    tree.options.leaves.count = 8;
+    tree.options.leaves.size *= 1.45;
+  }
   tree.generate();
   const box = new Box3().setFromObject(tree);
   const scale = 1 / (box.max.y - box.min.y);
@@ -61,13 +74,25 @@ function makeTree(preset: string) {
   return { branches, leaves, bark, foliage };
 }
 
-function TreeSpecies({ preset, placements, variant, shadows }: {
-  preset: string; placements: TreePlacement[]; variant: number; shadows: boolean;
+const models = createSceneResourceCache(makeTree, model => {
+  model.branches.dispose(); model.leaves.dispose();
+  model.bark.dispose(); model.foliage.dispose();
+  // Textures are borrowed from ez-tree's module-level library, not owned here.
+});
+
+function TreeSpecies({ preset, detail, placements, variant, shadows }: {
+  preset: string; detail: "low" | "full"; placements: TreePlacement[]; variant: number; shadows: boolean;
 }) {
-  const model = useMemo(() => makeTree(preset), [preset]);
+  const [model, setModel] = useState<ReturnType<typeof makeTree> | null>(null);
+  useLayoutEffect(() => {
+    const lease = models.acquire(`${preset}|${detail}`);
+    setModel(lease.value);
+    return lease.release;
+  }, [preset, detail]);
   const invalidate = useThree(state => state.invalidate);
   const branches = useRef<InstancedMesh>(null), leaves = useRef<InstancedMesh>(null);
   useEffect(() => {
+    if (!model) return;
     // The library loads embedded textures asynchronously, outside R3F's loader.
     // Render once they arrive even when the simulation is paused.
     let frame = 0;
@@ -79,11 +104,8 @@ function TreeSpecies({ preset, placements, variant, shadows }: {
     refresh();
     return () => cancelAnimationFrame(frame);
   }, [model, invalidate]);
-  useEffect(() => () => {
-    model.branches.dispose(); model.leaves.dispose();
-    model.bark.dispose(); model.foliage.dispose();
-  }, [model]);
   useLayoutEffect(() => {
+    if (!model || !branches.current || !leaves.current) return;
     const dummy = new Object3D(), color = new Color();
     let count = 0;
     for (const tree of placements) {
@@ -105,16 +127,17 @@ function TreeSpecies({ preset, placements, variant, shadows }: {
       if (ref.current!.instanceColor) ref.current!.instanceColor.needsUpdate = true;
       ref.current!.computeBoundingSphere();
     });
-  }, [placements, variant]);
-  return <>
+  }, [model, placements, variant]);
+  return model && <>
     <instancedMesh ref={branches} args={[model.branches, model.bark, placements.length]} castShadow={shadows} receiveShadow raycast={() => null}/>
     <instancedMesh ref={leaves} args={[model.leaves, model.foliage, placements.length]} castShadow={shadows} receiveShadow raycast={() => null}/>
   </>;
 }
 
-export function NaturalTrees({ placements, shadows = true }: { placements: TreePlacement[]; shadows?: boolean }) {
+export function NaturalTrees({ placements, shadows = true, background = false }: { placements: TreePlacement[]; shadows?: boolean; background?: boolean }) {
+  const { settings } = useSceneQuality();
   return <>
-    <TreeSpecies preset="Oak Small" placements={placements} variant={0} shadows={shadows}/>
-    <TreeSpecies preset="Ash Small" placements={placements} variant={1} shadows={shadows}/>
+    <TreeSpecies preset="Oak Small" detail={background ? "low" : settings.treeDetail} placements={placements} variant={0} shadows={shadows && settings.treeShadows}/>
+    <TreeSpecies preset="Ash Small" detail={background ? "low" : settings.treeDetail} placements={placements} variant={1} shadows={shadows && settings.treeShadows}/>
   </>;
 }

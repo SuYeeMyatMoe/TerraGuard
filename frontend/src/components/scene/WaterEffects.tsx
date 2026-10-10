@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
-import { CatmullRomCurve3, InstancedMesh, Object3D, TubeGeometry, Vector3 } from "three";
+import { CatmullRomCurve3, InstancedMesh, Object3D, Sphere, TubeGeometry, Vector3 } from "three";
 import { seed, worldPosition } from "./forestGeometry";
+import { useSceneQuality } from "./SceneQuality";
 
 export function waterNozzlePosition(target: [number, number], source?: [number, number] | null): [number, number, number] {
   if (source) {
@@ -17,6 +18,9 @@ export function waterNozzlePosition(target: [number, number], source?: [number, 
 
 export function WaterEffects({ target, source, playing }: { target: [number, number]; source: [number, number] | null; playing: boolean }) {
   const droplets = useRef<InstancedMesh>(null);
+  const { settings } = useSceneQuality();
+  const dummy = useMemo(() => new Object3D(), []);
+  const point = useMemo(() => new Vector3(), []);
   const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -35,16 +39,17 @@ export function WaterEffects({ target, source, playing }: { target: [number, num
     const geometry = new TubeGeometry(curve, 48, .085, 8, false);
     const truck=sourceX!=null&&sourceZ!=null?new Vector3(...worldPosition(sourceX,sourceZ,.1)):new Vector3(base[0]-.8,base[1]+.06,base[2]+1.3);
     const hose = [truck, new Vector3(base[0],base[1]+.1,base[2]), start];
-    return { base, start, end, curve, geometry, hose, angle: Math.atan2(end.x - start.x, end.z - start.z) };
+    const bounds = new Sphere(start.clone().lerp(end, .5), start.distanceTo(end) / 2 + 4);
+    return { base, start, end, curve, geometry, hose, bounds, angle: Math.atan2(end.x - start.x, end.z - start.z) };
   }, [x, z, sourceX, sourceZ]);
   useEffect(() => () => spray.geometry.dispose(), [spray]);
   const animate = useCallback((time: number) => {
     if (!droplets.current) return;
-    const dummy = new Object3D();
-    for (let i = 0; i < 144; i++) {
-      if (i < 96) {
-        const t = (time * .75 + i / 96) % 1;
-        const point = spray.curve.getPoint(t);
+    const jetCount = Math.floor(settings.waterDrops * 2 / 3);
+    for (let i = 0; i < settings.waterDrops; i++) {
+      if (i < jetCount) {
+        const t = (time * .75 + i / jetCount) % 1;
+        spray.curve.getPoint(t, point);
         const spread = .025 + t * .12;
         dummy.position.set(point.x + Math.sin(i * 7 + time * 9) * spread, point.y + Math.cos(i * 11) * spread, point.z + Math.sin(i * 13) * spread);
         dummy.scale.set(.035, .035 + seed(i * 3) * .04, .035);
@@ -57,10 +62,13 @@ export function WaterEffects({ target, source, playing }: { target: [number, num
       }
       dummy.updateMatrix(); droplets.current.setMatrixAt(i, dummy.matrix);
     }
+    droplets.current.count = settings.waterDrops;
     droplets.current.instanceMatrix.needsUpdate = true;
-    droplets.current.computeBoundingSphere();
-  }, [spray]);
-  useLayoutEffect(() => animate(0), [animate]);
+  }, [spray, dummy, point, settings.waterDrops]);
+  useLayoutEffect(() => {
+    if (droplets.current) droplets.current.boundingSphere = spray.bounds;
+    animate(0);
+  }, [animate, spray.bounds]);
   useFrame(({ clock }) => { if (playing&&!reducedMotion) animate(clock.elapsedTime); });
   return <>
     <Line points={spray.hose} color="#254338" lineWidth={3}/>

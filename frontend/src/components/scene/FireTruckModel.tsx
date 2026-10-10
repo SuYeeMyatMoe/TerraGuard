@@ -1,6 +1,7 @@
-import { useEffect, useMemo, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { RoundedBox } from "@react-three/drei";
-import { ExtrudeGeometry, Shape, type Group, type MeshStandardMaterial } from "three";
+import { ExtrudeGeometry, Group, Mesh, Shape, type MeshStandardMaterial } from "three";
+import { batchStaticMeshes } from "./staticMeshBatch";
 
 const paint = { color: "#991e18", metalness: .15, roughness: .38, clearcoat: .55, clearcoatRoughness: .28 };
 const chrome = { color: "#aeb6ba", metalness: .85, roughness: .34 };
@@ -8,6 +9,7 @@ const glass = { color: "#273f49", metalness: .25, roughness: .13, clearcoat: 1, 
 
 /** Cab-over forest appliance: a long equipment body and a raked windshield. */
 export function FireTruckModel({ wheels, beacon }: { wheels: RefObject<Group | null>; beacon: RefObject<MeshStandardMaterial | null> }) {
+  const source = useRef<Group>(null);
   const cab = useMemo(() => {
     const shape = new Shape();
     shape.moveTo(-1.40, .40); shape.lineTo(-1.36, .84);
@@ -18,7 +20,28 @@ export function FireTruckModel({ wheels, beacon }: { wheels: RefObject<Group | n
     return geometry;
   }, []);
   useEffect(() => () => cab.dispose(), [cab]);
-  return <group>
+  useLayoutEffect(() => {
+    if (!source.current) return;
+    const targets = [source.current, ...(wheels.current?.children.filter((child): child is Group => child instanceof Group) ?? [])];
+    const cleanups = targets.map((target, index) => {
+      const result = batchStaticMeshes(target, index === 0 ? wheels.current : null, beacon.current);
+      const merged = new Group();
+      for (const batch of result.batches) {
+        const mesh = new Mesh(batch.geometry, batch.material);
+        mesh.castShadow = batch.castShadow;
+        mesh.receiveShadow = batch.receiveShadow;
+        merged.add(mesh);
+      }
+      target.add(merged);
+      return () => {
+        target.remove(merged);
+        result.restore();
+        result.batches.forEach(batch => { batch.geometry.dispose(); batch.material.dispose(); });
+      };
+    });
+    return () => cleanups.forEach(cleanup => cleanup());
+  }, [wheels, beacon]);
+  return <group ref={source}>
     <RoundedBox args={[.86, .15, 2.8]} radius={.015} position={[0, .31, 0]} castShadow><meshStandardMaterial color="#23282c" metalness={.55} roughness={.55}/></RoundedBox>
     <RoundedBox args={[.94, .66, 1.7]} radius={.018} smoothness={2} position={[0, .75, -.55]} castShadow><meshPhysicalMaterial {...paint}/></RoundedBox>
     <mesh geometry={cab} castShadow><meshPhysicalMaterial {...paint}/></mesh>

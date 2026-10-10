@@ -10,8 +10,19 @@ export interface CrewPlan {
   route: GridPoint[];
 }
 
-/** A schematic access route on this plot, separate from the backend arrival time. */
+const plans = new WeakMap<PlotInfo, WeakMap<PolicyResult, CrewPlan>>();
+
+/** Static per plot/policy; playback must not solve the same lane each step. */
 export function getCrewPlan(plot: PlotInfo, result: PolicyResult): CrewPlan {
+  let policies = plans.get(plot);
+  if (!policies) { policies = new WeakMap(); plans.set(plot, policies); }
+  let plan = policies.get(result);
+  if (!plan) { plan = buildCrewPlan(plot, result); policies.set(result, plan); }
+  return plan;
+}
+
+/** A schematic access route on this plot, separate from the backend arrival time. */
+function buildCrewPlan(plot: PlotInfo, result: PolicyResult): CrewPlan {
   const origin: GridPoint = [plot.ignition[0]?.[1] ?? 10, plot.ignition[0]?.[0] ?? 10];
   const clearings = Array.from(plot.fuel, (fuel, id) => ({ fuel, x:id % 20, z:Math.floor(id / 20), id })).filter(cell => cell.fuel === "0");
   const parking = clearings.filter(cell => {

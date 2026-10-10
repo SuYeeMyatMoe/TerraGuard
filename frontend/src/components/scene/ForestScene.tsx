@@ -16,14 +16,18 @@ import { Html, Line, OrbitControls, Sky } from "@react-three/drei";
 import {
   AdditiveBlending,
   BufferAttribute,
+  CircleGeometry,
   Color,
   DoubleSide,
   InstancedMesh,
+  InstancedBufferAttribute,
   Object3D,
   PerspectiveCamera,
   Vector3,
   PlaneGeometry,
   ShaderMaterial,
+  Sphere,
+  type PointLight,
 } from "three";
 import { Flame, ShieldCheck, Trees } from "lucide-react";
 import {
@@ -42,6 +46,11 @@ import { CrewVehicle } from "./CrewVehicle";
 import type { CrewPlan } from "@/lib/crewMotion";
 import { SceneReflections } from "./SceneReflections";
 import { NaturalTrees } from "./NaturalTrees";
+import { SceneQualityRuntime, useSceneQuality } from "./SceneQuality";
+import { createSmokeVisuals } from "./smokeMaterial";
+import { sampleSmokePuff } from "@/lib/smokePuff";
+import { sampleFireLife, type FireLife } from "@/lib/fireLifetime";
+import { PLAYBACK_STEP_MS } from "@/lib/crewMotion";
 
 const palette = {
   healthy: "#536843",
@@ -107,6 +116,7 @@ function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid
       }).flat(),
     [],
   );
+  const gridSegments = useMemo(() => lines.flatMap(points => points.slice(1).flatMap((point, i) => [points[i], point])), [lines]);
   return (
     <>
       <mesh geometry={geometry} receiveShadow onClick={(event) => {
@@ -120,16 +130,14 @@ function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid
         <meshStandardMaterial vertexColors roughness={0.98} envMapIntensity={0} />
       </mesh>
       {showGrid &&
-        lines.map((points, i) => (
           <Line
-            key={i}
-            points={points}
+            segments
+            points={gridSegments}
             color="#78cad0"
             lineWidth={0.7}
             transparent
             opacity={0.33}
-          />
-        ))}
+          />}
     </>
   );
 }
@@ -167,20 +175,43 @@ function Landscape() {
   useEffect(() => () => geometry.dispose(), [geometry]);
   return <>
     <mesh geometry={geometry} receiveShadow><meshStandardMaterial vertexColors roughness={1} envMapIntensity={0}/></mesh>
-    <NaturalTrees placements={placements} shadows={false}/>
+    <NaturalTrees placements={placements} shadows={false} background/>
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[20, .18, -5]} scale={[1, 1.8, 1]}>
       <circleGeometry args={[7.2, 64]}/><meshStandardMaterial color="#2c6977" roughness={.25} metalness={.45}/>
     </mesh>
   </>;
 }
 
-function FireEffects({ cells, ignition, playing }: { cells: Cell[]; ignition: [number, number]; playing: boolean }) {
+function FireEffects({ history, tick, arrival, speed, ignition, playing }: { history: FireLife[]; tick: number; arrival: number | null; speed: number; ignition: [number, number]; playing: boolean }) {
   const flames = useRef<InstancedMesh>(null),
     smoke = useRef<InstancedMesh>(null);
-  const active = useMemo(
-    () => cells.filter((c) => c.state === "burning"),
-    [cells],
-  );
+  const glows = useRef<InstancedMesh>(null), light = useRef<PointLight>(null);
+  const playbackRun = useStore(s => s.playbackRun);
+  const fraction = useRef(0);
+  const previous = useRef<{ tick: number; history: FireLife[]; run: number } | null>(null);
+  const { settings } = useSceneQuality();
+  const dummy = useMemo(() => new Object3D(), []);
+  const glowColor = useMemo(() => new Color(), []);
+  const lifeSample = useMemo(() => ({ heat: 0, smokeTime: 0, smokeStop: null as number | null }), []);
+  const puff = useMemo(() => ({ rise: 0, width: 0, height: 0, opacity: 0 }), []);
+  const flameGeometry = useMemo(() => {
+    const geometry=new PlaneGeometry(1,1);
+    geometry.setAttribute("fireHeat",new InstancedBufferAttribute(new Float32Array(1200),1));
+    return geometry;
+  }, []);
+  const glowGeometry = useMemo(() => new CircleGeometry(.55,16), []);
+  const smokeVisuals = useMemo(() => createSmokeVisuals(), []);
+  useEffect(() => () => {
+    smokeVisuals.geometry.dispose(); smokeVisuals.material.dispose(); smokeVisuals.texture.dispose();
+    flameGeometry.dispose(); glowGeometry.dispose();
+  }, [smokeVisuals, flameGeometry, glowGeometry]);
+  const sources = useMemo(() => [...history].sort((a,b)=>b.start-a.start).map(life => {
+    const x=life.id%20-9.5, z=Math.floor(life.id/20)-9.5;
+    return {life,x,z,y:terrainHeight(x,z),particles:Array.from({length:3},(_,j)=>{
+      const px=x+(seed(life.id*7+j)-.5)*.65, pz=z+(seed(life.id*13+j)-.5)*.65;
+      return {j,x:px,z:pz,y:terrainHeight(px,pz),phase:.12+seed(life.id)*.22+j/3};
+    })};
+  }), [history]);
   const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -197,81 +228,126 @@ function FireEffects({ cells, ignition, playing }: { cells: Cell[]; ignition: [n
         side: DoubleSide,
         toneMapped: false,
         uniforms: { time: { value: 0 } },
-        vertexShader: `varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.0);}`,
-        fragmentShader: `varying vec2 vUv; uniform float time; void main(){float wave=sin(vUv.y*11.0-time*5.0)*.045+sin(vUv.y*21.0+time*8.0)*.025; float x=(vUv.x-.5+wave)*(1.0+vUv.y*1.8); float body=pow(max(0.0,1.0-abs(x)*2.6),1.3)*(1.0-vUv.y); float edge=smoothstep(.0,.18,body); vec3 color=mix(vec3(1.0,.16,.015),vec3(1.0,.93,.55),body); gl_FragColor=vec4(color*1.5,edge*(1.0-vUv.y));}`,
+        vertexShader: `attribute float fireHeat; varying vec2 vUv; varying float vHeat; void main(){vUv=uv; vHeat=fireHeat; gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.0);}`,
+        fragmentShader: `varying vec2 vUv; varying float vHeat; uniform float time; void main(){float wave=sin(vUv.y*11.0-time*5.0)*.045+sin(vUv.y*21.0+time*8.0)*.025; float x=(vUv.x-.5+wave)*(1.0+vUv.y*1.8); float body=pow(max(0.0,1.0-abs(x)*2.6),1.3)*(1.0-vUv.y); float edge=smoothstep(.0,.18,body); vec3 color=mix(vec3(1.0,.10,.008),vec3(1.0,.93,.55),body*vHeat); gl_FragColor=vec4(color*1.5,edge*(1.0-vUv.y)*vHeat);}`,
       }),
     [],
   );
   useEffect(() => () => material.dispose(), [material]);
-  const animate = useCallback((time: number) => {
-    const d = new Object3D();
-    let count = 0;
-    active.forEach((cell) => {
-      for (let j = 0; j < 3; j++) {
-        const x = cell.x - 9.5 + (seed(cell.id * 7 + j) - 0.5) * 0.65,
-          z = cell.z - 9.5 + (seed(cell.id * 13 + j) - 0.5) * 0.65,
-          pulse = 0.88 + Math.sin(time * 6 + cell.id + j) * 0.12;
-        d.position.set(x, terrainHeight(x, z) + 1.85 * pulse, z);
+  const animate = useCallback((visualTick: number) => {
+    if (!flames.current || !smoke.current || !glows.current) return;
+    const d = dummy;
+    const stepSeconds=PLAYBACK_STEP_MS/1000, time=visualTick*stepSeconds;
+    material.uniforms.time.value=time;
+    const heatAttribute=flameGeometry.getAttribute("fireHeat") as InstancedBufferAttribute;
+    let flameCount = 0, smokeCount = 0, glowCount = 0, maxHeat = 0;
+    for (const source of sources) {
+      const {life}=source;
+      if (visualTick<life.start || (life.end!=null && (visualTick-life.end)*stepSeconds>14)) continue;
+      sampleFireLife(life,visualTick,arrival,stepSeconds,lifeSample);
+      const heat=lifeSample.heat;
+      maxHeat=Math.max(maxHeat,heat);
+      if (heat>.001 && glowCount<400) {
+        d.position.set(source.x,source.y+.06,source.z);
+        d.rotation.set(-Math.PI/2,0,0); d.scale.setScalar(.4+.6*heat); d.updateMatrix();
+        glows.current.setMatrixAt(glowCount,d.matrix);
+        glows.current.setColorAt(glowCount++,glowColor.setRGB(heat,heat,heat));
+      }
+      for (const { j, x, z, y, phase } of source.particles) {
+      if (heat>.001 && j < settings.flamesPerCell && flameCount<1200) {
+        const pulse = .88 + Math.sin(time * 6 + life.id + j) * .12 + Math.sin(time*11+life.id*4+j)*.04;
+        const height=4.2*pulse*(.24+.76*heat);
+        d.position.set(x, y + height/2, z);
         d.rotation.set(0, Math.PI / 4 + j * 1.15, 0);
-        d.scale.set(1.1, 4.2 * pulse, 1);
+        d.scale.set(1.1*(.35+.65*heat), height, 1);
         d.updateMatrix();
-        flames.current!.setMatrixAt(count, d.matrix);
-        const rise = ((time * 0.13 + seed(cell.id + j * 11)) % 1) * 5.5;
+        heatAttribute.setX(flameCount,heat);
+        flames.current.setMatrixAt(flameCount++, d.matrix);
+      }
+      if (j < settings.smokePerCell && smokeCount<1200) {
+        sampleSmokePuff(lifeSample.smokeTime, phase, puff, lifeSample.smokeStop);
+        if (puff.opacity<.003) continue;
+        const rise = puff.rise;
         d.position.set(
           x + rise * 0.23,
-          terrainHeight(x, z) + 3 + rise,
+          y + 3.4 + rise,
           z - rise * 0.12,
         );
-        d.scale.setScalar(0.4 + rise * 0.18);
-        d.rotation.set(j, time * 0.04, j);
+        // Camera-facing textured clouds stay soft when the camera moves.
+        d.scale.set(puff.width, puff.height, 1);
+        d.rotation.set(0, 0, 0);
         d.updateMatrix();
-        smoke.current!.setMatrixAt(count, d.matrix);
-        count++;
+        smokeVisuals.opacity.setX(smokeCount, puff.opacity);
+        smoke.current.setMatrixAt(smokeCount++, d.matrix);
       }
-    });
-    flames.current!.count = count;
-    smoke.current!.count = count;
-    flames.current!.instanceMatrix.needsUpdate = true;
-    smoke.current!.instanceMatrix.needsUpdate = true;
-    flames.current!.computeBoundingSphere();
-    smoke.current!.computeBoundingSphere();
-  }, [active]);
-  useLayoutEffect(() => animate(1.5), [animate]);
-  useFrame(({ clock }) => {
-    if (playing && !reducedMotion) {
-      material.uniforms.time.value = clock.elapsedTime;
-      animate(clock.elapsedTime);
+      }
+    }
+    flames.current.count = flameCount;
+    smoke.current.count = smokeCount;
+    glows.current.count = glowCount;
+    flames.current.instanceMatrix.needsUpdate = true;
+    smoke.current.instanceMatrix.needsUpdate = true;
+    glows.current.instanceMatrix.needsUpdate = true;
+    if (glows.current.instanceColor) glows.current.instanceColor.needsUpdate=true;
+    heatAttribute.needsUpdate=true;
+    smokeVisuals.opacity.needsUpdate = true;
+    if (light.current) light.current.intensity=30*maxHeat;
+  }, [sources, arrival, dummy, glowColor, lifeSample, puff, flameGeometry, material, smokeVisuals, settings.flamesPerCell, settings.smokePerCell]);
+  useLayoutEffect(() => {
+    // Includes every grid cell, full smoke rise/drift and particle radius.
+    if (flames.current) flames.current.boundingSphere = new Sphere(new Vector3(0, 5, 0), 22);
+    if (smoke.current) smoke.current.boundingSphere = new Sphere(new Vector3(0, 10, 0), 40);
+    if (glows.current) glows.current.boundingSphere = new Sphere(new Vector3(),16);
+    const last=previous.current;
+    if (!last || last.tick!==tick || last.history!==history || last.run!==playbackRun) fraction.current=0;
+    previous.current={tick,history,run:playbackRun};
+    animate(tick+fraction.current);
+  }, [animate, tick, history, playbackRun]);
+  useFrame((_,delta) => {
+    if (playing && !reducedMotion && document.visibilityState!=="hidden" && delta<=2) {
+      fraction.current=Math.min(1,fraction.current+delta*speed/(PLAYBACK_STEP_MS/1000));
+      animate(tick+fraction.current);
     }
   });
   return (
     <>
-      <instancedMesh ref={flames} args={[undefined, material, 1200]}>
-        <planeGeometry args={[1, 1]} />
+      <instancedMesh ref={flames} args={[flameGeometry, material, 1200]} raycast={() => null}/>
+      <instancedMesh ref={smoke} args={[smokeVisuals.geometry, smokeVisuals.material, 1200]} raycast={() => null}/>
+      <instancedMesh ref={glows} args={[glowGeometry,undefined,400]} raycast={() => null}>
+        <meshBasicMaterial color="#ff681c" transparent opacity={.55} depthWrite={false} toneMapped={false} blending={AdditiveBlending}/>
       </instancedMesh>
-      <instancedMesh ref={smoke} args={[undefined, undefined, 1200]}>
-        <sphereGeometry args={[1, 9, 7]} />
-        <meshStandardMaterial
-          color="#414039"
-          transparent
-          opacity={0.42}
-          depthWrite={false}
-          roughness={1}
-        />
-      </instancedMesh>
-      {active.map(cell => <mesh key={cell.id} position={worldPosition(cell.x, cell.z, .06)} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-        <circleGeometry args={[.55, 16]}/><meshBasicMaterial color="#ff681c" transparent opacity={.55} depthWrite={false} toneMapped={false}/>
-      </mesh>)}
-      {active.length > 0 && (
         <pointLight
+          ref={light}
           position={worldPosition(...ignition, 2)}
           color="#ff752e"
-          intensity={30}
+          intensity={0}
           distance={8}
           decay={2}
         />
-      )}
     </>
   );
+}
+
+/** One draw per overlay, rather than one draw for each of up to 400 cells. */
+function CellOverlay({ cells, kind }: { cells: Cell[]; kind: "fire" | "habitat" }) {
+  const mesh = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    if (!mesh.current) return;
+    const dummy = new Object3D();
+    dummy.rotation.x = -Math.PI / 2;
+    cells.forEach((cell, index) => {
+      dummy.position.set(...worldPosition(cell.x, cell.z, .06));
+      dummy.updateMatrix();
+      mesh.current!.setMatrixAt(index, dummy.matrix);
+    });
+    mesh.current.count = cells.length;
+    mesh.current.instanceMatrix.needsUpdate = true;
+    mesh.current.computeBoundingSphere();
+  }, [cells]);
+  return <instancedMesh ref={mesh} args={[undefined, undefined, 400]} raycast={() => null}>
+    {kind === "fire" ? <circleGeometry args={[.55, 16]}/> : <planeGeometry args={[1, 1]}/>}
+    <meshBasicMaterial color={kind === "fire" ? "#ff681c" : "#8da432"} transparent opacity={kind === "fire" ? .55 : .12} depthWrite={false} side={DoubleSide} toneMapped={kind !== "fire"}/>
+  </instancedMesh>;
 }
 
 function CameraSetup({ resetKey, sceneKey, focusKey, focusX, focusZ }: { resetKey: number; sceneKey: string; focusKey: number; focusX: number; focusZ: number }) {
@@ -315,6 +391,7 @@ function CameraSetup({ resetKey, sceneKey, focusKey, focusX, focusZ }: { resetKe
 }
 
 export interface ForestSceneProps {
+  fireHistory: FireLife[];
   frame: ForestFrame;
   water: WaterResponse;
   crew: CrewPlan;
@@ -330,7 +407,8 @@ export interface ForestSceneProps {
   onPick: (row: number, col: number) => void;
 }
 
-export function ForestSceneContent({ frame, water, crew, ignition, label, playing, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal, overview = false }: ForestSceneProps & { portal: RefObject<HTMLDivElement>; overview?: boolean }) {
+export function ForestSceneContent({ frame, fireHistory, water, crew, ignition, label, playing, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal, overview = false }: ForestSceneProps & { portal: RefObject<HTMLDivElement>; overview?: boolean }) {
+  const { settings } = useSceneQuality();
   const speed=useStore(s=>s.speed);
   const originX = ignition[0]?.[1] ?? 10, originZ = ignition[0]?.[0] ?? 10;
   const origin: [number, number] = [originX, originZ];
@@ -355,7 +433,7 @@ export function ForestSceneContent({ frame, water, crew, ignition, label, playin
         if (!protectedAt(row, col)) segments.push([worldPosition(ax, az, 1.7), worldPosition(bx, bz, 1.7)]);
       }
     }
-    return { segments, center: count ? worldPosition(x / count, z / count, 3.5) : null };
+    return { points: segments.flat(), cells: frame.cells.filter(cell => cell.protected), center: count ? worldPosition(x / count, z / count, 3.5) : null };
   }, [frame.cells]);
   return <>
     {!overview && <>
@@ -366,17 +444,17 @@ export function ForestSceneContent({ frame, water, crew, ignition, label, playin
     <SceneReflections/>
     <ambientLight intensity={.45}/>
     <hemisphereLight args={["#d7efff", "#4b5331", .8]}/>
-    <directionalLight position={[-14,26,10]} intensity={2.5} color="#fff1cf" castShadow shadow-mapSize={[2048,2048]} shadow-camera-left={-16} shadow-camera-right={16} shadow-camera-top={16} shadow-camera-bottom={-16} shadow-camera-far={70} shadow-normalBias={.025}/>
+    <directionalLight key={settings.shadowSize} position={[-14,26,10]} intensity={2.5} color="#fff1cf" castShadow shadow-mapSize={[settings.shadowSize,settings.shadowSize]} shadow-camera-left={-16} shadow-camera-right={16} shadow-camera-top={16} shadow-camera-bottom={-16} shadow-camera-far={70} shadow-normalBias={.025}/>
     <Landscape/>
     </>}
     <Terrain cells={frame.cells} showGrid={showGrid} picking={picking} onPick={onPick}/>
     <Forest cells={frame.cells} crew={crew}/>
-    <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]} playing={playing}/>
+    <FireEffects history={fireHistory} tick={frame.tick} arrival={crew.arrival} speed={speed} ignition={[fire.x, fire.z]} playing={playing}/>
     {water.spraying && water.target && <WaterEffects target={water.target} source={water.source} playing={playing}/>}
     {!overview && fire.count > 0 && <Html portal={portal} position={worldPosition(fire.x, fire.z, 2.3)} center zIndexRange={[21,1]}><div className="map-label fire-label"><Flame size={14}/>FIRE FRONT · {fire.count} {fire.count === 1 ? "cell" : "cells"}</div></Html>}
     {showHabitat && <>
-      {habitat.segments.map((points, i) => <Line key={i} points={points} color="#c9e676" lineWidth={1.5} transparent opacity={.85}/>) }
-      {frame.cells.filter(c => c.protected).map(c => <mesh key={c.id} position={worldPosition(c.x,c.z,.06)} rotation={[-Math.PI/2,0,0]} raycast={() => null}><planeGeometry args={[1,1]}/><meshBasicMaterial color="#8da432" transparent opacity={.12} depthWrite={false} side={DoubleSide}/></mesh>)}
+      {habitat.points.length > 0 && <Line segments points={habitat.points} color="#c9e676" lineWidth={1.5} transparent opacity={.85}/>}
+      <CellOverlay cells={habitat.cells} kind="habitat"/>
       {!overview && habitat.center && <Html portal={portal} position={habitat.center} center zIndexRange={[18,1]}><div className="map-label habitat-label"><Trees size={13}/>Protected habitat</div></Html>}
     </>}
     {ignition.map(([row,col], i) => <group key={i} position={worldPosition(col,row,.08)}>
@@ -401,13 +479,14 @@ export default function ForestScene(props: ForestSceneProps) {
   const portal = useRef<HTMLDivElement>(null!);
   const [contextLost, setContextLost] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const { settings, visible } = useSceneQuality();
   const fallback = <div className="fallback-map"><p>3D unavailable · live 20 × 20 forest grid</p><button className="btn btn-primary" onClick={() => { setContextLost(false); setAttempt(n => n + 1); }}>Retry 3D view</button><div className="fallback-grid">{props.frame.cells.map(cell => <button key={cell.id} style={{background:palette[cell.state]}} title={`Cell ${cell.z+1}, ${cell.x+1}: ${cell.state}`} disabled={!props.picking || cell.terrain === "non-vegetated"} onClick={() => props.onPick(cell.z,cell.x)}/>)}</div></div>;
   if (contextLost) return fallback;
   return <div ref={portal} className="scene-canvas" style={{cursor:props.picking ? "crosshair" : "grab"}}>
     <SceneBoundary key={attempt} fallback={fallback}>
-      <Canvas eventSource={portal} shadows dpr={2} frameloop={!props.active ? "never" : props.playing ? "always" : "demand"} camera={{position:[8,17,13],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
+      <Canvas eventSource={portal} shadows dpr={settings.dpr} frameloop={!props.active || !visible ? "never" : props.playing ? "always" : "demand"} camera={{position:[8,17,13],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
         gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); setContextLost(true); });
-      }}><ForestSceneContent {...props} portal={portal}/></Canvas>
+      }}><SceneQualityRuntime playing={props.playing}/><ForestSceneContent {...props} portal={portal}/></Canvas>
     </SceneBoundary>
   </div>;
 }

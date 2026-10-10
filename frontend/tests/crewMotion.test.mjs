@@ -36,3 +36,16 @@ test('zero delay places the vehicle on site immediately, without division by zer
   const plan={...getCrewPlan(plot,result),arrival:0};
   assert.deepEqual(getCrewPose(plan,0).position,plan.station);
 });
+test('playback reuses static routes, while new policy or plot inputs invalidate them',()=>{
+  const first=getCrewPlan(plot,result);
+  assert.equal(getCrewPlan(plot,result),first);
+  const alternate={...result,assigned:[],events:[]};
+  const next=getCrewPlan(plot,alternate);
+  assert.notEqual(next,first);
+  assert.equal(next.assigned,false);
+  const changedPlot={...plot,ignition:[[10,16]]};
+  assert.notEqual(getCrewPlan(changedPlot,result),first);
+  const delayed={...result,events:[{incident_id:'B',type:'arrival',step:8}]};
+  assert.equal(getCrewPlan(plot,delayed).arrival,8);
+  assert.equal(first.arrival,4);
+});
