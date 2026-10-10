@@ -1,0 +1,168 @@
+/* Keep the workspace in the viewport; only the side panels scroll on laptops. */
+.forest-command { --left-panel:clamp(210px,19vw,260px); --right-panel:clamp(290px,25vw,370px); }
+.forest-command .command-content { min-height:0; }
+.forest-command .studio-main { min-width:0; }
+.forest-command .studio-workspace { gap:10px; padding:10px; }
+.forest-command .studio-tabs { position:sticky; top:0; z-index:2; }
+.forest-command button,.forest-command summary { scale:1!important; }
+.forest-command .studio-conditions,.forest-command .studio-intelligence,.forest-command .map-intelligence { overflow-x:hidden; }
+.forest-command .studio-tabs button { white-space:normal; line-height:1.3; }
+.forest-command .studio-decision-content { display:flex; flex-direction:column; }
+.forest-command .studio-intelligence { grid-column:auto; max-height:none; }
+.forest-command .studio-detail { flex:1; min-height:0; height:auto; }
+.forest-command .studio-center { overflow:hidden; }
+.forest-command .studio-timeline { flex-shrink:0; }
+.forest-command .forest-stage { min-height:0; }
+.forest-command .studio-recommendation { padding:12px; }
+.forest-command .studio-recommendation p { margin-top:7px; line-height:1.5; }
+.forest-command .studio-rec-score > strong { font-size:32px; }
+.forest-command .studio-recommendation button { margin:8px 10px 0 0; }
+.forest-command .studio-workflow-note { padding:10px 6px; }
+.forest-command .decision-panel { padding:12px; }
+.forest-command .decision-panel .btn { height:auto; min-height:34px; white-space:normal; text-align:center; line-height:1.35; padding-block:7px; }
+.forest-command .decision-panel .eyebrow { line-height:1.5; overflow-wrap:anywhere; }
+.forest-command .decision-panel .tnum { white-space:nowrap; }
+.forest-command .evidence-row > span { min-width:0; overflow-wrap:anywhere; }
+.forest-command .evidence-section-title > h3 { min-width:0; flex:1 1 170px; line-height:1.5; }
+.forest-command .evidence-section-title > span { flex:1 1 100px; overflow-wrap:anywhere; }
+.forest-command .forest-playback { padding:9px 10px; }
+.forest-command .playback-policy-row { flex-wrap:wrap; gap:6px; padding-bottom:7px; }
+.forest-command .playback-policies { gap:3px; }
+.forest-command .playback-policies button { font-size:9px; padding:5px 7px; }
+.forest-command .playback-test-tag { display:none; }
+.forest-command .playback-crews { margin-left:auto; }
+.forest-command .playback-transport { margin-top:7px; gap:6px; }
+.forest-command .playback-phases b { font-size:8px; white-space:normal; text-align:center; line-height:1.25; }
+.forest-command .playback-phases small { font-size:7px; }
+.forest-command .playback-clock-note { margin-left:0; line-height:1.4; }
+.forest-command .forest-stage-heading { top:15px; left:15px; right:50px; }
+.forest-command .forest-stage-heading h1 { font-size:clamp(20px,2vw,28px); margin-top:6px; }
+.forest-command .forest-kicker { font-size:8px; letter-spacing:1px; }
+.forest-command .forest-tools { top:12px; right:10px; gap:4px; }
+.forest-command .forest-tools button { width:28px; height:28px; }
+.forest-command .forest-view-switch { top:85px; left:15px; }
+.forest-command .forest-quality { top:124px; left:15px; }
+.forest-command .forest-comparison { left:10px; width:calc(100% - 20px); bottom:65px; }
+.forest-command .forest-legend { left:12px; right:12px; bottom:39px; gap:8px; font-size:8px; }
+.forest-command .forest-scene-note { left:12px; right:12px; bottom:10px; font-size:8px; line-height:1.4; }
+.forest-command .forest-comparison dl { grid-template-columns:1fr 1fr 1.3fr; }
+.forest-command .comparison-card-heading span { font-size:7px; }
+.forest-command .forest-comparison dt { overflow-wrap:anywhere; }
+.forest-command .map-intelligence { position:relative; inset:auto; width:auto; min-width:0; min-height:0; overflow-y:auto; scrollbar-width:thin; }
+.forest-command .map-intelligence > .panel-float:first-child { flex:none; min-height:360px; }
+.forest-command .studio-earth-viewport { position:relative; inset:auto; min-width:0; min-height:0; }
+.earth-workspace { display:grid; grid-template-columns:var(--left-panel) minmax(0,1fr); height:100%; min-height:0; gap:10px; }
+.earth-map-viewport { position:relative; min-width:0; min-height:0; overflow:hidden; border:1px solid var(--line); border-radius:16px; isolation:isolate; }
+.forest-command .imagery-panel { position:relative; inset:auto; width:auto; max-width:none; max-height:none; min-width:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; }
+.imagery-panel .tool-stack details > div.flex { flex-wrap:wrap; }
+.imagery-panel .tool-stack details > div.flex > button { flex:1 1 auto; min-width:0; height:auto; min-height:32px; padding:6px 8px; white-space:normal; }
+.imagery-header [role=status] { margin-left:40px; }
+.imagery-panel [aria-label="Imagery period"] button { height:auto; min-height:30px; white-space:nowrap; padding:5px 3px; font-size:10px; }
+.imagery-stats { grid-template-columns:minmax(0,1fr); }
+.imagery-stats > div { min-width:0; overflow-wrap:anywhere; }
+.earth-layer-list { grid-template-columns:minmax(0,1fr); }
+.earth-layer-list label { align-items:flex-start; line-height:1.4; }
+.earth-layer-list input { flex-shrink:0; margin-top:2px; }
+.forest-command .earth-legend { left:auto; right:10px; bottom:10px; max-width:min(260px,calc(100% - 64px)); max-height:50%; overflow:auto; }
+.forest-command .earth-comparison { left:50%; right:auto; bottom:10px; transform:translateX(-50%); width:260px; max-width:calc(100% - 90px); }
+@media(min-width:960px) {
+  .imagery-header > .min-w-0 { flex-basis:calc(100% - 40px); }
+  .forest-command .command-header { flex-wrap:nowrap; }
+  .forest-command .command-replay { width:auto; order:0; flex-shrink:0; }
+  .forest-command .command-view-switch { width:auto; order:0; flex:0 1 auto; min-width:0; }
+  .forest-command .forest-quality { top:85px; left:auto; right:48px; }
+  .forest-command .forest-comparison { width:calc(100% - 60px); }
+  .forest-command .forest-legend { right:48px; }
+  .forest-command.studio-mode,.forest-command.map-mode { height:100svh; min-height:0; overflow:hidden; }
+  .forest-command .command-content { height:100%; overflow:hidden; }
+  .forest-command .studio-workspace { grid-template-columns:var(--left-panel) minmax(0,1fr) var(--right-panel); height:100%; min-height:0; }
+  .forest-command .studio-conditions,.forest-command .studio-intelligence { overflow-y:auto; overscroll-behavior:contain; }
+  .forest-command.map-mode .studio-main { display:grid; grid-template-columns:minmax(0,1fr) var(--right-panel); gap:10px; padding:10px; overflow:hidden; }
+  .forest-command .imagery-content { display:block; }
+  .forest-command .imagery-toggle { display:none; }
+  .forest-command .studio-expanded { grid-template-columns:minmax(0,1fr); }
+}
+@media(min-width:960px) and (max-width:1199px) {
+  .forest-command { --left-panel:210px; --right-panel:290px; }
+  .forest-command .command-header { padding:8px 10px; gap:8px; min-height:60px; }
+  .forest-command .simulation-brand { font-size:18px; }
+  .forest-command .command-view-switch { width:auto; order:0; margin-left:auto; margin-right:auto; }
+  .forest-command .command-view-switch button { font-size:11px; padding:7px 9px; }
+  .forest-command .incident-roster { padding:12px 10px; }
+  .forest-command .incident-roster h2 { font-size:19px; }
+  .forest-command .playback-policy-row > .eyebrow { width:100%; }
+  .forest-command .playback-track > div > span { display:none; }
+  .forest-command .playback-phases small { display:none; }
+  .forest-command .forest-stage-heading p { font-size:9px; }
+}
+@media(min-width:960px) and (max-height:740px) {
+  .forest-command .studio-workflow-note { display:none; }
+  .forest-command .incident-roster h2 { font-size:18px; }
+  .forest-command .roster-card { padding:7px; }
+  .forest-command .roster-card-bottom { margin-top:4px; }
+  .forest-command .roster-card-bottom b { font-size:20px; }
+  .forest-command .roster-card > strong { margin-top:4px; }
+  .forest-command .roster-card > small { font-size:8px; }
+  .forest-command .incident-roster h2 { margin-top:6px; }
+  .forest-command .roster-intro { margin-bottom:7px; }
+  .forest-command .forest-live { display:none; }
+  .forest-command .forest-water-response { padding:7px; bottom:65px; right:48px; width:170px; }
+  .forest-command .forest-water-response small { display:none; }
+}
+@media(min-width:960px) and (max-height:600px) {
+  .forest-command .playback-policy-row > .eyebrow { width:auto; font-size:7px; }
+  .forest-command .playback-crews button { padding:4px 6px; font-size:9px; }
+  .forest-command .forest-tools button { width:26px; height:26px; }
+  .forest-command .forest-tools { gap:3px; }
+  .forest-command .forest-water-response p { margin:4px 0; font-size:9px; }
+}
+@media(max-width:959px) {
+  .forest-command.studio-mode,.forest-command.map-mode { height:auto; min-height:100svh; overflow:visible; }
+  .forest-command .command-content { min-height:100svh; }
+  .forest-command .studio-workspace { display:flex; flex-direction:column; height:auto; min-height:0; }
+  .forest-command .studio-center { order:0; overflow:visible; }
+  .forest-command .studio-conditions { order:1; overflow:visible; }
+  .forest-command .studio-intelligence { order:2; overflow:visible; }
+  .forest-command .forest-stage { height:clamp(400px,65svh,600px); flex:none; }
+  .forest-command .studio-workflow-note { display:none; }
+  .forest-command .roster-cards { flex-direction:row; }
+  .forest-command .roster-card { flex:1; min-width:0; }
+  .forest-command .roster-card-top { flex-wrap:wrap; }
+  .forest-command .roster-card-bottom { flex-wrap:wrap; }
+  .forest-command .studio-detail { height:auto; min-height:440px; }
+  .forest-command .studio-main { display:block; }
+  .forest-command .studio-earth-viewport { height:auto; padding:10px; }
+  .earth-workspace { display:flex; flex-direction:column; height:auto; }
+  .earth-map-viewport { order:0; height:clamp(350px,60svh,550px); flex:none; }
+  .forest-command .imagery-panel { order:1; overflow:visible; }
+  .forest-command .imagery-content { max-height:none; }
+  .forest-command .map-intelligence { margin:0 10px 10px; overflow:visible; }
+  .forest-command .map-intelligence > .panel-float:first-child { height:auto; min-height:400px; }
+  .forest-command .earth-legend { padding:0; }
+  .forest-command .earth-legend summary { width:40px; justify-content:center; }
+  .forest-command .earth-legend summary span { display:none; }
+  .forest-command .earth-legend:has(details[open]) { padding:10px; }
+  .forest-command .earth-legend details[open] summary { width:auto; }
+  .forest-command .earth-legend details[open] summary span { display:inline; }
+  .forest-command .studio-expanded { position:fixed; inset:0; z-index:50; padding:8px; }
+  .forest-command .studio-expanded .studio-center { height:100%; }
+  .forest-command .studio-expanded .forest-stage { height:auto; flex:1; }
+}
+@media(max-width:599px) {
+  .forest-command .command-header { gap:7px; padding:9px 10px; }
+  .forest-command .simulation-brand { font-size:18px; }
+  .forest-command .command-view-switch button { font-size:11px; padding:8px 10px; }
+  .forest-command .roster-cards { flex-direction:column; }
+  .forest-command .roster-card-bottom { flex-wrap:nowrap; }
+  .forest-command .roster-card-top > span:last-child { display:flex; }
+  .forest-command .roster-card-bottom small { display:block; }
+  .forest-command .roster-card > strong { font-size:13px; }
+  .forest-command .forest-water-response { right:10px; bottom:73px; width:180px; }
+  .forest-command .forest-comparison dt { font-size:6.5px; }
+  .forest-command .forest-comparison dd { font-size:11px; }
+  .forest-command .comparison-card-heading span { display:none; }
+  .forest-command .playback-policy-row > .eyebrow { width:100%; }
+  .forest-command .playback-crews { margin-left:0; }
+  .forest-command .playback-track > div > span { display:none; }
+  .forest-command .playback-phases small { display:none; }
+}

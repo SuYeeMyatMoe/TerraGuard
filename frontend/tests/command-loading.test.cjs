@@ -22,7 +22,7 @@ function command(initial = {}) {
     }, useRef: value => refs[refCursor++] ??= { current: value }, useEffect: fn => { effects.push(fn); }, useCallback: fn => fn },
     'next/dynamic': { default: (() => { let index = 0; return () => index++ === 0 ? props => { forestProps = props; return React.createElement('canvas'); } : empty; })() },
     '@/lib/store': { useStore }, '@/lib/format': { pct: String, shortId: String },
-    '@/components/ui': { RecPill: empty }, './studio.css': {}, './mainSync.css': {},
+    '@/components/ui': { RecPill: empty }, './studio.css': {}, './mainSync.css': {}, './responsive.css': {},
     './CommandLoading': loadModule('src/components/command/CommandLoading.tsx', {
       './CommandLoading.module.css': { default: new Proxy({}, { get: (_, key) => String(key) }) },
     }),

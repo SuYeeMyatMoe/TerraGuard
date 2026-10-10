@@ -19,6 +19,7 @@ import { RecPill } from "@/components/ui";
 import { pct, shortId } from "@/lib/format";
 import "./studio.css";
 import "./mainSync.css";
+import "./responsive.css";
 
 const ForestStudio = dynamic(() => import("@/components/scene/ForestStudio").then(m => m.ForestStudio), { ssr: false });
 const EarthView = dynamic(() => import("./EarthView").then((m) => m.EarthView), { ssr: false });
@@ -91,7 +92,7 @@ export function CommandCenter() {
   }, [sim]);
 
   return (
-    <div className={`forest-command ${view === "sim" ? "studio-mode" : "map-mode"}`}>
+    <div className={`forest-command simulation-theme ${view === "sim" ? "studio-mode" : "map-mode"}`}>
       {covered && <CommandLoading stage={stage} error={error} onRetry={() => {
         if (loadError) void load();
         else void useStore.getState().runSimulation({ autoplay: false });
@@ -109,7 +110,7 @@ export function CommandCenter() {
             </div>
             <div hidden={leftTab !== "incidents"}><IncidentRoster/></div>
             <div className="studio-control-content" hidden={leftTab !== "conditions"}><ControlsPanel/></div>
-            <div className="studio-workflow-note"><span>01 / COMPARE THE INCIDENTS</span><p>{sim?.teams === 1 ? "Compare policies with one shared crew. Select an incident to review its response." : "Watch a dedicated crew respond to each of A, B and C. Select an incident to review its evidence and live response."}</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
+            <div className="studio-workflow-note"><span>01 / COMPARE THE INCIDENTS</span><p>{sim?.teams === 1 ? "Compare policies with one crew. Select an incident to review." : "Select A, B or C to review its crew and evidence."}</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
           </aside>
           <div className="studio-center"><ForestStudio expanded={expanded} onExpand={() => setExpanded(!expanded)} onReady={onSceneReady}/><div className="studio-timeline"><Timeline/></div></div>
           <aside className="studio-intelligence" aria-label="Recommendations and decision">

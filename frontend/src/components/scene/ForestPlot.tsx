@@ -24,7 +24,7 @@ const FOLIAGE_BURNING = new THREE.Color("#ff8a35");
 const FOLIAGE_BURNED = new THREE.Color("#3f444b");
 const FOLIAGE_INTERVENED = new THREE.Color("#4fb7b0");
 
-const REC_COLOR: Record<Recommendation, string> = { INSPECT: "#ff8a35", RECHECK: "#2563eb", MONITOR: "#94a3b8" };
+const REC_COLOR: Record<Recommendation, string> = { INSPECT: "#ff8a35", RECHECK: "#365004", MONITOR: "#85765e" };
 
 interface TreeSlot {
   cell: number;
@@ -253,7 +253,7 @@ export function ForestPlot({
 
   const ign = info.ignition[0];
   const [bx, bz] = ign ? cellToLocal(ign[0], ign[1]) : [0, 0];
-  const beaconColor = recommendation ? REC_COLOR[recommendation] : "#2563eb";
+  const beaconColor = recommendation ? REC_COLOR[recommendation] : "#365004";
   const windRad = ((info.wind_dir_deg + 180) % 360) * (Math.PI / 180); // direction wind blows TO
   const wx = Math.sin(windRad);
   const wz = -Math.cos(windRad);
@@ -263,7 +263,7 @@ export function ForestPlot({
       {/* plot base slab */}
       <mesh position={[0, -0.12, 0]} receiveShadow>
         <boxGeometry args={[GRID + 1.4, 0.3, GRID + 1.4]} />
-        <meshStandardMaterial color={selected ? "#dbeafe" : "#e3efe6"} roughness={1} />
+        <meshStandardMaterial color={selected ? "#ede383" : "#e3efe6"} roughness={1} />
       </mesh>
       {selected && (
         <Line
@@ -271,7 +271,7 @@ export function ForestPlot({
             [-HALF - 1.2, 0.05, -HALF - 1.2], [HALF + 1.2, 0.05, -HALF - 1.2], [HALF + 1.2, 0.05, HALF + 1.2],
             [-HALF - 1.2, 0.05, HALF + 1.2], [-HALF - 1.2, 0.05, -HALF - 1.2],
           ]}
-          color="#2563eb"
+          color="#365004"
           lineWidth={2}
         />
       )}
@@ -317,8 +317,8 @@ export function ForestPlot({
         <Line key={k} points={pts} color="#16a34a" lineWidth={1.6} dashed dashSize={0.3} gapSize={0.18} />
       ))}
       {protCentroid && selected && (
-        <Html position={[protCentroid[0], 0.6, protCentroid[1]]} center zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
-          <div className="whitespace-nowrap rounded-full bg-white/95 px-2 py-0.5 text-[10.5px] font-semibold text-[var(--green-700)] shadow ring-1 ring-[var(--green-200)]">
+        <Html position={[protCentroid[0], 0.6, protCentroid[1]]} center zIndexRange={[4, 0]} style={{ pointerEvents: "none" }}>
+          <div className="whitespace-nowrap rounded-full bg-[var(--surface)]/95 px-2 py-0.5 text-[10.5px] font-semibold text-[var(--green-700)] shadow ring-1 ring-[var(--green-200)]">
             Protected habitat
           </div>
         </Html>
@@ -327,7 +327,7 @@ export function ForestPlot({
       {hover != null && (picking ? selected : true) && (
         <mesh position={[cellToLocal(Math.floor(hover / GRID), hover % GRID)[0], 0.15, cellToLocal(Math.floor(hover / GRID), hover % GRID)[1]]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
           <planeGeometry args={[0.98, 0.98]} />
-          <meshBasicMaterial color={picking && selected ? "#ff8a35" : "#2563eb"} transparent opacity={0.35} depthWrite={false} />
+          <meshBasicMaterial color={picking && selected ? "#ff8a35" : "#365004"} transparent opacity={0.35} depthWrite={false} />
         </mesh>
       )}
       {/* wind arrow */}
@@ -338,18 +338,18 @@ export function ForestPlot({
         </mesh>
         <mesh position={[0, 0.05, 0.25]} rotation={[Math.PI / 2, 0, 0]}>
           <coneGeometry args={[0.32, 0.6, 3]} />
-          <meshBasicMaterial color="#06b6d4" />
+          <meshBasicMaterial color="#925e06" />
         </mesh>
         <mesh position={[0, 0.05, -0.25]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.08, 0.08, 0.6, 6]} />
-          <meshBasicMaterial color="#06b6d4" />
+          <meshBasicMaterial color="#925e06" />
         </mesh>
       </group>
       {/* incident beacon */}
       <Beacon position={[bx, 0, bz]} color={beaconColor} selected={selected} onClick={onSelect} hasTeam={hasTeam} />
-      <Html position={[bx, selected ? 5.4 : 4.6, bz]} center zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+      <Html position={[bx, selected ? 5.4 : 4.6, bz]} center zIndexRange={[4, 0]} style={{ pointerEvents: "none" }}>
         <div
-          className={`flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-2.5 py-1 shadow-md ring-1 transition-all ${
+          className={`flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--surface)] px-2.5 py-1 shadow-md ring-1 transition-all ${
             selected ? "ring-[var(--blue)] scale-105" : "ring-[var(--line)] opacity-90"
           }`}
         >
@@ -416,7 +416,7 @@ function Beacon({
         {hasTeam && (
           <mesh position={[0, 0.58, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[0.86, 0.07, 8, 32]} />
-            <meshBasicMaterial color="#06b6d4" />
+            <meshBasicMaterial color="#925e06" />
           </mesh>
         )}
       </group>

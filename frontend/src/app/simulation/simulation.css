@@ -1,0 +1,95 @@
+/* The command center shares the landing page's moss, flax and warm paper. */
+.forest-command.simulation-theme {
+  --bg: #f5f2e6;
+  --surface: #faf8ef;
+  --ink: #351903;
+  --ink-2: #74634c;
+  --ink-3: #85765e;
+  --line: #dedbc9;
+  --line-2: #eae7d9;
+  --blue: #365004;
+  --blue-50: #edf0dc;
+  --blue-200: #cbd5aa;
+  --blue-700: #496414;
+  --green: #627b22;
+  --green-50: #edf1df;
+  --green-200: #cbd6ad;
+  --green-700: #365004;
+  --veg: #8da432;
+  --fire: #c47722;
+  --fire-50: #fbefdd;
+  --fire-200: #ead0a7;
+  --fire-700: #925e06;
+  --red: #b94332;
+  --red-50: #fbede7;
+  --red-200: #ecc7bc;
+  --red-700: #923327;
+  --cyan: #925e06;
+  --cyan-50: #f6efd9;
+  --shadow-card: 0 1px 2px #35190304, 0 6px 24px #35190306;
+  --shadow-float: 0 2px 6px #35190304, 0 12px 36px #3519030a;
+  --radius-panel: 20px;
+  --radius-ctl: 999px;
+  color: var(--ink);
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Palette and typography follow the homepage; the updated studio owns layout. */
+.forest-command.simulation-theme { background:var(--bg); color:var(--ink); }
+.forest-command.simulation-theme .command-header { background:var(--bg); }
+.simulation-theme h1,.simulation-theme h2,.simulation-theme .panel-heading {
+  font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.035em;
+}
+.simulation-brand {display:inline-flex;align-items:center;gap:9px;color:var(--blue);font-size:21px;font-weight:750;letter-spacing:-.7px;white-space:nowrap}
+.simulation-brand span {font-size:9px;letter-spacing:1px;align-self:flex-start;margin-top:6px}
+.simulation-theme .eyebrow {color:var(--blue);letter-spacing:.12em}
+.simulation-theme .btn-secondary {background:var(--surface)}
+.simulation-theme .incident-roster,.simulation-theme .incident-list-panel {
+  --surface:#f7faef;--ink-2:#3f3416;--ink-3:#4b4228;--line:#cbd8b4;--blue-50:#edf3e1;
+  background:#e0ebce;border-color:#cbd8b4;
+}
+.simulation-theme .roster-heading {color:#3f3416;font-size:8px;letter-spacing:.8px}
+.simulation-theme .incident-roster h2 {font-size:21px;margin-top:9px}
+.simulation-theme .roster-intro {margin:6px 0 10px}
+.simulation-theme .roster-card {padding:9px;background:var(--surface)}
+.simulation-theme .roster-card[aria-pressed=true] {background:#edf3e1}
+.simulation-theme .roster-card-bottom {margin-top:6px}
+.simulation-theme .roster-resource {margin-top:10px}
+.simulation-theme .incident-list-header {padding:14px 16px 10px}
+.simulation-theme .incident-list-header h2 {font-size:21px}
+.simulation-theme .decision-panel {
+  --surface:#faf0e1;--line:#ddc5a4;--line-2:#e7ccb0;--blue:#925e06;--blue-200:#d9b882;--blue-50:#f7e9d5;
+  background:#f4dfc7;border-color:#ddc5a4;
+}
+.simulation-theme .decision-panel .eyebrow {color:#925e06}
+.simulation-theme .decision-panel .btn-primary {background:#925e06;color:#fff8e9}
+.simulation-theme .decision-panel .btn {padding-inline:10px;font-size:12px}
+.simulation-theme .decision-panel .btn > svg {flex-shrink:0}
+.simulation-theme .studio-workflow-note p {line-height:1.5}
+.simulation-theme [role="tab"] {white-space:nowrap}
+@media (prefers-reduced-motion:reduce) {
+  .simulation-theme button:not(:disabled):hover,.simulation-theme button:not(:disabled):active,
+  .simulation-theme summary:hover,.simulation-theme summary:active {transform:none}
+}
+/* Raised controls make their click affordance visible. */
+.simulation-theme button:not(:disabled),
+.simulation-theme summary,
+.simulation-theme header a {
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+.simulation-theme button:not(:disabled):focus-visible,
+.simulation-theme summary:focus-visible { box-shadow: 0 0 0 4px #8da43225; }
+@media (hover: hover) and (pointer: fine) {
+  .simulation-theme button:not(:disabled):hover,
+  .simulation-theme summary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px #35190318;
+  }
+  .simulation-theme .incident-card:hover { transform: translateY(-2px); background: var(--blue-50); }
+}
+.simulation-theme button:not(:disabled):active,
+.simulation-theme summary:active {
+  transform: translateY(1px) scale(.98);
+  box-shadow: inset 0 2px 4px #35190316;
+}

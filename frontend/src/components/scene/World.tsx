@@ -39,7 +39,7 @@ export function World() {
       <CameraRig selectedIndex={plots.findIndex((p) => p.incident_id === selectedId)} />
       <hemisphereLight args={["#ffffff", "#d9eadf", 1.6]} />
       <directionalLight position={[30, 50, 18]} intensity={1.5} color="#fffaf0" />
-      <directionalLight position={[-30, 20, -20]} intensity={0.35} color="#dbeafe" />
+      <directionalLight position={[-30, 20, -20]} intensity={0.35} color="#ede383" />
       <Terrain />
       <RangerStation />
       {plots.map((p, k) => (
@@ -281,12 +281,12 @@ function RangerStation() {
       </mesh>
       <mesh position={[-0.6, 1.0, 1.82]}>
         <boxGeometry args={[1.0, 1.2, 0.05]} />
-        <meshStandardMaterial color="#2563eb" />
+        <meshStandardMaterial color="#365004" />
       </mesh>
       {/* watch tower */}
       <mesh position={[2.6, 1.9, -1.2]}>
         <cylinderGeometry args={[0.12, 0.16, 3.6, 6]} />
-        <meshStandardMaterial color="#94a3b8" />
+        <meshStandardMaterial color="#85765e" />
       </mesh>
       <mesh position={[2.6, 3.8, -1.2]}>
         <boxGeometry args={[1.1, 0.6, 1.1]} />
@@ -297,7 +297,7 @@ function RangerStation() {
         <meshStandardMaterial color="#22a06b" />
       </mesh>
       <Html position={[-0.6, 3.1, 0.4]} center zIndexRange={[5, 0]} style={{ pointerEvents: "none" }}>
-        <div className="whitespace-nowrap rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-2)] shadow ring-1 ring-[var(--line)]">
+        <div className="whitespace-nowrap rounded-full bg-[var(--surface)]/95 px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-2)] shadow ring-1 ring-[var(--line)]">
           Field team base
         </div>
       </Html>
@@ -331,11 +331,11 @@ function Truck({ plot, step, delay }: { plot: number; step: number; delay: numbe
         <meshStandardMaterial color="#ffffff" />
       </RoundedBox>
       <RoundedBox args={[1.0, 0.7, 0.8]} radius={0.12} position={[0, 0.2, 0.95]}>
-        <meshStandardMaterial color="#2563eb" />
+        <meshStandardMaterial color="#365004" />
       </RoundedBox>
       <mesh position={[0, 0.66, -0.2]}>
         <boxGeometry args={[1.02, 0.08, 1.2]} />
-        <meshStandardMaterial color="#06b6d4" />
+        <meshStandardMaterial color="#925e06" />
       </mesh>
       {[[-0.5, 0.65], [0.5, 0.65], [-0.5, -0.75], [0.5, -0.75]].map(([wx, wz], i) => (
         <mesh key={i} position={[wx, -0.15, wz]} rotation={[0, 0, Math.PI / 2]}>

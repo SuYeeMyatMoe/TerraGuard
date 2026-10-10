@@ -341,12 +341,12 @@ export function EarthMap(props: Props) {
     before.addControl(new maplibregl.NavigationControl(), "bottom-left");
     before.addControl(
       new maplibregl.AttributionControl({ compact: true }),
-      "bottom-left",
+      "top-left",
     );
     const controls = before
       .getContainer()
       .querySelector<HTMLElement>(".maplibregl-ctrl-bottom-left");
-    if (controls) controls.style.bottom = "70px";
+    if (controls) controls.style.bottom = "10px";
     const sync = () => {
       const after = maps.current[1];
       if (after && current.current.compare) syncCamera(before, after);

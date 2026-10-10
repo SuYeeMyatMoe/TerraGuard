@@ -39,18 +39,18 @@ function IncidentList() {
     (a, b) => (predictions[a.id]?.priority.rank ?? 9) - (predictions[b.id]?.priority.rank ?? 9),
   );
   return (
-    <div className="panel-float slide-in flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-[var(--line)] px-5 pb-4 pt-5">
+    <div className="incident-list-panel panel-float slide-in flex min-h-0 flex-1 flex-col">
+      <div className="incident-list-header border-b border-[var(--line)]">
         <div className="eyebrow">Competing incidents</div>
         <h2 className="mt-1 text-[17px] font-bold leading-snug">
           {team.assigned_incident_id
             ? `Crew at ${shortId(team.assigned_incident_id)}. ${data.incidents.filter((i) => i.attendance === "unattended").length} waiting.`
-            : `${data.incidents.length} incidents. One crew. Which first?`}
+            : `${data.incidents.length} incidents · 1 crew`}
         </h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--ink-2)]">
           {team.assigned_incident_id
-            ? `${team.name} is committed. Incidents without the crew stay unattended until you reassign it.`
-            : `${team.name} is the only field crew. Ranked by the transparent priority score.`}
+            ? "Select an incident to review or reassign the crew."
+            : "Ranked by priority. Select to review."}
         </p>
       </div>
       <div className="scroll-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-3">

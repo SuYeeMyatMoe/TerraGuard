@@ -33,8 +33,8 @@ export function DecisionPanel() {
   const blocked = !!feas && !feas.actionable;
 
   return (
-    <div className="panel-float shrink-0 px-4 py-3.5">
-      <CrewCard />
+    <div className="decision-panel panel-float shrink-0 px-4 py-3.5">
+      <div className="eyebrow mb-2">Resources</div><CrewCard />
 
       {view === "sim" && (
         <div className="mt-3 border-t border-[var(--line-2)] pt-3">

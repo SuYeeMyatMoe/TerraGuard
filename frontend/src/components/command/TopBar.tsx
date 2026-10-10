@@ -1,9 +1,9 @@
 "use client";
 
-import { BookOpen, Box, ChevronDown, ClipboardList, Database, Globe2, History } from "lucide-react";
+import { BookOpen, Box, ChevronDown, ClipboardList, Database, Globe2, History, Leaf } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Logo, Segmented } from "@/components/ui";
+import { Segmented } from "@/components/ui";
 import { utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
@@ -21,7 +21,7 @@ export function TopBar() {
   return (
     <header className="command-header relative z-30 flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--line)] bg-white px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-4 lg:px-5 lg:py-0">
       <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="TerraGuard AI home">
-        <Logo />
+        <span className="simulation-brand"><Leaf size={24} strokeWidth={1.6} />TerraGuard<span>AI</span></span>
       </Link>
       <span className="hidden h-6 w-px bg-[var(--line)] 2xl:block" />
       <div className="hidden leading-tight 2xl:block">

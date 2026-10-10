@@ -58,7 +58,7 @@ export default function ForestCanvas() {
         dpr={dpr}
         frameloop={active ? "always" : "never"}
         gl={{ antialias: true, powerPreference: "high-performance" }}
-        onCreated={({ gl }) => gl.setClearColor("#f5f8fc")}
+        onCreated={({ gl }) => gl.setClearColor("#f5f2e6")}
         style={{ position: "absolute", inset: 0 }}
       >
         {/* adaptive quality: lower the pixel ratio on slow GPUs, restore it when frames recover */}

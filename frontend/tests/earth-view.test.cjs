@@ -61,7 +61,15 @@ function earthView() {
       assert.ok(++iterations < 20, 'render/effect loop');
     } while (dirty);
   };
-  const props = type => tree.props.children.find(child => child?.type === type).props;
+  const find = (node, type) => {
+    if (!node || typeof node !== 'object') return undefined;
+    if (node.type === type) return node;
+    for (const child of React.Children.toArray(node.props?.children)) {
+      const match = find(child, type);
+      if (match) return match;
+    }
+  };
+  const props = type => find(tree, type).props;
   render();
   return {
     calls, render,
