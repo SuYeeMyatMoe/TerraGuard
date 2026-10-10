@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
-import { GlobalMagneticCursor } from "@/components/cursor/GlobalMagneticCursor";
+import { BackgroundPointerEffect } from "@/components/cursor/BackgroundPointerEffect";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono-jb", display: "swap" });
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${manrope.variable} ${mono.variable}`}>
-      <body>{children}<GlobalMagneticCursor/></body>
+      <body>{children}<BackgroundPointerEffect/></body>
     </html>
   );
 }

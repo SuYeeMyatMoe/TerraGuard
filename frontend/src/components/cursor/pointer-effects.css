@@ -1,0 +1,11 @@
+/* Individual scale preserves existing transforms, including centered CTA positioning. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :where(a[href], button, [role="button"], [role="link"], [data-cursor="interactive"], summary) {
+    transition-property: scale;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(.2,.7,.2,1);
+  }
+  :where(a[href], button, [role="button"], [role="link"], [data-cursor="interactive"], summary):hover:not(:disabled):not([aria-disabled="true"]):not([data-cursor="none"]) {
+    scale: 1.06;
+  }
+}
