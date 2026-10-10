@@ -19,6 +19,7 @@ import { RecPill } from "@/components/ui";
 import { pct, shortId } from "@/lib/format";
 import "./studio.css";
 import "./mainSync.css";
+import "./responsive.css";
 
 const ForestStudio = dynamic(() => import("@/components/scene/ForestStudio").then(m => m.ForestStudio), { ssr: false });
 const EarthView = dynamic(() => import("./EarthView").then((m) => m.EarthView), { ssr: false });

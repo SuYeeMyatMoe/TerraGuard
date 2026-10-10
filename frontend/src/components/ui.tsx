@@ -114,8 +114,8 @@ export function ProviderChip({
 
 export function Row({ label, children, mono }: { label: ReactNode; children: ReactNode; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-[var(--line-2)] py-2 last:border-0">
-      <span className="shrink-0 text-[12.5px] text-[var(--ink-2)]">{label}</span>
+    <div className="evidence-row grid grid-cols-2 items-baseline gap-3 border-b border-[var(--line-2)] py-2 last:border-0">
+      <span className="min-w-0 text-[12.5px] text-[var(--ink-2)]">{label}</span>
       <span className={`text-right text-[12.5px] font-semibold text-[var(--ink)] tnum ${mono ? "font-mono text-[12px]" : ""}`}>{children}</span>
     </div>
   );
@@ -127,7 +127,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
 
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
-    <div className="mb-2 flex items-center justify-between">
+    <div className="evidence-section-title mb-2 flex flex-wrap items-center justify-between gap-2">
       <h3 className="eyebrow">{children}</h3>
       {right}
     </div>

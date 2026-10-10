@@ -162,21 +162,7 @@ export function EarthView() {
             ? `${(areaKm2(measurement.points) * 100).toFixed(2)} ha`
             : `${areaKm2(measurement.points).toFixed(2)} km²`;
   return (
-    <div className="absolute inset-0">
-      <EarthMap
-        imagery={state.data}
-        layer={layer}
-        opacity={opacity}
-        compare={mode === "compare"}
-        divider={divider}
-        visibility={mapVisibility}
-        measurement={measurement}
-        onPoint={onPoint}
-        onViewport={onViewport}
-        onTileError={onTileError}
-        onRasterState={setRasterState}
-        destination={destination}
-      />
+    <div className="earth-workspace">
       <EarthEnginePanel
         state={state}
         layer={layer}
@@ -258,7 +244,7 @@ export function EarthView() {
             <Layers size={14} />
             Map layers
           </summary>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="earth-layer-list mt-2 grid grid-cols-2 gap-2">
             {(Object.keys(LAYER_NAMES) as (keyof LayerVisibility)[]).map(
               (k) => (
                 <label
@@ -350,8 +336,24 @@ export function EarthView() {
           </p>
         </details>
       </EarthEnginePanel>
+      <div className="earth-map-viewport">
+      <EarthMap
+        imagery={state.data}
+        layer={layer}
+        opacity={opacity}
+        compare={mode === "compare"}
+        divider={divider}
+        visibility={mapVisibility}
+        measurement={measurement}
+        onPoint={onPoint}
+        onViewport={onViewport}
+        onTileError={onTileError}
+        onRasterState={setRasterState}
+        destination={destination}
+      />
+
       {mode === "compare" && showHistorical && (
-          <div className="panel-float absolute bottom-3 right-3 z-10 w-[280px] max-w-[calc(100%-76px)] p-3 lg:bottom-5 lg:left-1/2 lg:right-auto lg:max-w-none lg:-translate-x-1/2">
+          <div className="earth-comparison panel-float absolute bottom-3 right-3 z-10 w-[280px] max-w-[calc(100%-76px)] p-3 lg:bottom-5 lg:left-1/2 lg:right-auto lg:max-w-none lg:-translate-x-1/2">
             <div className="flex justify-between text-[11px] font-bold">
               <span>Before · left</span>
               <span>After · right</span>
@@ -399,6 +401,7 @@ export function EarthView() {
             </p>
           )}
         </details>
+      </div>
       </div>
     </div>
   );

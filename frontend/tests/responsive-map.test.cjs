@@ -15,8 +15,8 @@ test('map framing leaves usable map area on phones, tablets and short landscape 
   }
 });
 
-test('desktop camera framing reserves space for the imagery and decision panels', () => {
+test('desktop camera framing keeps the incident centered between external side panels', () => {
   const { mapPadding } = loadModule('src/lib/map-layout.ts');
-  assert.deepEqual({ ...mapPadding(1440, 780, false) }, { top: 0, bottom: 0, left: 300, right: 420 });
-  assert.deepEqual({ ...mapPadding(1440, 780, true) }, { top: 90, bottom: 230, left: 300, right: 420 });
+  assert.deepEqual({ ...mapPadding(1440, 780, false) }, { top: 0, bottom: 0, left: 24, right: 24 });
+  assert.deepEqual({ ...mapPadding(1440, 780, true) }, { top: 90, bottom: 230, left: 24, right: 24 });
 });

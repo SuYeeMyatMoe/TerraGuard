@@ -107,7 +107,7 @@ export function EarthEnginePanel({
       className="imagery-panel panel-float absolute left-3 top-3 z-10 max-h-[calc(100%-84px)] w-[288px] max-w-[calc(100%-76px)] overflow-y-auto lg:left-4 lg:top-4 lg:max-h-[calc(100%-90px)] lg:max-w-none"
     >
       {/* header */}
-      <div className="flex items-center gap-2 px-3.5 py-3">
+      <div className="imagery-header flex flex-wrap items-center gap-2 px-3.5 py-3">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-[var(--blue-50)] text-[var(--blue)]">
           <Satellite size={16} />
         </span>
@@ -123,7 +123,7 @@ export function EarthEnginePanel({
         )}
         <button
           type="button"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 lg:hidden"
+          className="imagery-toggle grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 lg:hidden"
           aria-label={expanded ? "Collapse imagery controls" : "Open imagery controls"}
           aria-expanded={expanded}
           aria-controls={contentId}
@@ -133,7 +133,7 @@ export function EarthEnginePanel({
         </button>
       </div>
 
-      <div id={contentId} className={`${expanded ? "block" : "hidden lg:block"} border-t border-[var(--line-2)]`}>
+      <div id={contentId} className={`imagery-content ${expanded ? "block" : "hidden lg:block"} border-t border-[var(--line-2)]`}>
         <div className="space-y-3 px-4 py-3">
           <div>
             <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wider text-[var(--ink-3)]">Period before incident</div>
@@ -150,7 +150,7 @@ export function EarthEnginePanel({
                   style={{ ["--fill" as string]: `${opacity * 100}%` }} />
                 <span className="w-8 text-right tnum">{Math.round(opacity * 100)}%</span>
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="imagery-stats grid grid-cols-2 gap-2">
                 <div className="rounded-[10px] bg-[#f6f8fb] px-3 py-2">
                   <div className="text-[10.5px] font-semibold text-[var(--ink-3)]">Acquisitions</div>
                   <div className="mt-0.5 text-[11.5px] font-bold leading-tight tnum">
