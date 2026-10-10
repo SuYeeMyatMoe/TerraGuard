@@ -1,18 +1,18 @@
 "use client";
 
-import { APIProvider, AdvancedMarker, Map as GMap, useMap } from "@vis.gl/react-google-maps";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Info, Satellite } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
-import { shortId, utc } from "@/lib/format";
+import { shortId } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import type { Incident, Prediction } from "@/lib/types";
+import type { EarthEngineImagery, Incident, Prediction } from "@/lib/types";
 import type { FeatureCollection } from "geojson";
 
-const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-const GOOGLE_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || "DEMO_MAP_ID";
+import { EarthEngineController, type ImagerySnapshot } from "@/lib/earth-engine";
+import { EarthEnginePanel, type EarthLayer } from "./EarthEnginePanel";
+import { afterStyleReady } from "@/lib/map-style";
 const STUDY_BOUNDS: [[number, number], [number, number]] = [[95.0, -4.5], [119.5, 7.5]];
 const REC_COLOR: Record<string, string> = { INSPECT: "#ff8a35", RECHECK: "#2563eb", MONITOR: "#64748b" };
 
@@ -22,15 +22,36 @@ function usePAs() {
   const first = data?.incidents[0]?.id;
   useEffect(() => {
     if (!first) return;
-    api.geospatial(first).then((g) => setPas(g.protected_areas)).catch(() => setPas(null));
+    let active = true;
+    api.geospatial(first).then((g) => { if (active) setPas(g.protected_areas); }).catch(() => { if (active) setPas(null); });
+    return () => { active = false; };
   }, [first]);
   return pas;
 }
 
 export function EarthView() {
+  const selectedId = useStore((s) => s.selectedId);
+  const [controller] = useState(() => new EarthEngineController(api.earthEngine));
+  const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
+  const [days, setDays] = useState(30);
+  const [layer, setLayer] = useState<EarthLayer>("rgb");
+  const [opacity, setOpacity] = useState(1);
+  const [failedTile, setFailedTile] = useState<string | null>(null);
+  const id = selectedId ?? undefined;
+  const state: ImagerySnapshot = snapshot.key === `${id ?? ""}:${days}` ? snapshot :
+    { key: "", loading: true, data: null, error: null };
+  const tileUrl = state.data?.layers.find((l) => l.id === layer)?.tile_url;
+  useEffect(() => {
+    void controller.load(id, days);
+    const refresh = setInterval(() => { void controller.load(id, days); }, 540000);
+    return () => { clearInterval(refresh); controller.cancel(); };
+  }, [controller, id, days]);
   return (
     <div className="absolute inset-0">
-      {GOOGLE_KEY ? <GoogleEarth /> : <MapLibreEarth />}
+      <MapLibreEarth imagery={state.data} layer={layer} opacity={opacity} onTileError={setFailedTile} />
+      <EarthEnginePanel state={state} layer={layer} setLayer={setLayer} days={days} setDays={setDays}
+        opacity={opacity} setOpacity={setOpacity} tileError={Boolean(tileUrl && failedTile === tileUrl)}
+        retry={() => { setFailedTile(null); void controller.load(id, days, true); }} />
       <EarthLegend />
     </div>
   );
@@ -50,15 +71,13 @@ function EarthLegend() {
           <span className="flex items-center gap-1.5"><Dot c="#64748b" /> Monitor</span>
           <span className="flex items-center gap-1.5"><Dot c="#f59e0b" small /> Other detections, prior 24 h</span>
           <span className="col-span-2 flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-[#16a34a] bg-[#16a34a22]" /> Protected areas (approximate boundaries)
+            <span className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-[#16a34a] bg-[#16a34a22]" /> Protected areas · boundary status in incident context
           </span>
         </div>
-        {!GOOGLE_KEY && (
-          <div className="mt-2.5 flex gap-1.5 border-t border-[var(--line-2)] pt-2.5 text-[11px] leading-snug text-[var(--ink-2)]">
-            <Info size={13} className="mt-px shrink-0" />
-            Satellite imagery activates when a Google Maps key is configured. Basemap: OpenFreeMap / OpenStreetMap.
-          </div>
-        )}
+        <div className="mt-2.5 flex gap-1.5 border-t border-[var(--line-2)] pt-2.5 text-[11px] leading-snug text-[var(--ink-2)]">
+          <Info size={13} className="mt-px shrink-0" />
+          Reference map: OpenFreeMap / OpenStreetMap. Earth Engine layers show dated imagery around the selected incident.
+        </div>
         {data?.provenance.is_synthetic && (
           <div className="mt-1.5 text-[11px] font-semibold text-amber-700">Hotspots are synthetic demo data in the FIRMS schema.</div>
         )}
@@ -88,10 +107,13 @@ function markerEl(inc: Incident, pred: Prediction | undefined, selected: boolean
   return el;
 }
 
-function MapLibreEarth() {
+function MapLibreEarth({ imagery, layer, opacity, onTileError }: {
+  imagery: EarthEngineImagery | null; layer: EarthLayer; opacity: number; onTileError: (url: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
+  const framedIncident = useRef<string | null>(null);
   const [failed, setFailed] = useState(false);
   const data = useStore((s) => s.data);
   const predictions = useStore((s) => s.predictions);
@@ -119,6 +141,46 @@ function MapLibreEarth() {
     };
   }, []);
 
+  const raster = imagery?.layers.find((l) => l.id === layer);
+  const tileUrl = raster?.tile_url;
+  const attribution = raster?.attribution;
+  const bounds = imagery?.bounds;
+  const incidentId = imagery?.incident_id;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !tileUrl || !bounds || !attribution) return;
+    const apply = () => {
+      map.addSource("earth-engine", { type: "raster", tiles: [tileUrl], tileSize: 256,
+        bounds, minzoom: 0, maxzoom: 18, attribution });
+      const before = map.getLayer("pas-fill") ? "pas-fill" : map.getLayer("ctx-dots") ? "ctx-dots" : undefined;
+      map.addLayer({ id: "earth-engine", type: "raster", source: "earth-engine" }, before);
+      if (incidentId && framedIncident.current !== incidentId) {
+        map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], {
+          padding: { top: 60, bottom: 240, left: 340, right: 420 }, maxZoom: 13, duration: 900,
+        });
+        framedIncident.current = incidentId;
+      }
+    };
+    const error = (event: maplibregl.ErrorEvent) => {
+      if ("sourceId" in event && event.sourceId === "earth-engine") onTileError(tileUrl);
+    };
+    map.on("error", error);
+    const cancel = afterStyleReady(map, apply);
+    return () => {
+      cancel();
+      map.off("error", error);
+      if (mapRef.current !== map) return;
+      if (map.getLayer("earth-engine")) map.removeLayer("earth-engine");
+      if (map.getSource("earth-engine")) map.removeSource("earth-engine");
+    };
+  }, [tileUrl, bounds, attribution, incidentId, onTileError]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !tileUrl) return;
+    const apply = () => { if (map.getLayer("earth-engine")) map.setPaintProperty("earth-engine", "raster-opacity", opacity); };
+    return afterStyleReady(map, apply);
+  }, [opacity, tileUrl]);
+
   // protected areas + context hotspots layers
   useEffect(() => {
     const map = mapRef.current;
@@ -144,7 +206,7 @@ function MapLibreEarth() {
           map.addLayer({ id: "pas-line", type: "line", source: "pas", paint: { "line-color": "#16a34a", "line-width": 1.5, "line-dasharray": [2, 1.5] } });
           map.addLayer({
             id: "pas-label", type: "symbol", source: "pas", minzoom: 6,
-            layout: { "text-field": ["concat", ["get", "name"], "\n(approx. boundary)"], "text-size": 11, "text-font": ["Noto Sans Regular"] },
+            layout: { "text-field": ["concat", ["get", "name"], "\n(", ["get", "boundary"], " boundary)"], "text-size": 11, "text-font": ["Noto Sans Regular"] },
             paint: { "text-color": "#17784f", "text-halo-color": "#fff", "text-halo-width": 1.5 },
           });
         }
@@ -160,8 +222,7 @@ function MapLibreEarth() {
         });
       }
     };
-    if (map.isStyleLoaded()) apply();
-    else map.once("load", apply);
+    return afterStyleReady(map, apply);
   }, [data, pas]);
 
   // incident markers
@@ -217,76 +278,4 @@ function OfflineCard() {
       </div>
     </div>
   );
-}
-
-/* ------------------------------------------------------------------ Google Maps (satellite) */
-function GoogleEarth() {
-  const data = useStore((s) => s.data);
-  const predictions = useStore((s) => s.predictions);
-  const selectedId = useStore((s) => s.selectedId);
-  const select = useStore((s) => s.select);
-  return (
-    <APIProvider apiKey={GOOGLE_KEY}>
-      <GMap
-        mapId={GOOGLE_MAP_ID}
-        mapTypeId="hybrid"
-        defaultBounds={{ west: STUDY_BOUNDS[0][0], south: STUDY_BOUNDS[0][1], east: STUDY_BOUNDS[1][0], north: STUDY_BOUNDS[1][1] }}
-        gestureHandling="greedy"
-        disableDefaultUI={false}
-        mapTypeControl={false}
-        streetViewControl={false}
-        fullscreenControl={false}
-        style={{ position: "absolute", inset: 0 }}
-      >
-        {data?.context_hotspots.map((h, i) => (
-          <AdvancedMarker key={`c${i}`} position={{ lat: h.lat, lng: h.lon }} zIndex={1}>
-            <span style={{ display: "block", width: 8, height: 8, borderRadius: 999, background: "#f59e0b", border: "1.5px solid #fff" }} />
-          </AdvancedMarker>
-        ))}
-        {data?.incidents.map((inc) => (
-          <GoogleIncidentMarker key={inc.id} inc={inc} pred={predictions[inc.id]} selected={inc.id === selectedId} onClick={() => select(inc.id)} />
-        ))}
-        <GoogleOverlays />
-      </GMap>
-    </APIProvider>
-  );
-}
-
-function GoogleIncidentMarker({ inc, pred, selected, onClick }: { inc: Incident; pred?: Prediction; selected: boolean; onClick: () => void }) {
-  const html = useMemo(() => markerEl(inc, pred, selected).innerHTML, [inc, pred, selected]);
-  return (
-    <AdvancedMarker position={{ lat: inc.lat, lng: inc.lon }} onClick={onClick} zIndex={selected ? 30 : 20} title={`${inc.id} · ${utc(inc.observed_at)}`}>
-      <div dangerouslySetInnerHTML={{ __html: html }} />
-    </AdvancedMarker>
-  );
-}
-
-function GoogleOverlays() {
-  const map = useMap();
-  const data = useStore((s) => s.data);
-  const selectedId = useStore((s) => s.selectedId);
-  const pas = usePAs();
-  useEffect(() => {
-    if (!map || !pas) return;
-    const added = map.data.addGeoJson(pas);
-    map.data.setStyle({ fillColor: "#16a34a", fillOpacity: 0.15, strokeColor: "#22c55e", strokeWeight: 1.5 });
-    return () => added.forEach((f) => map.data.remove(f));
-  }, [map, pas]);
-  useEffect(() => {
-    if (!map || !data) return;
-    const inc = data.incidents.find((i) => i.id === selectedId);
-    if (inc) {
-      map.panTo({ lat: inc.lat, lng: inc.lon });
-      const target = 13;
-      let z = map.getZoom() ?? 5;
-      const id = setInterval(() => {
-        z = Math.min(z + 1, target);
-        map.setZoom(z);
-        if (z >= target) clearInterval(id);
-      }, 160);
-      return () => clearInterval(id);
-    }
-    map.fitBounds({ west: STUDY_BOUNDS[0][0], south: STUDY_BOUNDS[0][1], east: STUDY_BOUNDS[1][0], north: STUDY_BOUNDS[1][1] });
-  }, [map, data, selectedId]);
-  return null;
 }

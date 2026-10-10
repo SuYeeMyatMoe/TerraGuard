@@ -4,12 +4,12 @@ Run:  .venv/Scripts/python -m uvicorn app.main:app --port 8010 --reload
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
-from . import db, geospatial
+from . import db, geospatial, earth_engine
 from .ai import service as ai
 from .ai.providers import grafilab_ready, openai_model, openai_ready
 from .schemas import (ActionRequest, ActionResponse, ExplainRequest, FieldBriefRequest, IncidentsResponse,
@@ -102,7 +102,38 @@ def evaluation():
 @app.get("/api/geospatial/{incident_id}")
 def geo(incident_id: str):
     _known(incident_id)
-    return geospatial.context(store().incident(incident_id))
+    return geospatial.context(store().incident(incident_id, statuses={}))
+
+
+@app.get("/api/earth-engine")
+def earth_engine_status():
+    return earth_engine.service().status()
+
+
+@app.get("/api/earth-engine/tiles/{handle}/{z}/{x}/{y}")
+def earth_engine_tile(handle: str, z: int, x: int, y: int):
+    service = earth_engine.service()
+    try:
+        url = service.tile_url(handle, z, x, y)
+    except KeyError:
+        raise HTTPException(410, "Satellite layer expired. Refresh the imagery.")
+    except ValueError:
+        raise HTTPException(422, "Invalid tile coordinates.")
+    try:
+        image = service.provider.fetch_tile(url)
+    except Exception:
+        raise HTTPException(503, "Satellite tile is unavailable. Refresh the imagery.")
+    return Response(content=image, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
+
+
+@app.get("/api/earth-engine/{incident_id}")
+def earth_engine_imagery(incident_id: str, days: int = Query(30, ge=14, le=60), refresh: bool = False):
+    _known(incident_id)
+    if days not in (14, 30, 60):
+        raise HTTPException(422, "Choose a 14, 30 or 60 day window.")
+    # Imagery remains available even if operational storage is down.
+    incident = store().incident(incident_id, statuses={})
+    return earth_engine.service().describe(incident, days, refresh)
 
 
 @app.post("/api/ai/explain")

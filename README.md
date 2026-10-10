@@ -7,7 +7,7 @@ TerraGuard is a two-page MVP:
 
 - `/`: landing page.
 - `/simulation`: Forest Command Center with two modes:
-  - **Earth View**: real coordinates, protected areas and past-24 h detections.
+  - **Earth View**: real coordinates, protected areas and past-24 h detections, with dated Sentinel-2 RGB/NDVI layers from Earth Engine when configured.
   - **3D Simulation**: React Three Fiber forest, driven by a Python cellular automaton.
 
 The flow is: select incident → 48 h prediction → AI briefing → simulate → compare First-alert vs AI-priority → approve action → field brief → notification.
@@ -37,13 +37,15 @@ cp .env.example .env        # required: SUPABASE_URL / SUPABASE_SECRET_KEY; opti
 # frontend (Node 22)
 cd frontend
 npm install
-cp .env.local.example .env.local   # optional: NEXT_PUBLIC_GOOGLE_MAPS_KEY for satellite imagery
+cp .env.local.example .env.local   # Earth Engine credentials belong in backend/.env
 npm run dev                        # http://localhost:3000  (proxies /api → :8010)
 ```
 
 The committed data snapshot (`backend/data`) supplies detections, model artifacts, and simulation inputs locally. Operational statuses and audit history require Supabase. Basemap tiles and LLM calls use the internet and degrade gracefully; database failures return 503 and are never silently saved to SQLite.
 
 Apply the migration in `supabase/migrations` before starting the backend, then configure a backend-only secret key. See [docs/SUPABASE.md](docs/SUPABASE.md) for setup and verification. The old `python -m app.db --reset` command refuses cloud deletion; use a separate project for disposable demos.
+
+Earth View uses MapLibre to display Earth Engine raster layers. No Google Maps browser API key is required. Register a Google Cloud project for Earth Engine, configure `GEE_PROJECT` in `backend/.env`, and authenticate locally or use a backend service account. See [docs/EARTH_ENGINE.md](docs/EARTH_ENGINE.md). Missing credentials retain the reference map and display “Setup needed”; images/statistics are never fabricated.
 
 ## Rebuild the data and model
 
@@ -66,3 +68,4 @@ cd backend
 - [docs/API.md](docs/API.md): endpoints and contracts
 - [docs/AI_SAFETY.md](docs/AI_SAFETY.md): LLM grounding, validation and fallback rules
 - [docs/SUPABASE.md](docs/SUPABASE.md): operational persistence, server-only credentials, migration and verification
+- [docs/EARTH_ENGINE.md](docs/EARTH_ENGINE.md): Earth View imagery, cloud masking, account setup and verification

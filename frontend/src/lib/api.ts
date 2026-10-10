@@ -3,6 +3,7 @@ import type {
   ActionType,
   AIResult,
   Evaluation,
+  EarthEngineImagery,
   FieldBrief,
   GeoContext,
   Health,
@@ -65,6 +66,8 @@ export const api = {
   actions: () => call<{ actions: ActionRecord[] }>("/api/actions"),
   evaluation: () => call<Evaluation>("/api/evaluation"),
   geospatial: (incident_id: string) => call<GeoContext>(`/api/geospatial/${encodeURIComponent(incident_id)}`),
+  earthEngine: (incident_id: string | undefined, days = 30, refresh = false) =>
+    call<EarthEngineImagery>(incident_id ? `/api/earth-engine/${encodeURIComponent(incident_id)}?days=${days}${refresh ? "&refresh=true" : ""}` : "/api/earth-engine", { timeoutMs: 120000 }),
   explain: (incident_id: string, teams: number, simulation?: unknown) =>
     post<AIResult<IncidentBriefing>>("/api/ai/explain", { incident_id, teams, simulation }, 70000),
   fieldBrief: (incident_id: string, teams: number, action_id?: number) =>
