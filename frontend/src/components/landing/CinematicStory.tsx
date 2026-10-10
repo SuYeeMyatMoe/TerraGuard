@@ -14,7 +14,6 @@ function ForestChapter({ index, sceneRef, active, navigate, showDetails }: { ind
   return <section ref={sceneRef} id={sceneIds[index]} className={styles.viewport} aria-labelledby={`${sceneIds[index]}-title`} aria-hidden={!active} style={{"--warmth":scene.fire,"--ash":scene.burn,zIndex:3-index} as CSSProperties}>
     <div className={styles.sceneLayers}>
       <div className={styles.warmAtmosphere} aria-hidden="true"/><div className={styles.ashAtmosphere} aria-hidden="true"/>
-      <div className={styles.backgroundLens} data-background-lens aria-hidden="true"/>
       <header className={styles.header}>
         <Link href="/" className={styles.brand} aria-label="TerraGuard AI home"><Leaf size={25} strokeWidth={1.5}/>TerraGuard<span>AI</span></Link>
         <nav aria-label={`${item.label} navigation`}><button onClick={showDetails} className={styles.aboutLink}>Our approach</button><Link href="/simulation" className={styles.navCta}>Launch simulation <ArrowUpRight size={15}/></Link></nav>

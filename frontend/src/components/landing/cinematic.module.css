@@ -98,17 +98,6 @@
 
 
 .sceneLayers {position:absolute;inset:0;opacity:1;transform:none}
-.backgroundLens {
-  position:absolute;inset:0;z-index:0;pointer-events:none;
-  opacity:var(--lens-visible,0);transition:opacity .25s;
-  background-color:var(--color-background);
-  background-image:radial-gradient(#925e062a .68px,transparent 1.02px);
-  background-size:20.4px 20.4px;
-  background-position:var(--lens-pattern-x,0px) var(--lens-pattern-y,0px);
-  mask-image:radial-gradient(circle 115px at var(--lens-x,-200px) var(--lens-y,-200px),#000 45%,transparent 100%);
-}
-.backgroundLens::after {content:"";position:absolute;inset:0;background:radial-gradient(circle 115px at var(--lens-x,-200px) var(--lens-y,-200px),#c8753b24 0%,#e6b07614 55%,transparent 100%)}
-@media(hover:none),(pointer:coarse),(prefers-reduced-motion:reduce){.backgroundLens{display:none}}
 @media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
   .mainCta{transition:background .2s,scale .22s cubic-bezier(.2,.7,.2,1)}
 }
