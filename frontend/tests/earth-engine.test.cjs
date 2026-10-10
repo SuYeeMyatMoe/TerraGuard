@@ -187,8 +187,8 @@ test("true-colour imagery panel shows clear coverage without the removed NDVI co
   const empty = renderToStaticMarkup(createElement(EarthEnginePanel, { ...props, state: {
     loading: false, error: null, data: { status: "no_data", reason: "No clear satellite pixels", analysis: { ndvi_mean: null, valid_coverage_pct: 0 } },
   }}));
-  assert.match(empty, /Basemap only/);
-  assert.match(empty, /Retry loading satellite imagery/);
+  // unavailable imagery shows no status chip: the panel simply keeps the basemap
+  assert.doesNotMatch(empty, /Basemap only|Retry loading satellite imagery/);
   assert.doesNotMatch(empty, /Mean NDVI|Connected/);
 });
 
@@ -244,7 +244,7 @@ test('a failed tile keeps available acquisition dates and valid analysis visible
   const {renderToStaticMarkup}=require('react-dom/server');const {createElement}=require('react');
   const {EarthEnginePanel}=loadModule('src/components/command/EarthEnginePanel.tsx');
   const html=renderToStaticMarkup(createElement(EarthEnginePanel,{layer:'rgb',setLayer(){},days:30,setDays(){},opacity:1,setOpacity(){},retry(){},tileError:true,state:{loading:false,error:null,data:{status:'ready',analysis:{scene_count:2,ndvi_mean:.5,valid_coverage_pct:80,acquisition_start:'2025-07-01',acquisition_end:'2025-07-28'}}}}));
-  assert.match(html,/title="Some satellite tiles could not load\./);assert.match(html,/2025-07-01/);assert.match(html,/80%/);assert.match(html,/Basemap only/);assert.match(html,/Retry loading satellite imagery/);
+  assert.match(html,/2025-07-01/);assert.match(html,/80%/);assert.doesNotMatch(html,/Basemap only|Imagery ready/);
 });
 
 test('automatic panel offers the period selector without the removed analysis step', () => {
