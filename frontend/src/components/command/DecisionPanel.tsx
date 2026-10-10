@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, CheckCircle2, FileText, RefreshCw, Send, Truck, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Eye, FileText, RefreshCw, Send, Truck, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RecPill } from "@/components/ui";
 import { num, pct, shortId, utc } from "@/lib/format";
@@ -16,6 +16,7 @@ export function DecisionPanel() {
   const view = useStore((s) => s.view);
   const actions = useStore((s) => s.actions);
   const openFieldBrief = useStore((s) => s.openFieldBrief);
+  const toast = useStore((s) => s.toast);
   const [sheet, setSheet] = useState<ActionType | null>(null);
   useEffect(() => setSheet(null), [selectedId]);
 
@@ -53,19 +54,35 @@ export function DecisionPanel() {
                 Recommends <RecPill rec={pred.priority.recommendation} size="sm" />
               </span>
             </div>
-            <p className="mt-1 text-[12px] leading-snug text-[var(--ink-2)]">{pred.priority.reason}</p>
+            <p className="mt-1 text-[12px] leading-snug text-[var(--ink-2)]">{pred.decision_summary}</p>
             {crewHere ? (
               <div className="mt-2.5 flex items-center gap-2 rounded-[10px] bg-[var(--cyan-50)] px-3 py-2 text-[12.5px] font-semibold text-[#0e7490] ring-1 ring-inset ring-[#a5e9f5]">
                 <CheckCircle2 size={15} /> {team.name} is assigned here
                 {team.since && <span className="ml-auto font-medium opacity-80">since {utc(team.since, false)}</span>}
               </div>
             ) : (
-              <button
-                className={`btn mt-2.5 w-full ${pred.priority.recommendation === "INSPECT" ? "btn-primary" : "btn-secondary"}`}
-                onClick={() => setSheet("ASSIGN_INSPECTION")}
-              >
-                <Send size={15} /> Send crew to {shortId(inc.id)}
-              </button>
+              <>
+                {pred.priority.recommendation === "MONITOR" && (
+                  <button
+                    className="btn btn-primary mt-2.5 w-full"
+                    onClick={() =>
+                      toast({
+                        tone: "info",
+                        title: `Continuing to monitor ${shortId(inc.id)}`,
+                        body: "No action recorded. The incident stays on the map and will be re-evaluated if new detections arrive.",
+                      })
+                    }
+                  >
+                    <Eye size={15} /> Continue monitoring
+                  </button>
+                )}
+                <button
+                  className={`btn mt-2 w-full ${pred.priority.recommendation === "INSPECT" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setSheet("ASSIGN_INSPECTION")}
+                >
+                  <Send size={15} /> Send crew to {shortId(inc.id)}
+                </button>
+              </>
             )}
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button

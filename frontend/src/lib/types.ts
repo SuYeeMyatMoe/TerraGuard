@@ -108,12 +108,20 @@ export interface Prediction {
   incident_id: string;
   model: { name: string; version: string; target: string; served: "random_forest" | "baseline" };
   probability: number;
-  interval: [number, number];
+  tree_variation: { p10: number; p90: number; note: string };
+  calibration_note: { band: string; observed_rate: number; n: number; text: string } | null;
+  decision_summary: string;
+  urgency: Urgency;
+  explained_factors: ExplainedFactor[];
+  ranking_explanation: RankingExplanation;
+  confidence_guidance: EvidenceGap[];
+  evidence_limitations: EvidenceLimitation[];
+  trace: Trace;
   threshold: number;
   above_alert_threshold: boolean;
   category: string;
   category_label: string;
-  evidence: { quality: "High" | "Medium" | "Low"; score: number; flags: string[] };
+  evidence: { quality: "High" | "Medium" | "Low"; score: number; flags: string[]; flag_codes: string[]; corroborated: boolean };
   factors: Factor[];
   missing_features: string[];
   ood_features: string[];
@@ -134,8 +142,108 @@ export interface Prediction {
     recommendation: Recommendation;
   }[];
   uncertainty_note: string;
-  limitations: string[];
+  model_limitations: string[];
   retrospective_label: string | null;
+}
+
+export type UrgencyTier = "CRITICAL_REVIEW" | "PRIORITY_REVIEW" | "ROUTINE_MONITORING" | "INSUFFICIENT_EVIDENCE";
+
+export interface Urgency {
+  tier: UrgencyTier;
+  label: string;
+  reasons: string[];
+  rule_based: boolean;
+}
+
+export interface ExplainedFactor {
+  feature: string;
+  name: string;
+  meaning: string;
+  value_text: string;
+  comparison: { rank: number; phrase: string; scope_label: string; n: number; text: string } | null;
+  comparison_text: string | null;
+  direction: "up" | "down";
+  effect_text: string;
+  /** relative influence |c|/max|c| among the shown factors: a visual scale, not a probability share */
+  influence: number;
+  influence_label: "Strong" | "Moderate" | "Smaller";
+  /** technical detail: additive path contribution in probability points */
+  contribution_pp: number;
+  imputed: boolean;
+}
+
+export type PriorityComponent = "prediction" | "exposure" | "recency" | "evidence";
+
+export interface RankingPair {
+  incident_id: string;
+  label: string;
+  region: string | null;
+  rank: number;
+  score: number;
+  score_diff: number;
+  component_diffs: Record<PriorityComponent, number>;
+  recommendation: Recommendation;
+}
+
+export interface RankingExplanation {
+  compared_with: string | null;
+  compared_with_label?: string;
+  relation?: "above" | "below";
+  text: string;
+  close?: boolean;
+  tie_rule?: string | null;
+  score_diff?: number;
+  component_diffs?: Record<PriorityComponent, number>;
+  drivers?: { component: PriorityComponent; label: string; diff: number }[];
+  tradeoff?: { component: PriorityComponent; label: string; diff: number } | null;
+  resource_note?: string;
+  pairs: RankingPair[];
+}
+
+export interface EvidenceGap {
+  code: string;
+  missing: string;
+  why_it_matters: string;
+  verification_step: string;
+  keep_cautious: boolean;
+}
+
+export interface EvidenceLimitation {
+  code: string;
+  severity: "high" | "medium" | "low";
+  title: string;
+  text: string;
+}
+
+export interface TraceDetection {
+  latitude: number;
+  longitude: number;
+  acq_date: string;
+  acq_time_utc: string;
+  satellite: string;
+  source_product: string;
+  version: string;
+  type: number | null;
+  confidence: string;
+  frp_mw: number;
+  bright_ti4_k: number;
+  distance_km: number;
+}
+
+export interface Trace {
+  incident_id: string;
+  candidate_id: string;
+  firms: { source: string; product: string; is_synthetic: boolean; matching_rule: string; detections: TraceDetection[] };
+  weather: { source: string; tile_lat: number | null; tile_lon: number | null; date: string | null; alignment: string };
+  protected_area: { name: string; source: string; boundary: string; distance_km: number };
+  model: { name: string; version: string; trained_at: string | null; target: string };
+  inference_time_utc: string;
+  priority_policy_version: string;
+  priority_components: Record<PriorityComponent, number>;
+  priority_score: number;
+  rank: number;
+  substituted_values: { feature: string; substituted_value: string }[];
+  explanation_method: string;
 }
 
 export interface Stat {
@@ -289,11 +397,13 @@ export interface BriefSection {
 }
 
 export interface IncidentBriefing {
-  summary: BriefSection;
-  why_matters: BriefSection;
-  prediction_interpretation: BriefSection;
+  incident_summary: BriefSection;
+  why_prediction: BriefSection;
+  why_priority: BriefSection;
+  comparison_with_next_incident: BriefSection;
+  uncertainties: BriefSection;
+  what_would_improve_confidence: BriefSection;
   recommended_next_step: BriefSection & { recommendation: Recommendation };
-  uncertainty: BriefSection;
 }
 
 export interface FieldBrief {

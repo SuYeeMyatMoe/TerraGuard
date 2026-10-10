@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { coords, pct, shortId, utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import type { GeoContext, Incident, Prediction } from "@/lib/types";
+import { ConfidenceBlock, DecisionHeader, FactorList, LimitationsBlock, PredictionBlock, RankingBlock, TraceBlock } from "./explain/ExplainSections";
 
 export function IntelligencePanel() {
   const data = useStore((s) => s.data);
@@ -86,6 +87,7 @@ function IncidentList() {
                 ) : (
                   <Skeleton className="mt-2 h-4 w-40" />
                 )}
+                {p && <span className="mt-1.5 line-clamp-2 block text-[11.5px] leading-snug text-[var(--ink-2)]">{p.decision_summary}</span>}
                 <AttendanceLine inc={inc} prob={p?.probability} compact />
               </span>
             </button>
@@ -150,55 +152,26 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
 
       <div className="scroll-thin min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
         <AttendanceLine inc={inc} prob={pred?.probability} />
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#eef2f7] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--ink-2)]">{inc.status}</span>
-          {pred && <QualityPill q={pred.evidence.quality} />}
-          {pred && <RecPill rec={pred.priority.recommendation} />}
-        </div>
-
-        {/* prediction */}
-        <section>
-          <SectionTitle right={<span className="text-[11px] text-[var(--ink-3)]">{pred?.model.name} {pred?.model.version}</span>}>
-            48-hour follow-up detection
-          </SectionTitle>
-          {predError && <div className="rounded-lg bg-[var(--red-50)] p-3 text-[12.5px] text-[var(--red-700)]">{predError}</div>}
-          {!pred && !predError && <Skeleton className="h-20 w-full" />}
-          {pred && <ProbabilityBlock pred={pred} />}
-        </section>
-
+        {predError && <div className="rounded-lg bg-[var(--red-50)] p-3 text-[12.5px] text-[var(--red-700)]">{predError}</div>}
+        {!pred && !predError && (
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        )}
         {pred && (
-          <section>
-            <SectionTitle>Why this estimate</SectionTitle>
-            <ul className="space-y-1.5">
-              {pred.factors.map((f) => (
-                <li key={f.feature} className="flex items-start gap-2 text-[12.5px] leading-snug">
-                  {f.direction === "up" ? (
-                    <ArrowUpRight size={15} className="mt-px shrink-0 text-[var(--fire)]" />
-                  ) : (
-                    <ArrowDownRight size={15} className="mt-px shrink-0 text-[var(--green)]" />
-                  )}
-                  <span>{f.text.replace(/ — (raises|lowers) the estimate$/, "")}</span>
-                </li>
-              ))}
-            </ul>
-            {(pred.missing_features.length > 0 || pred.ood_features.length > 0 || pred.evidence.flags.length > 0) && (
-              <div className="mt-3 rounded-[10px] bg-amber-50/70 p-3 ring-1 ring-inset ring-amber-200/70">
-                <div className="mb-1 flex items-center gap-1.5 text-[11.5px] font-bold text-amber-800">
-                  <AlertTriangle size={13} /> Evidence limitations
-                </div>
-                <ul className="list-disc space-y-0.5 pl-4 text-[12px] text-amber-900/90">
-                  {pred.evidence.flags.map((f) => <li key={f}>{f}</li>)}
-                  {pred.missing_features.length > 0 && <li>Missing inputs filled with typical values</li>}
-                </ul>
-              </div>
-            )}
-          </section>
+          <>
+            <DecisionHeader pred={pred} />
+            <PredictionBlock pred={pred} />
+            <FactorList pred={pred} />
+            <RankingBlock pred={pred} />
+            <ConfidenceBlock pred={pred} />
+            <LimitationsBlock pred={pred} />
+          </>
         )}
 
-        {pred && <PrioritySection pred={pred} />}
-
         <section>
-          <SectionTitle>Observation</SectionTitle>
+          <SectionTitle>Observation details</SectionTitle>
           <Row label="Coordinates"><span className="font-mono text-[12px]">{coords(inc.lat, inc.lon)}</span></Row>
           <Row label="Observed">{utc(inc.observed_at)}</Row>
           <Row label="Satellite">{inc.satellite} · {inc.daynight}</Row>
@@ -218,6 +191,7 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
         </section>
 
         <GeoSection geo={geo} />
+        {pred && <TraceBlock pred={pred} />}
         <AIBriefing incidentId={inc.id} />
       </div>
 
@@ -229,67 +203,6 @@ function IncidentDetail({ inc, pred, onClose }: { inc: Incident; pred?: Predicti
         </div>
       )}
     </div>
-  );
-}
-
-function ProbabilityBlock({ pred }: { pred: Prediction }) {
-  const [lo, hi] = pred.interval;
-  return (
-    <div className="rounded-[12px] border border-[var(--line)] p-3.5">
-      <div className="flex items-end justify-between">
-        <div className="text-[30px] font-extrabold leading-none tracking-tight tnum">{pct(pred.probability)}</div>
-        <div className="text-right text-[11.5px] leading-tight text-[var(--ink-2)]">
-          tree range {pct(lo)}–{pct(hi)}
-          <br />
-          alert threshold {pct(pred.threshold)}
-        </div>
-      </div>
-      <div className="relative mt-3 h-2 rounded-full bg-[#eef2f7]">
-        <div className="absolute inset-y-0 rounded-full bg-[var(--fire-200)]" style={{ left: `${lo * 100}%`, width: `${Math.max((hi - lo) * 100, 1)}%` }} />
-        <div className="absolute -top-1 h-4 w-1 rounded-full bg-[var(--fire)]" style={{ left: `calc(${pred.probability * 100}% - 2px)` }} />
-        <div className="absolute -top-1.5 h-5 w-px bg-[var(--ink-3)]" style={{ left: `${pred.threshold * 100}%` }} title="Alert threshold" />
-      </div>
-      <p className="mt-3 text-[12px] leading-relaxed text-[var(--ink-2)]">
-        Chance of another qualifying satellite detection within 2 km in a later pass (3–48 h). It is not a measure of
-        spread or damage. {pred.uncertainty_note}
-      </p>
-    </div>
-  );
-}
-
-function PrioritySection({ pred }: { pred: Prediction }) {
-  const comps = pred.priority.components;
-  const label: Record<string, string> = { prediction: "Prediction", exposure: "Protected-area exposure", recency: "Recency", evidence: "Evidence quality" };
-  return (
-    <section>
-      <SectionTitle right={<span className="text-[12px] font-bold tnum">{pred.priority.score.toFixed(2)}</span>}>
-        Operational priority · rank {pred.priority.rank} of {pred.priority.of}
-      </SectionTitle>
-      <div className="flex h-2 overflow-hidden rounded-full bg-[#eef2f7]">
-        {Object.entries(comps).map(([k, v], i) => (
-          <div key={k} title={`${label[k]}: ${v.toFixed(2)}`} style={{ width: `${v * 100}%`, background: ["#ff8a35", "#22a06b", "#2563eb", "#06b6d4"][i] }} />
-        ))}
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
-        {Object.entries(comps).map(([k, v], i) => (
-          <div key={k} className="flex items-center gap-1.5 text-[11.5px] text-[var(--ink-2)]">
-            <span className="h-2 w-2 rounded-sm" style={{ background: ["#ff8a35", "#22a06b", "#2563eb", "#06b6d4"][i] }} />
-            {label[k]} <b className="ml-auto text-[var(--ink)] tnum">{v.toFixed(2)}</b>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--ink-2)]">{pred.priority.reason}</p>
-      <div className="mt-2.5 space-y-1">
-        {pred.competing.map((c) => (
-          <div key={c.incident_id} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] ${c.incident_id === pred.incident_id ? "bg-[var(--blue-50)]" : "bg-[#f7f9fc]"}`}>
-            <b className="w-4 tnum">{c.rank}</b>
-            <span className="flex-1 truncate">{shortId(c.incident_id)} · {c.region}</span>
-            <span className="tnum text-[var(--ink-2)]">{c.priority_score.toFixed(2)}</span>
-            <RecPill rec={c.recommendation} size="sm" />
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -330,11 +243,13 @@ function AIBriefing({ incidentId }: { incidentId: string }) {
   const [open, setOpen] = useState(true);
   const [showEvidence, setShowEvidence] = useState(false);
   const sections: [string, keyof NonNullable<typeof brief>["content"]][] = [
-    ["Summary", "summary"],
-    ["Why it matters", "why_matters"],
-    ["What the prediction means", "prediction_interpretation"],
+    ["Incident summary", "incident_summary"],
+    ["Why this estimate", "why_prediction"],
+    ["Why this priority", "why_priority"],
+    ["Compared with the next incident", "comparison_with_next_incident"],
+    ["Uncertainties", "uncertainties"],
+    ["What would improve confidence", "what_would_improve_confidence"],
     ["Recommended next step", "recommended_next_step"],
-    ["Uncertainty", "uncertainty"],
   ];
   return (
     <section className="rounded-[12px] border border-[var(--blue-200)] bg-gradient-to-b from-[var(--blue-50)] to-white">

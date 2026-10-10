@@ -48,8 +48,11 @@ def _run(kind: str, pkg: dict, rec: str, primary: str) -> dict:
     if cached:
         return {**cached, "cached": True}
     schema, name = (BRIEFING_SCHEMA, "incident_briefing") if kind == "explain" else (FIELD_BRIEF_SCHEMA, "field_brief")
-    task = ("Write an incident briefing with sections summary, why_matters, prediction_interpretation, "
-            "recommended_next_step (repeat the deterministic RECOMMENDATION exactly), uncertainty."
+    task = ("Write an incident briefing with sections incident_summary, why_prediction (use the FACTOR facts; they explain "
+            "the model estimate only), why_priority (use PRIORITY and SUMMARY facts), comparison_with_next_incident (use "
+            "COMPARE facts and RANK_ORDER; never contradict the order), uncertainties (EVID_FLAG, TREE_VARIATION, CALIBRATION; "
+            "tree variation is not a confidence interval), what_would_improve_confidence (GAP facts; never promise certainty), "
+            "recommended_next_step (repeat the deterministic RECOMMENDATION exactly; do not restate the urgency differently)."
             if kind == "explain" else
             "Write a concise English field-team verification brief. The verification task must match the "
             "deterministic RECOMMENDATION and must not add orders beyond verification. Mark it as a draft for human review.")

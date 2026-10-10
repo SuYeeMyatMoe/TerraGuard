@@ -145,6 +145,64 @@ class CompetingIncident(BaseModel):
     recommendation: Recommendation
 
 
+class TreeVariation(BaseModel):
+    p10: float
+    p90: float
+    note: str
+
+
+class CalibrationNote(BaseModel):
+    band: str
+    observed_rate: float
+    n: int
+    text: str
+
+
+class Urgency(BaseModel):
+    tier: Literal["CRITICAL_REVIEW", "PRIORITY_REVIEW", "ROUTINE_MONITORING", "INSUFFICIENT_EVIDENCE"]
+    label: str
+    reasons: list[str]
+    rule_based: bool = True
+
+
+class FactorComparison(BaseModel):
+    rank: int
+    phrase: str
+    scope_label: str
+    n: int
+    text: str
+
+
+class ExplainedFactor(BaseModel):
+    feature: str
+    name: str
+    meaning: str
+    value_text: str
+    comparison: Optional[FactorComparison] = None
+    comparison_text: Optional[str] = None
+    direction: Literal["up", "down"]
+    effect_text: str
+    influence: float = Field(..., description="Relative influence |c|/max|c| among shown factors; not a probability share.")
+    influence_label: Literal["Strong", "Moderate", "Smaller"]
+    contribution_pp: float = Field(..., description="Technical detail: Saabas contribution in probability points.")
+    imputed: bool
+
+
+class EvidenceGap(BaseModel):
+    code: str
+    missing: str
+    why_it_matters: str
+    verification_step: str
+    keep_cautious: bool
+
+
+class EvidenceLimitation(BaseModel):
+    code: str
+    severity: Literal["high", "medium", "low"]
+    title: str
+    text: str
+
+
 class ModelInfo(BaseModel):
     name: str
     version: str
@@ -156,7 +214,15 @@ class PredictResponse(BaseModel):
     incident_id: str
     model: ModelInfo
     probability: float
-    interval: list[float]
+    tree_variation: TreeVariation
+    calibration_note: Optional[CalibrationNote] = None
+    decision_summary: str
+    urgency: Urgency
+    explained_factors: list[ExplainedFactor]
+    ranking_explanation: dict[str, Any]
+    confidence_guidance: list[EvidenceGap]
+    evidence_limitations: list[EvidenceLimitation]
+    trace: dict[str, Any]
     threshold: float
     above_alert_threshold: bool
     category: str
@@ -168,7 +234,7 @@ class PredictResponse(BaseModel):
     priority: Priority
     competing: list[CompetingIncident]
     uncertainty_note: str
-    limitations: list[str]
+    model_limitations: list[str]
     retrospective_label: Optional[str] = Field(None, description="What was actually observed in the next 48 h (historical replay only).")
 
 
