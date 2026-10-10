@@ -33,8 +33,12 @@ COMPONENT_PHRASE = {   # "... because it has <phrase>"
     "prediction": "a higher model estimate of follow-up detection",
     "exposure": "closer proximity to a protected area",
     "recency": "a more recent detection",
-    "evidence": "stronger satellite evidence",
+    "evidence": "a higher evidence-quality score",
 }
+
+
+def _and(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
 
 
 def short(incident_id: str) -> str:
@@ -146,7 +150,7 @@ def ranking_explanation(target_id: str, table: dict[str, dict], recs: dict[str, 
         resource = "It is routed to recheck because its evidence is uncertain, so the crew is not sent until it is verified."
     elif rec_t == "INSPECT":
         resource = (f"{'One field crew is' if teams == 1 else f'{teams} field crews are'} available. "
-                    + (f"Sending it here leaves {', '.join(w for w in waiting if w != short(target_id))} waiting."
+                    + (f"Sending it here leaves {_and([w for w in waiting if w != short(target_id)])} waiting."
                        if [w for w in waiting if w != short(target_id)] else "No other incident is left waiting."))
     else:
         top = short(inspect[0]) if inspect else None
@@ -355,10 +359,12 @@ def decision_summary(target_id: str, rec: str, evidence_quality: str, components
         clauses.append((components["exposure"], f"its location about {pa_dist_km:.0f} km from {pa_name} (approximate boundary)"))
     if hours_since <= 6:
         clauses.append((components["recency"], f"a detection {hours_since:.1f} hours before the review time"))
-    if evidence_quality == "High" and raw.get("multi_sensor_2h", 0) >= 0.5 and "both satellites" not in (pred_clause or ""):
-        clauses.append((components["evidence"], "confirmation by both satellites"))
-    elif evidence_quality == "High":
-        clauses.append((components["evidence"] * 0.5, "strong satellite evidence"))
+    # evidence clauses state observed facts only (never "strong evidence")
+    if raw.get("multi_sensor_2h", 0) >= 0.5 and "both satellites" not in (pred_clause or ""):
+        clauses.append((components["evidence"], "detection by both satellites"))
+    elif (raw.get("prior_24h") or 0) >= 1 and "previous 24 hours" not in (pred_clause or ""):
+        n = int(round(raw["prior_24h"]))
+        clauses.append((components["evidence"] * 0.8, f"{n} supporting detection{'s' if n != 1 else ''} in the previous 24 hours"))
     picked = [c for _, c in sorted(clauses, key=lambda x: -x[0])][:3]
 
     def join(items: list[str]) -> str:

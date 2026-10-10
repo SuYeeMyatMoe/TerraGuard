@@ -276,3 +276,11 @@ def test_deterministic_fallback_on_real_package_passes_validation(client):
         pkg = build_package(s.incident(i["id"]), pred, 1)
         ok, problems = validate_briefing(briefing(pkg, pred["priority"]["recommendation"]), pkg, pred["priority"]["recommendation"])
         assert ok is not None, problems
+
+
+@needs_model
+def test_single_pixel_incidents_are_never_critical(client):
+    for i in client.get("/api/incidents").json()["incidents"]:
+        p = client.post("/api/predict", json={"incident_id": i["id"]}).json()
+        if any(l["code"] == "single_pixel" for l in p["evidence_limitations"]):
+            assert p["urgency"]["tier"] != "CRITICAL_REVIEW"

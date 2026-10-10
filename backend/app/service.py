@@ -360,7 +360,9 @@ class Store:
             "calibration_note": X.calibration_note(ex["probability"], self.evaluation.get("random_forest", {}).get("reliability_test")),
             "decision_summary": summary,
             "urgency": X.urgency(rec, ex["probability"], float(thr), hours_since, me["evidence"]["corroborated"],
-                                 me["evidence"]["quality"], [l["title"] for l in lims if l["severity"] == "high"]),
+                                 me["evidence"]["quality"],
+                                 # critical review needs more than a single pixel, even when corroborated
+                                 [l["title"] for l in lims if l["severity"] == "high" or l["code"] == "single_pixel"]),
             "explained_factors": views,
             "ranking_explanation": ranking,
             "confidence_guidance": gaps,

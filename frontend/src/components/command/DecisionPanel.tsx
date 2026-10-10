@@ -54,7 +54,7 @@ export function DecisionPanel() {
                 Recommends <RecPill rec={pred.priority.recommendation} size="sm" />
               </span>
             </div>
-            <p className="mt-1 text-[12px] leading-snug text-[var(--ink-2)]">{pred.decision_summary}</p>
+            <p className="mt-1 text-[11.5px] leading-snug text-[var(--ink-3)]">The reasons are in the incident panel above.</p>
             {crewHere ? (
               <div className="mt-2.5 flex items-center gap-2 rounded-[10px] bg-[var(--cyan-50)] px-3 py-2 text-[12.5px] font-semibold text-[#0e7490] ring-1 ring-inset ring-[#a5e9f5]">
                 <CheckCircle2 size={15} /> {team.name} is assigned here

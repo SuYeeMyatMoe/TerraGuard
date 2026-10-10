@@ -19,7 +19,7 @@ const EarthView = dynamic(() => import("./EarthView").then((m) => m.EarthView), 
 
 export function CommandCenter() {
   const load = useStore((s) => s.load);
-  const data = useStore((s) => s.data);
+
   const loadError = useStore((s) => s.loadError);
   const view = useStore((s) => s.view);
   const sim = useStore((s) => s.sim);

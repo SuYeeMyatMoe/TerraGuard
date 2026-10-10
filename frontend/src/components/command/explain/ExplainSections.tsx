@@ -37,7 +37,6 @@ export function DecisionHeader({ pred }: { pred: Prediction }) {
           {pred.urgency.label}
         </span>
         <RecPill rec={pred.priority.recommendation} size="sm" />
-        <span className="text-[11px] text-[var(--ink-3)]">{pred.category_label}</span>
       </div>
       <p className="mt-2.5 text-[13.5px] font-semibold leading-snug text-[var(--ink)]">{pred.decision_summary}</p>
       <div className="mt-2 text-[12px] text-[var(--ink-2)]">
@@ -101,10 +100,14 @@ export function PredictionBlock({ pred }: { pred: Prediction }) {
 export function FactorList({ pred }: { pred: Prediction }) {
   const factors = pred.explained_factors;
   if (!factors.length) return null;
+  const scopes = Array.from(new Set(factors.filter((f) => f.comparison).map((f) => f.comparison!.scope_label)));
+  const shared = scopes.length === 1 ? scopes[0] : null;
   return (
     <section>
       <SectionTitle>Why this estimate?</SectionTitle>
-      <div className="mb-2 text-[11px] text-[var(--ink-3)]">Relative influence on this model estimate</div>
+      <div className="mb-2 text-[11px] leading-snug text-[var(--ink-3)]">
+        Relative influence on this model estimate.{shared ? ` Comparisons are with ${shared} (descriptive, not a danger threshold).` : ""}
+      </div>
       <ul className="space-y-2.5">
         {factors.map((f) => (
           <li key={f.feature}>
@@ -114,7 +117,7 @@ export function FactorList({ pred }: { pred: Prediction }) {
               ) : (
                 <ArrowDownRight size={15} className="shrink-0 text-[var(--green)]" aria-label="lowered the estimate" />
               )}
-              <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold" title={f.meaning}>{f.name}</span>
+              <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-snug" title={f.meaning}>{f.name}</span>
               <span className="shrink-0 text-[11px] text-[var(--ink-3)]">{f.influence_label} {f.direction === "up" ? "upward" : "downward"}</span>
             </div>
             <div className="ml-[23px] mt-1 h-1.5 rounded-full bg-[#eef2f7]" aria-hidden>
@@ -122,7 +125,11 @@ export function FactorList({ pred }: { pred: Prediction }) {
             </div>
             <div className="ml-[23px] mt-1 text-[12px] leading-snug text-[var(--ink-2)]">
               <b className="font-semibold text-[var(--ink)]">{f.value_text}</b>
-              {f.comparison_text && <> · {f.comparison_text}</>}
+              {f.comparison ? (
+                <> · {shared ? f.comparison.phrase.replace(/ of$/, "") : f.comparison.text}</>
+              ) : (
+                f.comparison_text && <> · {f.comparison_text}</>
+              )}
               {". "}This {f.effect_text}.
             </div>
           </li>
@@ -153,6 +160,7 @@ export function FactorList({ pred }: { pred: Prediction }) {
 
 /* ----------------------------------------------------------------------------- 4. why this incident first */
 const COMP_LABEL: Record<PriorityComponent, string> = { prediction: "Model estimate", exposure: "Exposure", recency: "Recency", evidence: "Evidence" };
+const COMP_SHORT: Record<PriorityComponent, string> = { prediction: "Model", exposure: "Expos.", recency: "Recency", evidence: "Evid." };
 
 export function RankingBlock({ pred }: { pred: Prediction }) {
   const rk = pred.ranking_explanation;
@@ -185,8 +193,10 @@ export function RankingBlock({ pred }: { pred: Prediction }) {
             <thead>
               <tr className="text-left text-[10.5px] uppercase tracking-wider text-[var(--ink-3)]">
                 <th className="py-1 font-bold">Incident</th>
-                {(Object.keys(COMP_LABEL) as PriorityComponent[]).map((k) => <th key={k} className="py-1 text-right font-bold">{COMP_LABEL[k]}</th>)}
-                <th className="py-1 text-right font-bold">Score Δ</th>
+                {(Object.keys(COMP_LABEL) as PriorityComponent[]).map((k) => (
+                  <th key={k} className="py-1 pl-1.5 text-right font-bold" title={COMP_LABEL[k]}>{COMP_SHORT[k]}</th>
+                ))}
+                <th className="py-1 pl-1.5 text-right font-bold">Score Δ</th>
               </tr>
             </thead>
             <tbody>

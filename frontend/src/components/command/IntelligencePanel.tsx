@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Box, ChevronDown, Info, Layers, Satellite, Sparkles, Truck, X } from "lucide-react";
+import { Box, ChevronDown, Info, Layers, Satellite, Sparkles, Truck, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ProviderChip, QualityPill, RecPill, Row, SectionTitle, Skeleton } from "@/components/ui";
+import { ProviderChip, RecPill, Row, SectionTitle, Skeleton } from "@/components/ui";
 import { api } from "@/lib/api";
 import { coords, pct, shortId, utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
