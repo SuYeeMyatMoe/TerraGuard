@@ -10,6 +10,8 @@ import { getCrewPlan } from "@/lib/crewMotion";
 import ForestScene from "./ForestScene";
 import ForestOverview, { overviewPosition, type OverviewPlot } from "./ForestOverview";
 
+import type { TreeStyle } from "./forestGeometry";
+
 export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpand: () => void }) {
   const data = useStore(s => s.data);
   const sim = useStore(s => s.sim);
@@ -21,6 +23,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   const picking = useStore(s => s.pickingIgnition);
   const predictions = useStore(s => s.predictions);
   const [allIncidents, setAllIncidents] = useState(true);
+  const [treeStyle, setTreeStyle] = useState<TreeStyle>("natural");
   const [showGrid, setGrid] = useState(false);
   const [showHabitat, setHabitat] = useState(true);
   const [resetKey, setReset] = useState(0);
@@ -31,6 +34,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   const plot = sim?.plots[index];
   const result = sim ? (policy === "coordinator" ? sim.policies.coordinator : sim.policies[policy]) : undefined;
   const crew=useMemo(()=>plot&&result?getCrewPlan(plot,result):null,[plot,result]);
+  const crewPlans = useMemo(() => sim && result ? sim.plots.map(plot => getCrewPlan(plot, result)) : [], [sim, result]);
   const frame = useMemo(() => {
     if (!plot || !result) return null;
     try { return { value: toForestFrame(plot, result, index, step), error: null }; }
@@ -43,17 +47,17 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
     try {
       const plots: OverviewPlot[] = sim.plots.map((plot, index) => {
         const frame = toForestFrame(plot, result, index, step);
-        const crew = getCrewPlan(plot, result);
+        const crew = crewPlans[index];
         return {
           id: plot.incident_id, region: data?.incidents.find(inc => inc.id === plot.incident_id)?.region ?? "Forest plot",
           position: overviewPosition(index), frame, crew, water: getWaterResponse(frame, result, crew, index),
           ignition: plot.ignition, label: shortId(plot.incident_id), playing, active: true,
-          showHabitat, showGrid, resetKey, focusKey, picking: false, onPick: () => {},
+          showHabitat, showGrid, resetKey, focusKey, treeStyle, picking: false, onPick: () => {},
         };
       });
       return { plots, error: null };
     } catch (error) { return { plots: [], error: error instanceof Error ? error.message : "Invalid forest frame." }; }
-  }, [sim, result, step, data, playing, showHabitat, showGrid, resetKey, focusKey]);
+  }, [sim, result, crewPlans, step, data, playing, showHabitat, showGrid, resetKey, focusKey, treeStyle]);
   // Ignition editing needs the detailed cell view for the selected incident.
   const overviewVisible = allIncidents && !picking;
   const assignedElsewhere=result?.assigned.find(id=>id!==plot?.incident_id);
@@ -61,8 +65,8 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   const endedBeforeArrival=!!(crew?.assigned&&crew.arrival!=null&&crew.arrival>0&&!result?.frames[Math.min(crew.arrival,result.frames.length-1)]?.[index]?.includes("2")&&!result?.frames.slice(0,crew.arrival+1).some(step=>step[index]?.includes("4")));
   const waterStatus=water?.phase==="suppression"?(frame?.value?.metrics.burning?"Water suppression · crew on site":"Cooling suppressed cells · crew on site"):water?.phase==="en-route"?`Crew en route · arrival at ${((crew?.arrival??0)*minutesPerStep/60).toFixed(1)} h`:water?.phase==="complete"?"Crew on site · no active fire":assignedElsewhere?`Crew sent to ${shortId(assignedElsewhere)}`:"Monitoring only · no crew dispatched";
   return <section className={`forest-stage ${overviewVisible ? "forest-overview" : ""}`} aria-label="Interactive forest simulation">
-    {overviewVisible && overview.plots.length > 0 && <ForestOverview plots={overview.plots} selectedId={selectedId} resetKey={resetKey} focusKey={focusKey} playing={playing}/>}
-    {!overviewVisible && frame?.value && plot && water && crew && <ForestScene frame={frame.value} water={water} crew={crew} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
+    {overviewVisible && overview.plots.length > 0 && <ForestOverview plots={overview.plots} selectedId={selectedId} resetKey={resetKey} focusKey={focusKey} playing={playing} onReview={() => setFocus(n => n + 1)}/>}
+    {!overviewVisible && frame?.value && plot && water && crew && <ForestScene treeStyle={treeStyle} frame={frame.value} water={water} crew={crew} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
       if (plot.fuel[row * 20 + col] === "0") return;
       const store = useStore.getState();
       store.setOverride(plot.incident_id, { ignition: [[row, col]] });
@@ -70,7 +74,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
       store.toast({ tone: "info", title: "Ignition point set", body: `Row ${row + 1}, column ${col + 1}. Run the test to apply.` });
     }} />}
     <div className="forest-stage-heading"><span className="forest-kicker">FOREST DECISION STUDIO / 3 RESPONSE CREWS</span><h1>{overviewVisible ? "Forest response map" : incident?.region ?? "Forest simulation"}</h1><p>{overviewVisible ? "A · B · C / live comparison" : "20 × 20 cells"} · {frame?.value ? `Step ${frame.value.tick}` : "Preparing scenario"} · {policy === "ai_priority" ? "AI-prioritized" : policy === "first_alert" ? "First-alert-first" : policy === "coordinator" ? "Your assignment" : "No intervention"}</p></div>
-    <div className="forest-view-switch" aria-label="Forest view"><button aria-pressed={overviewVisible} onClick={() => { setAllIncidents(true); useStore.getState().setPickingIgnition(false); }}>All incidents</button><button aria-pressed={!overviewVisible} onClick={() => setAllIncidents(false)}>Selected incident</button></div>
+    <div className="forest-view-switch" aria-label="Forest view"><button aria-pressed={overviewVisible} onClick={() => { setAllIncidents(true); setFocus(0); setReset(n => n + 1); useStore.getState().setPickingIgnition(false); }}>All incidents</button><button aria-pressed={!overviewVisible} onClick={() => setAllIncidents(false)}>Selected incident</button><select aria-label="Tree style" value={treeStyle} onChange={event => setTreeStyle(event.target.value as TreeStyle)}><option value="natural">Natural forest</option><option value="layered">Layered pines</option><option value="original">Original trees</option></select></div>
     <div className="forest-tools" aria-label="Scene controls">
       <button aria-label={expanded ? "Restore studio layout" : "Expand map"} aria-pressed={expanded} onClick={onExpand} title={expanded ? "Restore layout (Esc)" : "Expand map"}>{expanded ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}</button>
       <button aria-label="Focus crew and fire" onClick={() => setFocus(n => n + 1)} title="Focus crew and fire"><Crosshair size={16}/></button>
@@ -94,7 +98,7 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
       }}><Play size={12}/>{crew?.assigned?"Replay crew response":assignedElsewhere?"Follow assigned crew":"Compare AI response"}</button>
       {endedBeforeArrival?<><small>In this run, the fire ends before the crew arrives.</small><button className="earlier-response" disabled={loading||picking} onClick={()=>{const store=useStore.getState();store.setParam("responseDelay",1);store.runSimulation();}}>{loading?"Running response test…":`Test earlier arrival · ${minutesPerStep} min`}</button></>:<small>{crew?.assigned?"One crew · suppression starts after arrival":assignedElsewhere?"This incident has no response crew":"Fire spreads without a response crew"}</small>}
     </section>}
-    {overviewVisible && overview.plots.length > 0 && <div className="forest-comparison" aria-label="Live incident comparison">{overview.plots.map(plot => <button key={plot.id} aria-label={`Review ${plot.label}`} aria-pressed={selectedId === plot.id} onClick={() => useStore.getState().select(plot.id)}>
+    {overviewVisible && overview.plots.length > 0 && <div className="forest-comparison" aria-label="Live incident comparison">{overview.plots.map(plot => <button key={plot.id} aria-label={`Review ${plot.label}`} aria-pressed={selectedId === plot.id} onClick={() => { useStore.getState().select(plot.id); setFocus(n => n + 1); }}>
       <div className="comparison-card-heading"><strong>{plot.label}</strong><span>{predictions[plot.id] ? `${pct(predictions[plot.id].probability)} follow-up` : "Assessing"}</span></div>
       <p>{plot.region}</p>
       <dl><div><dt>Burning</dt><dd>{plot.frame.metrics.burning}</dd></div><div><dt>Burned</dt><dd>{plot.frame.metrics.burned}</dd></div><div><dt>Habitat burned</dt><dd>{plot.frame.metrics.habitat}</dd></div></dl>

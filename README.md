@@ -34,6 +34,23 @@ LLMs explain verified outputs only. They never produce probabilities, rankings o
 
 ## Run it
 
+For the Windows presentation, use the production preview after installing the
+dependencies below. It runs without the development compiler and starts the
+API alongside the frontend:
+
+```powershell
+cd frontend
+node --max-old-space-size=768 node_modules/next/dist/bin/next build
+cd ..
+pwsh -File .\start-demo.ps1
+```
+
+Open `http://localhost:3000/simulation`. The launcher reuses servers that are
+already listening; logs are saved under `%LOCALAPPDATA%\Temp\terraguard-demo`.
+Rebuild after changing frontend source. For editing with hot reload, use the
+development commands below, or `pwsh -File .\start-demo.ps1 -Dev` with port 3000
+free.
+
 ```bash
 # backend (Python 3.11)
 cd backend

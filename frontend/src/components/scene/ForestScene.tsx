@@ -2,6 +2,7 @@
 
 import {
   Component,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -14,7 +15,7 @@ import {
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Line, OrbitControls, Sky } from "@react-three/drei";
 import {
-  AdditiveBlending,
+  NormalBlending,
   BufferAttribute,
   Color,
   DoubleSide,
@@ -24,14 +25,19 @@ import {
   Vector3,
   PlaneGeometry,
   ShaderMaterial,
+  Sphere,
 } from "three";
 import { Flame, ShieldCheck, Trees } from "lucide-react";
 import {
   landscapeHeight,
+  makeBroadleaf,
   makeLandscape,
+  makePine,
+  makeTrunk,
   seed,
   terrainHeight,
   worldPosition,
+  type TreeStyle,
 } from "./forestGeometry";
 import type { ForestCell as Cell, ForestFrame } from "@/lib/forestFrame";
 import { useStore } from "@/lib/store";
@@ -40,8 +46,14 @@ import type { WaterResponse } from "@/lib/waterResponse";
 import { WaterEffects } from "./WaterEffects";
 import { CrewVehicle } from "./CrewVehicle";
 import type { CrewPlan } from "@/lib/crewMotion";
+import { ForestFoliageMaterial, ForestGroundMaterial, setGroundUV } from "./NaturalForestAssets";
 import { SceneReflections } from "./SceneReflections";
-import { NaturalTrees } from "./NaturalTrees";
+import { SceneShadowCache } from "./SceneShadowCache";
+import { ScenePlayback } from "./ScenePlayback";
+import { needsForestAnimation } from "@/lib/scenePlayback";
+import { HabitatOverlay } from "./HabitatOverlay";
+import { ForestBackground, type BackgroundTree } from "./ForestBackground";
+
 
 const palette = {
   healthy: "#536843",
@@ -52,7 +64,7 @@ const palette = {
   intervened: "#70965b",
 };
 
-function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid: boolean; picking: boolean; onPick: (row: number, col: number) => void }) {
+function Terrain({ cells, showGrid, picking, onPick, treeStyle }: { cells: Cell[]; showGrid: boolean; picking: boolean; treeStyle: TreeStyle; onPick: (row: number, col: number) => void }) {
   const geometry = useMemo(() => {
     const g = new PlaneGeometry(20, 20, 100, 100);
     g.rotateX(-Math.PI / 2);
@@ -64,6 +76,7 @@ function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid
       new BufferAttribute(new Float32Array(p.count * 3), 3),
     );
     g.computeVertexNormals();
+    setGroundUV(g);
     return g;
   }, []);
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -74,12 +87,13 @@ function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid
     for (let i = 0; i < p.count; i++) {
       const x = Math.min(19, Math.max(0, Math.floor(p.getX(i) + 10))),
         z = Math.min(19, Math.max(0, Math.floor(p.getZ(i) + 10)));
-      c.set(palette[cells[z * 20 + x].state]);
+      const state = cells[z * 20 + x].state;
+      c.set(treeStyle === "natural" ? ({ healthy: "#b1d391", protected: "#98c879", burning: "#a48b69", burned: "#30332d", "non-vegetated": "#b5a78d", intervened: "#a4cf85" }[state]) : palette[state]);
       c.multiplyScalar(0.76 + seed(i * 3) * 0.4);
       colors.setXYZ(i, c.r, c.g, c.b);
     }
     colors.needsUpdate = true;
-  }, [cells, geometry]);
+  }, [cells, geometry, treeStyle]);
   const lines = useMemo(
     () =>
       Array.from({ length: 21 }, (_, n) => {
@@ -117,7 +131,7 @@ function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid
         const row = Math.max(0, Math.min(19, Math.floor(point.z + 10)));
         onPick(row, col);
       }}>
-        <meshStandardMaterial vertexColors roughness={0.98} envMapIntensity={0} />
+        <ForestGroundMaterial treeStyle={treeStyle}/>
       </mesh>
       {showGrid &&
         lines.map((points, i) => (
@@ -134,47 +148,185 @@ function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid
   );
 }
 
-function Forest({ cells, crew }: { cells: Cell[]; crew: CrewPlan }) {
-  const placements = useMemo(() => cells.filter(cell => {
-    if (cell.terrain !== "forest") return false;
-    if (!crew.assigned) return true;
-    // Leave room for both the cab and overhanging crowns at the stopping point.
-    if (Math.hypot(cell.x - crew.station[0], cell.z - crew.station[1]) < 3.1) return false;
-    return !crew.route.some(([x, z]) => Math.hypot(cell.x - x, cell.z - z) < 2.1);
-  }).map(cell => {
-    const x = cell.x - 9.5 + (seed(cell.id * 3) - .5) * .65;
-    const z = cell.z - 9.5 + (seed(cell.id * 5) - .5) * .65;
-    return {
-      position: [x, terrainHeight(x, z), z] as [number, number, number],
-      height: 2.2 + seed(cell.id * 23) * 1.2,
-      rotation: seed(cell.id) * Math.PI * 2,
-      variant: cell.id % 2,
-      foliage: ["healthy", "protected", "intervened"].includes(cell.state),
-      shade: seed(cell.id * 11),
-    };
-  }), [cells, crew]);
-  return <NaturalTrees placements={placements}/>;
+function Forest({ cells, treeStyle, crew }: { cells: Cell[]; treeStyle: TreeStyle; crew: CrewPlan }) {
+  const fullSize = treeStyle !== "original";
+  const treesPerCell = fullSize ? 1 : 4;
+  const treeCount = 400 * treesPerCell;
+  const pines = useRef<InstancedMesh>(null),
+    leaves = useRef<InstancedMesh>(null),
+    trunks = useRef<InstancedMesh>(null),
+    rocks = useRef<InstancedMesh>(null);
+  const geometry = useMemo(
+    () => {
+      const trunk = makeTrunk();
+      if (fullSize) trunk.scale(1, 1.65, 1);
+      return { pine: makePine(treeStyle), leaf: makeBroadleaf(), trunk };
+    },
+    [treeStyle, fullSize],
+  );
+  useEffect(
+    () => () => Object.values(geometry).forEach((g) => g.dispose()),
+    [geometry],
+  );
+  useLayoutEffect(() => {
+    const dummy = new Object3D();
+    const color = new Color();
+    const counts = [0, 0, 0, 0];
+    cells.forEach((cell) => {
+      for (let j = 0; j < treesPerCell; j++) {
+        const i = cell.id * treesPerCell + j;
+        const x =
+          cell.x - 9.5 + (fullSize ? 0 : j % 2 ? 0.23 : -0.24) + (seed(i * 3) - 0.5) * (treeStyle === "natural" ? .55 : .25);
+        const z =
+          cell.z - 9.5 + (fullSize ? 0 : j >= 2 ? 0.24 : -0.24) + (seed(i * 5) - 0.5) * (treeStyle === "natural" ? .55 : .25);
+        const h = treeStyle === "natural" ? .78 + seed(i * 23) * .58 : fullSize ? .86 + seed(i * 23) * .35 : 0.46 + seed(i * 23) * 0.48;
+        const access = crew.assigned && (Math.hypot(x + 9.5 - crew.station[0], z + 9.5 - crew.station[1]) < 4.75 || crew.route.some(([rx, rz]) => Math.hypot(x + 9.5 - rx, z + 9.5 - rz) < (treeStyle === "natural" ? 2.25 : 1.85)));
+        const vegetated = cell.terrain === "forest" && !access,
+          living = vegetated && (cell.state === "healthy" || cell.state === "protected" || cell.state === "intervened"),
+          broad = treeStyle !== "natural" && i % (fullSize ? 13 : 5) === 0;
+        dummy.position.set(x, terrainHeight(x, z), z);
+        dummy.rotation.set(0, seed(i) * Math.PI * 2, 0);
+        dummy.scale.set(h * 0.82, h, h * 0.82);
+        dummy.updateMatrix();
+        if (vegetated && (treeStyle !== "natural" || !living)) {
+          trunks.current!.setMatrixAt(counts[2], dummy.matrix);
+          trunks.current!.setColorAt(counts[2]++, color.set(living ? "#4e402d" : "#282b24"));
+        }
+        dummy.scale.set(
+          living && !broad ? h * 0.92 : 0,
+          living && !broad ? h : 0,
+          living && !broad ? h * 0.92 : 0,
+        );
+        dummy.updateMatrix();
+        color.setHSL(
+          (fullSize ? .255 : .27) + seed(i * 11) * (fullSize ? .028 : .055),
+          (fullSize ? .72 : .4) + seed(i * 7) * (fullSize ? .16 : .27),
+          (fullSize ? .065 : .08) + seed(i * 13) * (fullSize ? .07 : .12),
+        );
+        if (treeStyle === "natural") color.setRGB(.88 + seed(i * 11) * .15, 1.12 + seed(i * 7) * .15, .54 + seed(i * 13) * .17);
+        if (living && !broad) {
+          pines.current!.setMatrixAt(counts[0], dummy.matrix);
+          pines.current!.setColorAt(counts[0]++, color);
+        }
+        dummy.scale.setScalar(living && broad ? h * 0.85 : 0);
+        dummy.updateMatrix();
+        if (living && broad) {
+          leaves.current!.setMatrixAt(counts[1], dummy.matrix);
+          leaves.current!.setColorAt(counts[1]++, color.setHSL(0.26 + seed(i) * 0.06, 0.48, 0.11 + seed(i * 31) * 0.12));
+        }
+        dummy.position.set(x, terrainHeight(x, z) + 0.03, z);
+        dummy.scale.set(
+          vegetated ? 0 : 0.07 + seed(i) * 0.08,
+          vegetated ? 0 : 0.08,
+          vegetated ? 0 : 0.1,
+        );
+        dummy.updateMatrix();
+        if (!vegetated) rocks.current!.setMatrixAt(counts[3]++, dummy.matrix);
+      }
+    });
+    [pines, leaves, trunks, rocks].forEach((ref, index) => {
+      ref.current!.count = counts[index];
+      ref.current!.instanceMatrix.needsUpdate = true;
+      if (ref.current!.instanceColor)
+        ref.current!.instanceColor.needsUpdate = true;
+      ref.current!.computeBoundingSphere();
+    });
+  }, [cells, crew, fullSize, treesPerCell, treeStyle]);
+  return (
+    <>
+      <instancedMesh
+        raycast={() => null}
+        ref={pines}
+        args={[geometry.pine, undefined, treeCount]}
+        castShadow={treeStyle !== "natural"}
+        receiveShadow
+      >
+        <ForestFoliageMaterial treeStyle={treeStyle}/>
+      </instancedMesh>
+      <instancedMesh
+        raycast={() => null}
+        ref={leaves}
+        args={[geometry.leaf, undefined, treeCount]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial roughness={1} envMapIntensity={0} />
+      </instancedMesh>
+      <instancedMesh
+        raycast={() => null}
+        ref={trunks}
+        args={[geometry.trunk, undefined, treeCount]}
+        castShadow
+      >
+        <meshStandardMaterial roughness={1} envMapIntensity={0} />
+      </instancedMesh>
+      <instancedMesh
+        raycast={() => null}
+        ref={rocks}
+        args={[undefined, undefined, treeCount]}
+        receiveShadow
+      >
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="#b7ac90" roughness={1} envMapIntensity={0} />
+      </instancedMesh>
+    </>
+  );
 }
 
-function Landscape() {
-  const geometry = useMemo(makeLandscape, []);
-  const placements = useMemo(() => Array.from({ length: 1000 }, (_, i) => {
-    const x = (seed(i * 5) - .5) * 67, z = (seed(i * 11) - .5) * 55 - 5;
-    const height = landscapeHeight(x, z);
-    if ((Math.abs(x) < 10.2 && Math.abs(z) < 10.2) || height < .2 || height > 11) return null;
-    return { position: [x, height, z] as [number, number, number], height: 2.5 + seed(i * 37) * 2, rotation: i, variant: i % 2, shade: seed(i) };
-  }).filter((tree): tree is NonNullable<typeof tree> => tree !== null), []);
+function Landscape({ treeStyle }: { treeStyle: TreeStyle }) {
+  const geometry = useMemo(() => { const ground = makeLandscape(); setGroundUV(ground); return ground; }, []),
+    pine = useMemo(() => makePine(treeStyle), [treeStyle]);
   useEffect(() => () => geometry.dispose(), [geometry]);
-  return <>
-    <mesh geometry={geometry} receiveShadow><meshStandardMaterial vertexColors roughness={1} envMapIntensity={0}/></mesh>
-    <NaturalTrees placements={placements} shadows={false}/>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[20, .18, -5]} scale={[1, 1.8, 1]}>
-      <circleGeometry args={[7.2, 64]}/><meshStandardMaterial color="#2c6977" roughness={.25} metalness={.45}/>
-    </mesh>
-  </>;
+  useEffect(() => () => pine.dispose(), [pine]);
+  const trees = useMemo(() => {
+    const color = new Color(), placed: BackgroundTree[] = [];
+    for (let i = 0; i < (treeStyle === "layered" ? 2600 : 4800); i++) {
+      const x = (seed(i * 5) - 0.5) * 67,
+        z = (seed(i * 11) - 0.5) * 55 - 5;
+      if (Math.abs(x) < 10.2 && Math.abs(z) < 10.2) continue;
+      if (landscapeHeight(x, z) < 0.2 || landscapeHeight(x, z) > 11) continue;
+      if (treeStyle === "natural") color.setRGB(.94, 1.12 + seed(i) * .15, .60);
+      else if (treeStyle === "layered") color.setHSL(.255 + seed(i * 3) * .025, .76, .07 + seed(i) * .065);
+      else color.setHSL(.29, .42, .08 + seed(i) * .09);
+      placed.push({ position: [x, landscapeHeight(x, z), z], scale: treeStyle !== "original" ? .8 + seed(i * 37) * .45 : .48 + seed(i * 37) * .8, rotation: i, tint: [color.r, color.g, color.b] });
+    }
+    return placed;
+  }, [treeStyle]);
+  useLayoutEffect(() => {
+    const color = new Color();
+    const groundColors = geometry.getAttribute("color");
+    const groundPositions = geometry.getAttribute("position");
+    for (let i = 0; i < groundColors.count; i++) {
+      const h = groundPositions.getY(i);
+      if (treeStyle === "natural") color.setRGB(.72 + seed(i) * .1, .92 + seed(i) * .12, .48 + seed(i) * .1);
+      else color.setHSL(h > 7 ? .13 : .25, h > 7 ? .1 : .28, .08 + seed(i) * .09 + Math.min(h, 18) * .003);
+      groundColors.setXYZ(i, color.r, color.g, color.b);
+    }
+    groundColors.needsUpdate = true;
+  }, [treeStyle, geometry]);
+  return (
+    <>
+      <mesh geometry={geometry} receiveShadow>
+        <ForestGroundMaterial treeStyle={treeStyle}/>
+      </mesh>
+      <ForestBackground trees={trees} geometry={pine} treeStyle={treeStyle}/>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[20, 0.18, -5]}
+        scale={[1, 1.8, 1]}
+      >
+        <circleGeometry args={[7.2, 64]} />
+        <meshStandardMaterial
+          color="#2c6977"
+          roughness={0.25}
+          metalness={0.45}
+        />
+      </mesh>
+    </>
+  );
 }
 
-function FireEffects({ cells, ignition, playing }: { cells: Cell[]; ignition: [number, number]; playing: boolean }) {
+function FireEffects({ cells, ignition, playing, scale = 1 }: { cells: Cell[]; ignition: [number, number]; playing: boolean; scale?: number }) {
   const flames = useRef<InstancedMesh>(null),
     smoke = useRef<InstancedMesh>(null);
   const active = useMemo(
@@ -193,27 +345,29 @@ function FireEffects({ cells, ignition, playing }: { cells: Cell[]; ignition: [n
       new ShaderMaterial({
         transparent: true,
         depthWrite: false,
-        blending: AdditiveBlending,
+        blending: NormalBlending,
         side: DoubleSide,
         toneMapped: false,
         uniforms: { time: { value: 0 } },
         vertexShader: `varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.0);}`,
-        fragmentShader: `varying vec2 vUv; uniform float time; void main(){float wave=sin(vUv.y*11.0-time*5.0)*.045+sin(vUv.y*21.0+time*8.0)*.025; float x=(vUv.x-.5+wave)*(1.0+vUv.y*1.8); float body=pow(max(0.0,1.0-abs(x)*2.6),1.3)*(1.0-vUv.y); float edge=smoothstep(.0,.18,body); vec3 color=mix(vec3(1.0,.16,.015),vec3(1.0,.93,.55),body); gl_FragColor=vec4(color*1.5,edge*(1.0-vUv.y));}`,
+        fragmentShader: `varying vec2 vUv; uniform float time; void main(){float wave=sin(vUv.y*11.0-time*5.0)*.045+sin(vUv.y*21.0+time*8.0)*.025; float x=(vUv.x-.5+wave)*(1.0+vUv.y*1.8); float body=pow(max(0.0,1.0-abs(x)*2.6),1.3)*(1.0-vUv.y); float edge=smoothstep(.0,.09,body); vec3 color=mix(vec3(1.0,.16,.015),vec3(1.0,.74,.16),body); gl_FragColor=vec4(color,edge*min(1.0,(1.0-vUv.y)*2.1));}`,
       }),
     [],
   );
   useEffect(() => () => material.dispose(), [material]);
+  const scratch = useMemo(() => new Object3D(), []);
+  const effectBounds = useMemo(() => new Sphere(new Vector3(0, 4, 0), 23), []);
   const animate = useCallback((time: number) => {
-    const d = new Object3D();
+    const d = scratch;
     let count = 0;
     active.forEach((cell) => {
       for (let j = 0; j < 3; j++) {
         const x = cell.x - 9.5 + (seed(cell.id * 7 + j) - 0.5) * 0.65,
           z = cell.z - 9.5 + (seed(cell.id * 13 + j) - 0.5) * 0.65,
           pulse = 0.88 + Math.sin(time * 6 + cell.id + j) * 0.12;
-        d.position.set(x, terrainHeight(x, z) + 1.85 * pulse, z);
+        d.position.set(x, terrainHeight(x, z) + 1.85 * pulse * scale, z);
         d.rotation.set(0, Math.PI / 4 + j * 1.15, 0);
-        d.scale.set(1.1, 4.2 * pulse, 1);
+        d.scale.set(1.1 * scale, 4.2 * pulse * scale, 1);
         d.updateMatrix();
         flames.current!.setMatrixAt(count, d.matrix);
         const rise = ((time * 0.13 + seed(cell.id + j * 11)) % 1) * 5.5;
@@ -233,10 +387,13 @@ function FireEffects({ cells, ignition, playing }: { cells: Cell[]; ignition: [n
     smoke.current!.count = count;
     flames.current!.instanceMatrix.needsUpdate = true;
     smoke.current!.instanceMatrix.needsUpdate = true;
-    flames.current!.computeBoundingSphere();
-    smoke.current!.computeBoundingSphere();
-  }, [active]);
-  useLayoutEffect(() => animate(1.5), [animate]);
+  }, [active, scratch, scale]);
+  useLayoutEffect(() => {
+    animate(1.5);
+    // Cover the entire plot and the maximum smoke rise throughout the animation.
+    flames.current!.boundingSphere = effectBounds;
+    smoke.current!.boundingSphere = effectBounds;
+  }, [animate, effectBounds]);
   useFrame(({ clock }) => {
     if (playing && !reducedMotion) {
       material.uniforms.time.value = clock.elapsedTime;
@@ -279,7 +436,7 @@ function CameraSetup({ resetKey, sceneKey, focusKey, focusX, focusZ }: { resetKe
   const command = useStore(s => s.cameraCommand);
   const lastFocus = useRef(0);
   useLayoutEffect(() => {
-    camera.position.set(8, 17, 13);
+    camera.position.set(16, 19, 23);
     camera.lookAt(0, 0.8, 0);
     const orbit = controls as OrbitControlsImpl | null;
     if (orbit) { orbit.target.set(0, 0.8, 0); orbit.update(); }
@@ -287,14 +444,14 @@ function CameraSetup({ resetKey, sceneKey, focusKey, focusX, focusZ }: { resetKe
   useLayoutEffect(() => {
     const cam = camera as PerspectiveCamera;
     // Preserve a readable plot on portrait screens without pulling the camera away.
-    cam.fov = Math.min(80, 2 * Math.atan(Math.tan(50 * Math.PI / 360) / Math.min(1, size.width / size.height)) * 180 / Math.PI);
+    cam.fov = Math.min(80, 2 * Math.atan(Math.tan(48 * Math.PI / 360) / Math.min(1, size.width / size.height)) * 180 / Math.PI);
     cam.updateProjectionMatrix();
   }, [camera, size]);
   useEffect(() => {
     if (!command || !controls) return;
     const orbit = controls as OrbitControlsImpl;
     const offset = camera.position.clone().sub(orbit.target);
-    if (command.kind === "reset") { camera.position.set(8, 17, 13); orbit.target.set(0, 0.8, 0); }
+    if (command.kind === "reset") { camera.position.set(16, 19, 23); orbit.target.set(0, 0.8, 0); }
     else {
       if (command.kind === "zoomIn" || command.kind === "zoomOut") offset.multiplyScalar(command.kind === "zoomIn" ? 0.8 : 1.25).clampLength(8, 49);
       else offset.applyAxisAngle(new Vector3(0, 1, 0), command.kind === "rotateL" ? -Math.PI / 8 : Math.PI / 8);
@@ -308,13 +465,14 @@ function CameraSetup({ resetKey, sceneKey, focusKey, focusX, focusZ }: { resetKe
     const orbit = controls as OrbitControlsImpl;
     const target = worldPosition(focusX, focusZ, 1.6);
     orbit.target.set(...target);
-    camera.position.set(target[0] + 5, target[1] + 7, target[2] + 8);
+    camera.position.set(target[0] + 5, target[1] + 11, target[2] + 8);
     orbit.update();
   }, [camera, controls, focusKey, focusX, focusZ]);
   return null;
 }
 
 export interface ForestSceneProps {
+  treeStyle?: TreeStyle;
   frame: ForestFrame;
   water: WaterResponse;
   crew: CrewPlan;
@@ -330,7 +488,7 @@ export interface ForestSceneProps {
   onPick: (row: number, col: number) => void;
 }
 
-export function ForestSceneContent({ frame, water, crew, ignition, label, playing, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal, overview = false }: ForestSceneProps & { portal: RefObject<HTMLDivElement>; overview?: boolean }) {
+export function ForestSceneContent({ frame, water, crew, ignition, label, playing, showHabitat, showGrid, resetKey, focusKey, picking, onPick, portal, overview = false, treeStyle = "original" }: ForestSceneProps & { portal: RefObject<HTMLDivElement>; overview?: boolean }) {
   const speed=useStore(s=>s.speed);
   const originX = ignition[0]?.[1] ?? 10, originZ = ignition[0]?.[0] ?? 10;
   const origin: [number, number] = [originX, originZ];
@@ -359,24 +517,25 @@ export function ForestSceneContent({ frame, water, crew, ignition, label, playin
   }, [frame.cells]);
   return <>
     {!overview && <>
+    <ScenePlayback playing={playing} animated={needsForestAnimation(frame, crew, water.spraying)}/>
+    <SceneShadowCache revision={frame} variant={treeStyle}/>
     <CameraSetup resetKey={resetKey} sceneKey={label} focusKey={focusKey} focusX={crew.assigned ? (fire.x + crew.station[0]) / 2 : fire.x} focusZ={crew.assigned ? (fire.z + crew.station[1]) / 2 : fire.z}/>
     <color attach="background" args={["#94b4bf"]}/>
     <fog attach="fog" args={["#a0bdc7", 36, 90]}/>
     <Sky distance={450000} sunPosition={[-30, 25, 10]} inclination={.5} azimuth={.25} turbidity={3.5} rayleigh={.8}/>
     <SceneReflections/>
-    <ambientLight intensity={.45}/>
-    <hemisphereLight args={["#d7efff", "#4b5331", .8]}/>
-    <directionalLight position={[-14,26,10]} intensity={2.5} color="#fff1cf" castShadow shadow-mapSize={[2048,2048]} shadow-camera-left={-16} shadow-camera-right={16} shadow-camera-top={16} shadow-camera-bottom={-16} shadow-camera-far={70} shadow-normalBias={.025}/>
-    <Landscape/>
+    <ambientLight intensity={treeStyle === "natural" ? .4 : .45}/>
+    <hemisphereLight args={["#d7efff", "#4b5331", treeStyle === "natural" ? .85 : .8]}/>
+    <directionalLight position={[-14,26,10]} intensity={treeStyle === "natural" ? 1.9 : 2.5} color={treeStyle === "natural" ? "#fff8ed" : "#fff1cf"} castShadow shadow-mapSize={[2048,2048]} shadow-camera-left={-16} shadow-camera-right={16} shadow-camera-top={16} shadow-camera-bottom={-16} shadow-camera-far={70} shadow-normalBias={.025}/>
+    <Landscape treeStyle={treeStyle}/>
     </>}
-    <Terrain cells={frame.cells} showGrid={showGrid} picking={picking} onPick={onPick}/>
-    <Forest cells={frame.cells} crew={crew}/>
-    <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]} playing={playing}/>
-    {water.spraying && water.target && <WaterEffects target={water.target} source={water.source} playing={playing}/>}
+    <Terrain treeStyle={treeStyle} cells={frame.cells} showGrid={showGrid} picking={picking} onPick={onPick}/>
+    <Forest cells={frame.cells} treeStyle={treeStyle} crew={crew}/>
+    <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]} playing={playing} scale={overview ? 2.2 : 1}/>
+    {water.spraying && water.target && <WaterEffects target={water.target} source={water.source} playing={playing} vehicleScale={overview ? 2.6 : 1.8}/>}
     {!overview && fire.count > 0 && <Html portal={portal} position={worldPosition(fire.x, fire.z, 2.3)} center zIndexRange={[21,1]}><div className="map-label fire-label"><Flame size={14}/>FIRE FRONT · {fire.count} {fire.count === 1 ? "cell" : "cells"}</div></Html>}
     {showHabitat && <>
-      {habitat.segments.map((points, i) => <Line key={i} points={points} color="#c9e676" lineWidth={1.5} transparent opacity={.85}/>) }
-      {frame.cells.filter(c => c.protected).map(c => <mesh key={c.id} position={worldPosition(c.x,c.z,.06)} rotation={[-Math.PI/2,0,0]} raycast={() => null}><planeGeometry args={[1,1]}/><meshBasicMaterial color="#8da432" transparent opacity={.12} depthWrite={false} side={DoubleSide}/></mesh>)}
+      <HabitatOverlay cells={frame.cells} segments={habitat.segments}/>
       {!overview && habitat.center && <Html portal={portal} position={habitat.center} center zIndexRange={[18,1]}><div className="map-label habitat-label"><Trees size={13}/>Protected habitat</div></Html>}
     </>}
     {ignition.map(([row,col], i) => <group key={i} position={worldPosition(col,row,.08)}>
@@ -384,7 +543,7 @@ export function ForestSceneContent({ frame, water, crew, ignition, label, playin
       <Line points={[[0,.1,0],[0,2.3,0]]} color="#ffba89" lineWidth={.8}/>
       {!overview && fire.count === 0 && <Html portal={portal} position={[0,2.6,0]} center zIndexRange={[20,1]}><div className="map-label"><Flame size={12}/>{i === 0 ? `${label} · ignition` : "Ignition point"}</div></Html>}
     </group>)}
-    <CrewVehicle plan={crew} tick={frame.tick} playing={playing} speed={speed} spraying={water.spraying} portal={portal} label={label.replace("Incident ", "Crew ")} scale={overview ? 1.4 : 1.3}/>
+    <CrewVehicle plan={crew} tick={frame.tick} playing={playing} speed={speed} spraying={water.spraying} portal={portal} label={label.replace("Incident ", "Crew ")} scale={overview ? 2.6 : 1.8} showLabel={!overview}/>
     {!overview && frame.arrived && !water.spraying && <Html portal={portal} position={worldPosition(...origin,4.6)} center zIndexRange={[19,1]}><div className="containment-label"><ShieldCheck size={11}/>Response crew on site</div></Html>}
     {!overview && <OrbitControls makeDefault enablePan={false} enabled={!picking} minDistance={8} maxDistance={49} minPolarAngle={.3} maxPolarAngle={Math.PI/2.6} target={[0,.8,0]}/>}
   </>;
@@ -405,9 +564,9 @@ export default function ForestScene(props: ForestSceneProps) {
   if (contextLost) return fallback;
   return <div ref={portal} className="scene-canvas" style={{cursor:props.picking ? "crosshair" : "grab"}}>
     <SceneBoundary key={attempt} fallback={fallback}>
-      <Canvas eventSource={portal} shadows dpr={2} frameloop={!props.active ? "never" : props.playing ? "always" : "demand"} camera={{position:[8,17,13],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
+      <Canvas eventSource={portal} shadows dpr={2} frameloop={!props.active ? "never" : "demand"} camera={{position:[16,19,23],fov:48,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
         gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); setContextLost(true); });
-      }}><ForestSceneContent {...props} portal={portal}/></Canvas>
+      }}><Suspense fallback={null}><ForestSceneContent {...props} portal={portal}/></Suspense></Canvas>
     </SceneBoundary>
   </div>;
 }

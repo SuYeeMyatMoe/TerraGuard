@@ -3,20 +3,22 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
-import { CatmullRomCurve3, InstancedMesh, Object3D, TubeGeometry, Vector3 } from "three";
+import { Box3, CatmullRomCurve3, InstancedMesh, Object3D, Sphere, TubeGeometry, Vector3 } from "three";
 import { seed, worldPosition } from "./forestGeometry";
 
-export function waterNozzlePosition(target: [number, number], source?: [number, number] | null): [number, number, number] {
+export function waterNozzlePosition(target: [number, number], source?: [number, number] | null, vehicleScale = 1.3): [number, number, number] {
   if (source) {
     const base=worldPosition(source[0],source[1],.04),dx=target[0]-source[0],dz=target[1]-source[1],distance=Math.hypot(dx,dz)||1;
-    return [base[0]+dx/distance*1.65,base[1],base[2]+dz/distance*1.65];
+    const forward = Math.min(1.15 * vehicleScale, distance * .65), side = .8 * vehicleScale;
+    return [base[0]+dx/distance*forward+dz/distance*side,base[1],base[2]+dz/distance*forward-dx/distance*side];
   }
   const x = target[0] > 4 ? target[0] - 3.8 : target[0] + 3.8;
   return worldPosition(x, Math.min(19, target[1] + 1.5), .04);
 }
 
-export function WaterEffects({ target, source, playing }: { target: [number, number]; source: [number, number] | null; playing: boolean }) {
+export function WaterEffects({ target, source, playing, vehicleScale }: { target: [number, number]; source: [number, number] | null; playing: boolean; vehicleScale: number }) {
   const droplets = useRef<InstancedMesh>(null);
+  const scratch = useMemo(() => ({ dummy: new Object3D(), point: new Vector3() }), []);
   const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -27,7 +29,7 @@ export function WaterEffects({ target, source, playing }: { target: [number, num
   const x = target[0], z = target[1];
   const sourceX = source?.[0], sourceZ = source?.[1];
   const spray = useMemo(() => {
-    const base = waterNozzlePosition([x, z], sourceX != null && sourceZ != null ? [sourceX, sourceZ] : null);
+    const base = waterNozzlePosition([x, z], sourceX != null && sourceZ != null ? [sourceX, sourceZ] : null, vehicleScale);
     const start = new Vector3(...base).add(new Vector3(0, 1.05, 0));
     const end = new Vector3(...worldPosition(x, z, .25));
     const mid = start.clone().lerp(end, .5); mid.y += 1.7;
@@ -35,16 +37,17 @@ export function WaterEffects({ target, source, playing }: { target: [number, num
     const geometry = new TubeGeometry(curve, 48, .085, 8, false);
     const truck=sourceX!=null&&sourceZ!=null?new Vector3(...worldPosition(sourceX,sourceZ,.1)):new Vector3(base[0]-.8,base[1]+.06,base[2]+1.3);
     const hose = [truck, new Vector3(base[0],base[1]+.1,base[2]), start];
-    return { base, start, end, curve, geometry, hose, angle: Math.atan2(end.x - start.x, end.z - start.z) };
-  }, [x, z, sourceX, sourceZ]);
+    const bounds = new Box3().setFromPoints([start, mid, end]).expandByScalar(2).getBoundingSphere(new Sphere());
+    return { base, start, end, curve, geometry, hose, bounds, angle: Math.atan2(end.x - start.x, end.z - start.z) };
+  }, [x, z, sourceX, sourceZ, vehicleScale]);
   useEffect(() => () => spray.geometry.dispose(), [spray]);
   const animate = useCallback((time: number) => {
     if (!droplets.current) return;
-    const dummy = new Object3D();
+    const { dummy, point } = scratch;
     for (let i = 0; i < 144; i++) {
       if (i < 96) {
         const t = (time * .75 + i / 96) % 1;
-        const point = spray.curve.getPoint(t);
+        spray.curve.getPoint(t, point);
         const spread = .025 + t * .12;
         dummy.position.set(point.x + Math.sin(i * 7 + time * 9) * spread, point.y + Math.cos(i * 11) * spread, point.z + Math.sin(i * 13) * spread);
         dummy.scale.set(.035, .035 + seed(i * 3) * .04, .035);
@@ -58,9 +61,8 @@ export function WaterEffects({ target, source, playing }: { target: [number, num
       dummy.updateMatrix(); droplets.current.setMatrixAt(i, dummy.matrix);
     }
     droplets.current.instanceMatrix.needsUpdate = true;
-    droplets.current.computeBoundingSphere();
-  }, [spray]);
-  useLayoutEffect(() => animate(0), [animate]);
+  }, [spray, scratch]);
+  useLayoutEffect(() => { animate(0); if (droplets.current) droplets.current.boundingSphere = spray.bounds; }, [animate, spray]);
   useFrame(({ clock }) => { if (playing&&!reducedMotion) animate(clock.elapsedTime); });
   return <>
     <Line points={spray.hose} color="#254338" lineWidth={3}/>

@@ -7,6 +7,10 @@ import {
   SphereGeometry,
 } from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { makeLayeredPine } from "./LayeredPineGeometry";
+import { makeNaturalPine } from "./NaturalForestAssets";
+
+export type TreeStyle = "original" | "layered" | "natural";
 
 export const seed = (n: number) => {
   const v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
@@ -30,7 +34,9 @@ export const worldPosition = (
   terrainHeight(x - 9.5, z - 9.5) + offset,
   z - 9.5,
 ];
-export function makePine() {
+export function makePine(style: TreeStyle = "original") {
+  if (style === "natural") return makeNaturalPine();
+  if (style === "layered") return makeLayeredPine();
   const branches = Array.from({ length: 7 }, (_, i) => {
     const g = new ConeGeometry(0.48 * (1 - i * 0.105), 0.68 - i * 0.055, 12, 2),
       p = g.getAttribute("position"),

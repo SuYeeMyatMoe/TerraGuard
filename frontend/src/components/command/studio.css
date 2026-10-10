@@ -71,6 +71,7 @@
 .playback-clock-note {font-size:8px;color:var(--ink-3);margin:7px 0 0 80px}
 .forest-water-response .earlier-response {margin-top:7px;font-size:9px;background:transparent;border-color:#c2d5a940;color:#d9e8b8;padding:6px 7px}
 .forest-view-switch {position:absolute;top:91px;left:23px;z-index:26;display:flex;gap:3px;padding:3px;background:#15291ee6;border:1px solid #e7edd342;border-radius:8px}
+.forest-view-switch select {max-width:112px;padding:5px 6px;border:0;border-left:1px solid #e7edd32b;border-radius:4px;background:#24391f;color:#d9dfc8;font-size:10px;cursor:pointer}
 .forest-view-switch button {padding:6px 10px;border-radius:5px;font-size:10px;color:#d9dfc8;cursor:pointer}.forest-view-switch button[aria-pressed=true] {background:#ede383;color:#263317;font-weight:600}
 .forest-stage:not(.forest-overview) .forest-live {top:137px}
 .forest-overview {background:#acbdb8}.forest-overview::after {background:linear-gradient(180deg,#10210d80,transparent 22%,transparent 70%,#10210da6)}
