@@ -116,3 +116,44 @@
   .mainCta{transition:background .2s,scale .22s cubic-bezier(.2,.7,.2,1)}
 }
 
+/* Compact layouts keep the chapter text and primary action clear of the forest. */
+@media(max-width:1023px) {
+  .header {padding-top:max(18px,env(safe-area-inset-top))}
+  .header a,.header button,.chapters a,.detailLink,.closeDetails {min-height:44px}
+  .chapters a {align-items:center}
+  .evidenceDialog {max-height:90dvh;max-width:calc(100vw - 24px)}
+  .evidenceDialog .closeDetails {min-width:44px}
+  .orbArea .description {font-size:12px;line-height:1.65}
+  .orbArea .mainCta {min-height:44px;padding:10px 16px;font-size:11px}
+  .orbArea .detailLink {font-size:10px;margin-top:4px}
+}
+@media(max-width:600px) {
+  .orbArea {top:15%;width:min(58svh,90vw,420px)}
+  .orbArea .copy0 {padding:10% 9% 27%}
+  .orbArea .copy0 h1 {font-size:clamp(21px,5.8vw,27px)}
+  .orbArea .description {font-size:11px;line-height:1.6}
+  .orbArea .mainCta {bottom:7%}
+  .chapters {bottom:25%;gap:16px;white-space:nowrap}
+  .mainCta,.navCta,.dialogCta {min-height:44px}
+  .bottomBar {bottom:max(16px,env(safe-area-inset-bottom));letter-spacing:1px}
+}
+@media(max-height:500px) {
+  .header {padding-block:10px}
+  .edition {top:65px}
+  .orbArea {top:22%;width:min(66svh,380px)}
+  .orbArea .copy0 {padding:8% 10% 28%}
+  .orbArea .copy0 h1 {font-size:17px;margin:6px 0}
+  .orbArea .eyebrow {font-size:7px}
+  .orbArea .description {font-size:10px;line-height:1.4}
+  .orbArea .detailLink {display:none}
+  .orbArea .mainCta {bottom:5%;min-height:36px;padding:6px 12px;font-size:10px}
+  .copyArea:not(.orbArea) {top:24%;height:42%;left:16%;right:16%}
+  .copy1 h2,.copy2 h2 {font-size:clamp(30px,6vw,48px);margin:6px 0 8px}
+  .description {font-size:11px;line-height:1.5;max-width:360px}
+  .detailLink {margin-top:0}
+  .copyArea:not(.orbArea) .mainCta {top:calc(100% + 8px)}
+  .chapters {left:5%;top:34%;bottom:auto;transform:none;flex-direction:column;gap:6px}
+  .chapters a {min-height:40px}
+  .scrollCue {display:none}
+}
+

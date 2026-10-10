@@ -32,6 +32,7 @@ ASSOC_RADIUS_KM = 2.0        # follow-up / track association radius
 TRACK_GAP_H = 72             # max gap between linked candidates in a track
 LABEL_MIN_H = 3              # follow-up must be >= 3 h later (excludes SNPP/NOAA-20 near-simultaneous passes)
 LABEL_HORIZON_H = 48         # prediction horizon
+FOOTPRINT_RADIUS_KM = 5.0    # footprint search radius (48 h detected-footprint forecast)
 FEATURE_HISTORY_D = 7        # longest short-term feature window (purge width)
 
 WEATHER_TILE_DEG = 1.0

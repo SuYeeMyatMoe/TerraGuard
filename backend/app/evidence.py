@@ -44,14 +44,35 @@ def build_package(incident: dict, prediction: dict, teams: int, simulation: dict
     add("MODEL", "Predictive model", f"{m['name']} ({m['version']})", "TerraGuard ML")
     add("PRED_TARGET", "What the model predicts", m["target"], "TerraGuard ML")
     add("PRED_PROB", "48-hour follow-up detection probability", _pct(prediction["probability"]), "TerraGuard ML")
-    lo, hi = prediction["interval"]
-    add("PRED_RANGE", "Range across model trees (10th–90th percentile)", f"{lo * 100:.0f}%–{hi * 100:.0f}%", "TerraGuard ML")
+    tv = prediction["tree_variation"]
+    add("TREE_VARIATION", "Variation across model trees (10th–90th percentile of individual trees; not a confidence interval)",
+        f"{tv['p10'] * 100:.0f}%–{tv['p90'] * 100:.0f}%", "TerraGuard ML")
+    if prediction.get("calibration_note"):
+        add("CALIBRATION", "Held-out calibration for this score band", prediction["calibration_note"]["text"], "TerraGuard evaluation")
+    add("SUMMARY", "Deterministic decision summary", prediction["decision_summary"], "TerraGuard explanation rules")
+    add("URGENCY", "Operational urgency tier (rule-based)", prediction["urgency"]["label"], "TerraGuard rules")
     add("PRED_THRESHOLD", "Alert threshold chosen on validation data", _pct(prediction["threshold"]), "TerraGuard ML")
-    for k, f in enumerate(prediction["factors"], start=1):
-        add(f"FACTOR_{k}", "Contributing factor", f["text"], "TerraGuard ML (path contributions)")
+    fp = prediction.get("footprint")
+    if fp:
+        add("FOOTPRINT", f"Forecast satellite-detected fire footprint, next {fp['horizon_h']} h, if activity continues "
+                         "(median, 10–90% range; VIIRS pixel area, not mapped burned area)",
+            f"{fp['median_km2']} km² ({fp['p10_km2']}–{fp['p90_km2']} km²)", "TerraGuard ML (footprint model)")
+        add("FOOTPRINT_ANY", "Chance of any further detected footprint within 5 km in 48 h", _pct(fp["probability_any"]),
+            "TerraGuard ML (footprint model)")
+    for k, f in enumerate(prediction.get("explained_factors") or [], start=1):
+        cmp = f" ({f['comparison_text']})" if f.get("comparison") else ""
+        add(f"FACTOR_{k}", f"Model factor ({f['influence_label'].lower()} influence)",
+            f"{f['name']}: {f['value_text']}{cmp}; {f['effect_text']}", "TerraGuard ML (path contributions)")
     add("EVID_QUALITY", "Evidence quality", prediction["evidence"]["quality"], "TerraGuard rules")
-    for k, flag in enumerate(prediction["evidence"]["flags"], start=1):
-        add(f"EVID_FLAG_{k}", "Evidence limitation", flag, "TerraGuard rules")
+    for k, lim in enumerate(prediction.get("evidence_limitations") or [], start=1):
+        add(f"EVID_FLAG_{k}", "Evidence limitation", f"{lim['title']}: {lim['text']}", "TerraGuard rules")
+    for k, g in enumerate(prediction.get("confidence_guidance") or [], start=1):
+        add(f"GAP_{k}", "What would improve confidence", g["verification_step"], "TerraGuard rules")
+    rk = prediction.get("ranking_explanation") or {}
+    if rk.get("compared_with"):
+        add("COMPARE_TEXT", "Ranking comparison (priority components)", rk["text"], "TerraGuard rules")
+        add("COMPARE_WITH", "Compared with", rk["compared_with"], "TerraGuard rules")
+        add("COMPARE_RESOURCE", "Resource constraint", rk["resource_note"], "TerraGuard rules")
     if prediction["missing_features"]:
         add("MISSING_INPUTS", "Missing model inputs", ", ".join(prediction["missing_features"]), "TerraGuard ML")
     if prediction["ood_features"]:
@@ -62,12 +83,14 @@ def build_package(incident: dict, prediction: dict, teams: int, simulation: dict
     add("PRIORITY_RANK", "Priority rank among competing incidents", f"{pr['rank']} of {pr['of']}", "TerraGuard rules")
     add("RECOMMENDATION", "Deterministic recommendation", pr["recommendation"], "TerraGuard rules")
     add("RECOMMENDATION_REASON", "Reason for recommendation", pr["reason"], "TerraGuard rules")
+    add("RANK_ORDER", "Deterministic priority order (highest first)",
+        " > ".join(c["incident_id"] for c in sorted(prediction["competing"], key=lambda c: c["rank"])), "TerraGuard rules")
     others = [c for c in prediction["competing"] if c["incident_id"] != incident["id"]]
     for k, c in enumerate(others, start=1):
         add(f"COMPETING_{k}", "Competing incident",
             f"{c['incident_id']} ({c['region']}): rank {c['rank']}, {c['recommendation']}", "TerraGuard rules")
     add("RESOURCES", "Field teams available", teams, "Scenario setting", "teams")
-    for k, lim in enumerate(prediction["limitations"], start=1):
+    for k, lim in enumerate(prediction["model_limitations"], start=1):
         add(f"LIMIT_{k}", "Model limitation", lim, "TerraGuard documentation")
     if simulation:
         li = simulation.get("loss_index", {})

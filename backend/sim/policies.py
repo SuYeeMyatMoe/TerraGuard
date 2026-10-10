@@ -18,25 +18,32 @@ from .metrics import compare, encode_frames, summarise
 POLICIES = ("none", "first_alert", "ai_priority")
 
 
-def allocate(policy: str, arrival_order: list[str], ai_order: list[str], teams: int) -> list[str]:
+def allocate(policy: str, arrival_order: list[str], ai_order: list[str], teams: int,
+             coordinator: str | None = None) -> list[str]:
     if policy == "none" or teams <= 0:
         return []
+    if policy == "coordinator":
+        return [coordinator] if coordinator else []
     order = arrival_order if policy == "first_alert" else ai_order
     return order[:teams]
 
 
 def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order: list[str], teams: int,
-                      response_delay: int, steps: int, seed: int, n_seeds: int) -> dict:
+                      response_delay: int, steps: int, seed: int, n_seeds: int, coordinator: str | None = None,
+                      burn_duration_steps: int | None = None, keep_all_frames: bool = False) -> dict:
     ids = [p.incident_id for p in plots]
     P = len(plots)
     rng = np.random.default_rng(seed)
     rand = rng.random((n_seeds, steps, P, plots[0].fuel.shape[0], plots[0].fuel.shape[1]), dtype=np.float32)
     results = {}
-    for policy in POLICIES:
-        assigned = allocate(policy, arrival_order, ai_order, teams)
+    policies = POLICIES + (("coordinator",) if coordinator else ())
+    for policy in policies:
+        assigned = allocate(policy, arrival_order, ai_order, teams, coordinator)
         arrivals = np.array([response_delay if i in assigned else np.inf for i in ids])
         teams_at = np.array([1 if i in assigned else 0 for i in ids])
-        out = run(plots, arrivals, teams_at, steps, rand, keep_frames=True)
+        out = run(plots, arrivals, teams_at, steps, rand, keep_frames=True,
+                  burn_duration_steps=burn_duration_steps, all_seeds=keep_all_frames)
+        first = [f[0] for f in out["frames"]] if keep_all_frames else out["frames"]
         events = []
         for i in assigned:
             pi = ids.index(i)
@@ -48,12 +55,15 @@ def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order:
                 events.append({"step": cs, "incident_id": i, "type": "contained", "label": "No active fire cells"})
         results[policy] = {
             "assigned": assigned,
-            "frames": encode_frames(out["frames"]),
+            "frames": encode_frames(first),
             "events": sorted(events, key=lambda e: e["step"]),
             "metrics": summarise(out, ids, assigned, arrivals, steps),
         }
+        if keep_all_frames:  # internal use only (reports); never serialised by the API
+            results[policy]["_raw"] = {"frames": out["frames"], "burned": out["burned"]}
     return {
         "policies": results,
         "comparison": compare(results),
-        "assumptions": ASSUMPTIONS,
+        "assumptions": {**ASSUMPTIONS, "burn_duration_steps": ASSUMPTIONS["burn_duration_steps"]
+                        if burn_duration_steps is None else burn_duration_steps},
     }

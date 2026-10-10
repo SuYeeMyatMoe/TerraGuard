@@ -9,9 +9,10 @@ import styles from "./cinematic.module.css";
 const sceneIds=["forest-life","forest-fire","forest-ash"];
 
 function ForestChapter({ index, sceneRef, active, navigate, showDetails }: { index: number; sceneRef: RefObject<HTMLElement | null>; active: boolean; navigate: (index: number) => void; showDetails: () => void }) {
-  const progress=useRef([0,.64,1][index]);
+  const chapterProgress=[0,.64,1][index];
+  const progress=useRef(chapterProgress);
   const item=CHAPTERS[index];
-  const scene=sceneAt(progress.current);
+  const scene=sceneAt(chapterProgress);
   return <section ref={sceneRef} id={sceneIds[index]} className={styles.viewport} aria-labelledby={`${sceneIds[index]}-title`} aria-hidden={!active} style={{"--warmth":scene.fire,"--ash":scene.burn,zIndex:3-index} as CSSProperties}>
     <div className={styles.sceneLayers}>
       <div className={styles.warmAtmosphere} aria-hidden="true"/><div className={styles.ashAtmosphere} aria-hidden="true"/>
@@ -95,7 +96,9 @@ export function CinematicStory() {
   };
   return <div ref={root} data-forest-story className={styles.story} style={{"--story-screens":STORY_TIMING.scrollScreens} as CSSProperties}>
     <div ref={stage} className={styles.storyStage}>
-      {[first,second,third].map((ref,i)=><ForestChapter key={i} sceneRef={ref} index={i} active={reduced||active===i} navigate={navigate} showDetails={()=>details.current?.showModal()}/>)}
+      <ForestChapter sceneRef={first} index={0} active={reduced||active===0} navigate={navigate} showDetails={()=>details.current?.showModal()}/>
+      <ForestChapter sceneRef={second} index={1} active={reduced||active===1} navigate={navigate} showDetails={()=>details.current?.showModal()}/>
+      <ForestChapter sceneRef={third} index={2} active={reduced||active===2} navigate={navigate} showDetails={()=>details.current?.showModal()}/>
       <div className={styles.progressTrack} aria-hidden="true"><div/></div>
     </div>
     <dialog ref={details} className={styles.evidenceDialog} aria-labelledby="evidence-title">

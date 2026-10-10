@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 
 export function MapControls() {
   const camera = useStore((s) => s.camera);
-  const btn = "grid h-10 w-10 place-items-center text-[var(--ink-2)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]";
+  const btn = "grid h-10 w-10 place-items-center text-[var(--ink-2)] hover:bg-[#f1f5f9] hover:text-[var(--ink)]";
   return (
     <div className="panel-float flex flex-col overflow-hidden">
       <button className={btn} onClick={() => camera("zoomIn")} aria-label="Zoom in"><Plus size={17} /></button>
@@ -23,7 +23,7 @@ export function Toasts() {
   const toasts = useStore((s) => s.toasts);
   const dismiss = useStore((s) => s.dismissToast);
   return (
-    <div className="pointer-events-none fixed left-1/2 top-[76px] z-50 flex w-[400px] -translate-x-1/2 flex-col gap-2" aria-live="polite">
+    <div className="pointer-events-none fixed left-1/2 top-[max(12px,env(safe-area-inset-top))] z-50 flex w-[400px] max-w-[calc(100vw-24px)] -translate-x-1/2 flex-col gap-2 lg:top-[76px]" aria-live="polite">
       {toasts.map((t) => (
         <div key={t.id} className="panel-float animate-in pointer-events-auto flex items-start gap-3 p-3.5">
           {t.tone === "success" ? (
@@ -65,8 +65,8 @@ export function FieldBriefModal() {
       ].join("\n\n")
     : "";
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--ink)]/30 p-6 backdrop-blur-[2px]" onClick={close}>
-      <div className="panel-float animate-in flex max-h-[88vh] w-[620px] flex-col" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Field brief">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#172638]/30 p-3 backdrop-blur-[2px] sm:p-6" onClick={close}>
+      <div className="command-drawer panel-float animate-in flex max-h-[90dvh] w-full max-w-[620px] min-w-0 flex-col" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Field brief">
         <div className="flex items-start justify-between border-b border-[var(--line)] px-6 py-4">
           <div>
             <div className="flex items-center gap-2 text-[16px] font-bold"><FileText size={18} className="text-[var(--blue)]" /> Field verification brief</div>

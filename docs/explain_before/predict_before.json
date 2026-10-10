@@ -1,0 +1,194 @@
+{
+ "INC-20250626-A": {
+  "probability": 0.1571,
+  "interval": [
+   0.0194,
+   0.3612
+  ],
+  "category_label": "Isolated signal",
+  "factors": [
+   {
+    "feature": "prior_7d",
+    "label": "Nearby detections, previous 7 days",
+    "value": 0.0,
+    "weight": -0.0974,
+    "direction": "down",
+    "text": "Nearby detections, previous 7 days: 0 \u2014 lowers the estimate"
+   },
+   {
+    "feature": "hist_365d",
+    "label": "Detections in this 0.1\u00b0 cell, past year",
+    "value": 6.0,
+    "weight": -0.0682,
+    "direction": "down",
+    "text": "Detections in this 0.1\u00b0 cell, past year: 6 \u2014 lowers the estimate"
+   },
+   {
+    "feature": "track_age_h",
+    "label": "Hours since activity first seen here",
+    "value": 0.0,
+    "weight": -0.0597,
+    "direction": "down",
+    "text": "Hours since activity first seen here: 0 \u2014 lowers the estimate"
+   },
+   {
+    "feature": "prior_72h",
+    "label": "Nearby detections, previous 72 h",
+    "value": 0.0,
+    "weight": -0.0545,
+    "direction": "down",
+    "text": "Nearby detections, previous 72 h: 0 \u2014 lowers the estimate"
+   }
+  ],
+  "priority": {
+   "score": 0.2792,
+   "components": {
+    "prediction": 0.0707,
+    "exposure": 0.0,
+    "recency": 0.1295,
+    "evidence": 0.079
+   },
+   "rank": 3,
+   "of": 3,
+   "recommendation": "MONITOR",
+   "reason": "Lower priority than competing incidents while all field teams are committed."
+  },
+  "evidence": {
+   "quality": "Medium",
+   "score": 0.527,
+   "flags": [
+    "Single-pixel detection",
+    "No corroborating detection in the previous 24 h",
+    "Large edge-of-scan pixel footprint"
+   ]
+  },
+  "uncertainty_note": "Model trees disagree noticeably; treat the estimate with caution."
+ },
+ "INC-20250626-B": {
+  "probability": 0.7425,
+  "interval": [
+   0.4984,
+   0.949
+  ],
+  "category_label": "Emerging detection cluster",
+  "factors": [
+   {
+    "feature": "hist_365d",
+    "label": "Detections in this 0.1\u00b0 cell, past year",
+    "value": 441.0,
+    "weight": 0.1811,
+    "direction": "up",
+    "text": "Detections in this 0.1\u00b0 cell, past year: 441 \u2014 raises the estimate"
+   },
+   {
+    "feature": "prior_7d",
+    "label": "Nearby detections, previous 7 days",
+    "value": 5.0,
+    "weight": 0.0638,
+    "direction": "up",
+    "text": "Nearby detections, previous 7 days: 5 \u2014 raises the estimate"
+   },
+   {
+    "feature": "track_age_h",
+    "label": "Hours since activity first seen here",
+    "value": 12.6667,
+    "weight": 0.0518,
+    "direction": "up",
+    "text": "Hours since activity first seen here: 12.67 \u2014 raises the estimate"
+   },
+   {
+    "feature": "prior_72h",
+    "label": "Nearby detections, previous 72 h",
+    "value": 2.0,
+    "weight": -0.0459,
+    "direction": "down",
+    "text": "Nearby detections, previous 72 h: 2 \u2014 lowers the estimate"
+   }
+  ],
+  "priority": {
+   "score": 0.5995,
+   "components": {
+    "prediction": 0.3341,
+    "exposure": 0.0,
+    "recency": 0.1439,
+    "evidence": 0.1215
+   },
+   "rank": 1,
+   "of": 3,
+   "recommendation": "INSPECT",
+   "reason": "Highest evidence-supported priority among competing incidents with a team available."
+  },
+  "evidence": {
+   "quality": "High",
+   "score": 0.81,
+   "flags": [
+    "Single-pixel detection"
+   ]
+  },
+  "uncertainty_note": "Model trees disagree noticeably; treat the estimate with caution."
+ },
+ "INC-20250626-C": {
+  "probability": 0.0987,
+  "interval": [
+   0.0248,
+   0.1926
+  ],
+  "category_label": "Isolated signal",
+  "factors": [
+   {
+    "feature": "prior_7d",
+    "label": "Nearby detections, previous 7 days",
+    "value": 0.0,
+    "weight": -0.1009,
+    "direction": "down",
+    "text": "Nearby detections, previous 7 days: 0 \u2014 lowers the estimate"
+   },
+   {
+    "feature": "track_age_h",
+    "label": "Hours since activity first seen here",
+    "value": 0.0,
+    "weight": -0.0569,
+    "direction": "down",
+    "text": "Hours since activity first seen here: 0 \u2014 lowers the estimate"
+   },
+   {
+    "feature": "month_sin",
+    "label": "Season (month, sine)",
+    "value": 0.0,
+    "weight": -0.0511,
+    "direction": "down",
+    "text": "Season (month, sine): seasonal timing \u2014 lowers the estimate"
+   },
+   {
+    "feature": "prior_72h",
+    "label": "Nearby detections, previous 72 h",
+    "value": 0.0,
+    "weight": -0.0508,
+    "direction": "down",
+    "text": "Nearby detections, previous 72 h: 0 \u2014 lowers the estimate"
+   }
+  ],
+  "priority": {
+   "score": 0.2801,
+   "components": {
+    "prediction": 0.0444,
+    "exposure": 0.0,
+    "recency": 0.1439,
+    "evidence": 0.0918
+   },
+   "rank": 2,
+   "of": 3,
+   "recommendation": "MONITOR",
+   "reason": "Lower priority than competing incidents while all field teams are committed."
+  },
+  "evidence": {
+   "quality": "Medium",
+   "score": 0.612,
+   "flags": [
+    "Single-pixel detection",
+    "No corroborating detection in the previous 24 h"
+   ]
+  },
+  "uncertainty_note": "Model trees broadly agree on this estimate."
+ }
+}

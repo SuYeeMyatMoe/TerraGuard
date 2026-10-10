@@ -1,291 +1,405 @@
 "use client";
-
-import { APIProvider, AdvancedMarker, Map as GMap, useMap } from "@vis.gl/react-google-maps";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import { Info, Satellite } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Layers, MapPin, Ruler, Satellite } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { api } from "@/lib/api";
-import { shortId, utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import type { Incident, Prediction } from "@/lib/types";
-import type { FeatureCollection } from "geojson";
+import { EarthEngineController } from "@/lib/earth-engine";
+import {
+  areaKm2,
+  distanceKm,
+  polygonError,
+  type Bounds,
+  type Position,
+} from "@/lib/map-geometry";
+import { EarthEnginePanel, type EarthLayer } from "./EarthEnginePanel";
+import { EarthMap, type RasterState, type LayerVisibility, type Measurement } from "./EarthMap";
 
-const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-const GOOGLE_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || "DEMO_MAP_ID";
-const STUDY_BOUNDS: [[number, number], [number, number]] = [[95.0, -4.5], [119.5, 7.5]];
-const REC_COLOR: Record<string, string> = { INSPECT: "#ff8a35", RECHECK: "#365004", MONITOR: "#74634c" };
-
-function usePAs() {
-  const data = useStore((s) => s.data);
-  const [pas, setPas] = useState<FeatureCollection | null>(null);
-  const first = data?.incidents[0]?.id;
-  useEffect(() => {
-    if (!first) return;
-    api.geospatial(first).then((g) => setPas(g.protected_areas)).catch(() => setPas(null));
-  }, [first]);
-  return pas;
-}
-
+const LAYER_NAMES: Record<keyof LayerVisibility, string> = {
+  imagery: "Global satellite basemap",
+  historical: "Dated Sentinel-2 overlay",
+  roads: "Roads & place labels",
+  incidents: "Incident markers",
+  hotspots: "Context hotspots",
+  protected: "Protected areas",
+  analysis: "1 km analysis boundary",
+};
 export function EarthView() {
+  const data = useStore((s) => s.data),
+    selectedId = useStore((s) => s.selectedId);
+  const [controller] = useState(
+    () => new EarthEngineController(api.earthEngine),
+  );
+  const snapshot = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  );
+  const [days, setDays] = useState(30),
+    [layer, setLayer] = useState<EarthLayer>("rgb"),
+    [opacity, setOpacity] = useState(1);
+  const [bounds, setBounds] = useState<Bounds | null>(null);
+  const [rasterState, setRasterState] = useState<RasterState>({ before: false, after: false, detail: false });
+  const [destination, setDestination] = useState<{
+    center: Position;
+    zoom: number;
+  } | null>(null);
+  const [latitude, setLatitude] = useState(""),
+    [longitude, setLongitude] = useState("");
+  const [locationError, setLocationError] = useState<string | null>(null);
+  // Earth View shows the pre-incident period only; the before/after toggle was removed from the UI.
+  const [mode] = useState<"context" | "compare">("context"),
+    [divider, setDivider] = useState(50);
+  const [visibility, setVisibility] = useState<LayerVisibility>({
+    imagery: true,
+    historical: true,
+    roads: true,
+    incidents: true,
+    hotspots: true,
+    protected: true,
+    analysis: true,
+  });
+  const [failedTiles, setFailedTiles] = useState<string[]>([]);
+  const [measurement, setMeasurement] = useState<Measurement>({
+      kind: "distance",
+      points: [],
+      drawing: false,
+    }),
+    [measureError, setMeasureError] = useState<string | null>(null);
+  const id = selectedId ?? data?.incidents[0]?.id;
+  const state = snapshot;
+  const showHistorical = visibility.historical;
+  const mapVisibility = useMemo(
+    () => ({ ...visibility, historical: showHistorical }),
+    [visibility, showHistorical],
+  );
+  const onViewport = useCallback(
+    (raw: Bounds) => {
+      setBounds((current) =>
+        current?.every((value, i) => value === raw[i]) ? current : raw,
+      );
+    },
+    [],
+  );
+  useEffect(() => {
+    return () => controller.cancel();
+  }, [controller]);
+  useEffect(() => {
+    if (!id) {
+      controller.reset();
+      return;
+    }
+    // Prepare one reusable period pair. The map requests z/x/y tiles for any
+    // location; camera movement and display controls never recreate recipes.
+    void controller.load(id, days, false, { mode: "compare", background: true });
+  }, [controller, id, days]);
+  const retry = () => {
+    setFailedTiles([]);
+    void controller.load(id, days, true, { mode: "compare", background: true });
+  };
+  const incident = data?.incidents.find((item) => item.id === selectedId);
+  const inIncidentArea = Boolean(incident && bounds && incident.lat >= bounds[1] && incident.lat <= bounds[3] &&
+    incident.lon >= bounds[0] && incident.lon <= bounds[2]);
+  const navigate = () => {
+    const lat = Number(latitude),
+      lon = Number(longitude);
+    if (
+      !latitude.trim() ||
+      !longitude.trim() ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      Math.abs(lat) > 85 ||
+      Math.abs(lon) > 180
+    ) {
+      setLocationError("Enter latitude −85 to 85 and longitude −180 to 180.");
+      return;
+    }
+    setLocationError(null);
+    setDestination({ center: [lon, lat], zoom: 11 });
+  };
+  const onPoint = useCallback((point: Position) => {
+    setMeasureError(null);
+    setMeasurement((m) =>
+      m.drawing ? { ...m, points: [...m.points, point] } : m,
+    );
+  }, []);
+  const finish = () => {
+    const error =
+      measurement.kind === "area"
+        ? polygonError(measurement.points)
+        : measurement.points.length < 2
+          ? "Add at least two points."
+          : null;
+    setMeasureError(error);
+    if (!error) setMeasurement((m) => ({ ...m, drawing: false }));
+  };
+  const onTileError = useCallback(
+    (url: string) =>
+      setFailedTiles((urls) =>
+        urls.includes(url) ? urls : [...urls.slice(-15), url],
+      ),
+    [],
+  );
+  const tileError =
+    state.data?.layers.some(
+      (l) =>
+        (l.id === layer || (mode === "compare" && l.id === `${layer}_after`)) &&
+        failedTiles.includes(l.tile_url),
+    ) ?? false;
+  const value =
+    measurement.kind === "distance"
+      ? `${distanceKm(measurement.points).toFixed(2)} km`
+      : measurement.drawing
+        ? "Finish to calculate area"
+        : polygonError(measurement.points)
+          ? "—"
+          : areaKm2(measurement.points) < 1
+            ? `${(areaKm2(measurement.points) * 100).toFixed(2)} ha`
+            : `${areaKm2(measurement.points).toFixed(2)} km²`;
   return (
     <div className="absolute inset-0">
-      {GOOGLE_KEY ? <GoogleEarth /> : <MapLibreEarth />}
-      <EarthLegend />
-    </div>
-  );
-}
-
-function EarthLegend() {
-  const data = useStore((s) => s.data);
-  return (
-    <div className="pointer-events-none absolute bottom-4 left-4 z-10 max-w-[420px]">
-      <div className="panel-float pointer-events-auto p-3.5">
-        <div className="flex items-center gap-2 text-[12.5px] font-bold">
-          <Satellite size={14} className="text-[var(--blue)]" /> Earth View · real coordinates
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11.5px] text-[var(--ink-2)]">
-          <span className="flex items-center gap-1.5"><Dot c="#ff8a35" /> Inspect recommended</span>
-          <span className="flex items-center gap-1.5"><Dot c="#365004" /> Recheck recommended</span>
-          <span className="flex items-center gap-1.5"><Dot c="#74634c" /> Monitor</span>
-          <span className="flex items-center gap-1.5"><Dot c="#f59e0b" small /> Other detections, prior 24 h</span>
-          <span className="col-span-2 flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-[#16a34a] bg-[#16a34a22]" /> Protected areas (approximate boundaries)
-          </span>
-        </div>
-        {!GOOGLE_KEY && (
-          <div className="mt-2.5 flex gap-1.5 border-t border-[var(--line-2)] pt-2.5 text-[11px] leading-snug text-[var(--ink-2)]">
-            <Info size={13} className="mt-px shrink-0" />
-            Satellite imagery activates when a Google Maps key is configured. Basemap: OpenFreeMap / OpenStreetMap.
+      <EarthMap
+        imagery={state.data}
+        layer={layer}
+        opacity={opacity}
+        compare={mode === "compare"}
+        divider={divider}
+        visibility={mapVisibility}
+        measurement={measurement}
+        onPoint={onPoint}
+        onViewport={onViewport}
+        onTileError={onTileError}
+        onRasterState={setRasterState}
+        destination={destination}
+      />
+      <EarthEnginePanel
+        state={state}
+        layer={layer}
+        setLayer={setLayer}
+        days={days}
+        setDays={setDays}
+        opacity={opacity}
+        setOpacity={setOpacity}
+        tileError={tileError}
+        mode={mode}
+        overview={!selectedId || !inIncidentArea || state.data?.incident_id !== id}
+        manual
+        automatic
+        rasterState={rasterState}
+        historicalVisible={visibility.historical}
+        anchor={id}
+        retry={retry}
+      >
+        <details>
+          <summary>
+            <MapPin size={14} />
+            Go to a location
+          </summary>
+          <form
+            className="mt-2 space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate();
+            }}
+          >
+            <label className="block text-[11.5px] font-semibold text-[var(--ink-2)]">
+              Latitude
+              <input
+                aria-label="Latitude"
+                type="number"
+                step="any"
+                min="-85"
+                max="85"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                className="mt-1 h-8 w-full rounded-[8px] border border-[var(--line)] px-2.5 text-[12px] outline-none focus:border-[var(--blue)]"
+                placeholder="37.7749"
+                required
+              />
+            </label>
+            <label className="block text-[11.5px] font-semibold text-[var(--ink-2)]">
+              Longitude
+              <input
+                aria-label="Longitude"
+                type="number"
+                step="any"
+                min="-180"
+                max="180"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                className="mt-1 h-8 w-full rounded-[8px] border border-[var(--line)] px-2.5 text-[12px] outline-none focus:border-[var(--blue)]"
+                placeholder="-122.4194"
+                required
+              />
+            </label>
+            <button className="btn btn-primary h-8 w-full px-3 text-[12px]">
+              Go to coordinates
+            </button>
+          </form>
+          {locationError && (
+            <p role="alert" className="mt-2 text-[11px] text-amber-700">
+              {locationError}
+            </p>
+          )}
+          <button
+            className="mt-2 text-[11.5px] font-semibold text-[var(--blue)] hover:underline"
+            onClick={() => setDestination({ center: [0, 20], zoom: 2 })}
+          >
+            World view
+          </button>
+        </details>
+        <details>
+          <summary>
+            <Layers size={14} />
+            Map layers
+          </summary>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(Object.keys(LAYER_NAMES) as (keyof LayerVisibility)[]).map(
+              (k) => (
+                <label
+                  key={k}
+                  className="flex items-center gap-1.5 text-[11.5px] text-[var(--ink-2)]"
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-blue-600"
+                    checked={visibility[k]}
+                    onChange={(e) =>
+                      setVisibility((v) => ({ ...v, [k]: e.target.checked }))
+                    }
+                  />
+                  {LAYER_NAMES[k]}
+                </label>
+              ),
+            )}
+          </div>
+        </details>
+        <details>
+          <summary>
+            <Ruler size={14} />
+            Measure distance / area
+          </summary>
+          <div className="mt-2 flex gap-2">
+            {(["distance", "area"] as const).map((kind) => (
+              <button
+                key={kind}
+                aria-pressed={measurement.drawing && measurement.kind === kind}
+                className="btn btn-secondary h-8 flex-1 px-3 text-[12px] aria-pressed:border-[var(--blue)] aria-pressed:text-[var(--blue)]"
+                onClick={() => {
+                  setMeasureError(null);
+                  setMeasurement({ kind, points: [], drawing: true });
+                }}
+              >
+                {kind === "distance" ? "Distance" : "Area"}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11.5px] text-[var(--ink-2)]">
+            {measurement.drawing
+              ? "Click the map to add points, then finish."
+              : "Choose a tool to draw on the map."}
+          </p>
+          <div role="status" className="mt-2 text-sm font-bold">
+            {value}
+          </div>
+          <div className="mt-2 flex gap-2 text-[11px]">
+            <button
+              disabled={!measurement.drawing}
+              onClick={finish}
+              className="btn btn-primary h-8 px-3 text-[12px]"
+            >
+              Finish
+            </button>
+            <button
+              disabled={!measurement.points.length}
+              onClick={() => {
+                setMeasureError(null);
+                setMeasurement((m) => ({
+                  ...m,
+                  drawing: true,
+                  points: m.points.slice(0, -1),
+                }));
+              }}
+              className="btn btn-secondary h-8 px-3 text-[12px]"
+            >
+              Undo point
+            </button>
+            <button
+              onClick={() => {
+                setMeasureError(null);
+                setMeasurement((m) => ({ ...m, points: [], drawing: false }));
+              }}
+              className="btn btn-secondary h-8 px-3 text-[12px]"
+            >
+              Clear
+            </button>
+          </div>
+          {measureError && (
+            <p role="alert" className="mt-2 text-[11px] text-amber-700">
+              {measureError}
+            </p>
+          )}
+          <p className="mt-2 text-[10.5px] text-[var(--ink-3)]">
+            Approximate geodesic measurement. Your drawn area is not a detected
+            fire perimeter.
+          </p>
+        </details>
+      </EarthEnginePanel>
+      {mode === "compare" && showHistorical && (
+          <div className="panel-float absolute bottom-3 right-3 z-10 w-[280px] max-w-[calc(100%-76px)] p-3 lg:bottom-5 lg:left-1/2 lg:right-auto lg:max-w-none lg:-translate-x-1/2">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span>Before · left</span>
+              <span>After · right</span>
+            </div>
+            <input
+              aria-label="Before and after divider"
+              type="range"
+              min={0}
+              max={100}
+              value={divider}
+              disabled={!rasterState.before || !rasterState.after}
+              onChange={(e) => setDivider(Number(e.target.value))}
+              className="mt-2 w-full accent-blue-600"
+            />
+            <p className="text-center text-[10px] text-amber-700">
+              {!rasterState.detail ? "Zoom in for detailed comparison, anywhere in the world"
+                : !rasterState.before || !rasterState.after
+                ? state.data?.comparison?.status === "unavailable" || state.data?.comparison?.status === "no_data"
+                  ? state.data.comparison.reason
+                  : "Preparing comparison imagery…"
+                : "Retrospective · not used for prediction"}
+            </p>
           </div>
         )}
-        {data?.provenance.is_synthetic && (
-          <div className="mt-1.5 text-[11px] font-semibold text-amber-700">Hotspots are synthetic demo data in the FIRMS schema.</div>
-        )}
+      <div className="earth-legend panel-float absolute bottom-3 left-3 z-10 max-w-[calc(100%-24px)] p-3 lg:bottom-4 lg:left-4 lg:max-w-[300px]">
+        <details>
+          <summary aria-label="Map legend & data sources" className="flex cursor-pointer items-center gap-2 text-xs font-bold">
+            <Satellite size={14} className="text-blue-600" />
+            <span className="sr-only lg:not-sr-only">Map legend &amp; data sources</span>
+          </summary>
+          <p className="mt-2 text-[10px] text-slate-600">
+            Orange: inspect · blue: recheck · gray: monitor · amber: prior 24 h
+            hotspots · green: protected boundaries · blue ring: 1 km statistics. Cyan:
+            crew base and allocation line · amber badge: waiting without a crew.
+          </p>
+          <p className="mt-2 text-[10.5px] text-[var(--ink-3)]">
+            Global basemap: Esri World Imagery (mixed acquisition dates; not the
+            replay date). Roads / places: OpenFreeMap / OpenStreetMap. Dated
+            Sentinel-2 and NDVI: Earth Engine. Cloud gaps in the scientific
+            overlay are gray, not a replacement from another date.
+          </p>
+          {data?.provenance.is_synthetic && (
+            <p className="mt-1 text-[10px] font-semibold text-amber-700">
+              Hotspots are synthetic demo data.
+            </p>
+          )}
+        </details>
       </div>
     </div>
   );
-}
-
-function Dot({ c, small }: { c: string; small?: boolean }) {
-  return <span className={`inline-block rounded-full ring-2 ring-white ${small ? "h-2 w-2" : "h-3 w-3"}`} style={{ background: c }} />;
-}
-
-function markerEl(inc: Incident, pred: Prediction | undefined, selected: boolean) {
-  const color = pred ? REC_COLOR[pred.priority.recommendation] : "#365004";
-  const el = document.createElement("button");
-  el.setAttribute("aria-label", `${inc.id} ${inc.region}`);
-  el.style.cssText = "background:none;border:0;padding:0;cursor:pointer;";
-  el.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;transform:translateY(-6px)">
-      <div style="display:flex;align-items:center;gap:6px;background:#faf8ef;border-radius:999px;padding:4px 10px 4px 4px;box-shadow:0 4px 14px rgba(23,38,56,.18);border:1.5px solid ${selected ? "#365004" : "#dedbc9"};font:600 12px var(--font-manrope),sans-serif;color:#351903;white-space:nowrap">
-        <span style="display:grid;place-items:center;width:20px;height:20px;border-radius:999px;background:${color};color:#fff;font-size:11px;font-weight:800">${pred?.priority.rank ?? "·"}</span>
-        ${shortId(inc.id)} <span style="color:#74634c;font-weight:500">${inc.region}</span>
-      </div>
-      <div style="width:2px;height:10px;background:${color}"></div>
-      <div style="width:14px;height:14px;border-radius:999px;background:${color};border:3px solid #fff;box-shadow:0 0 0 ${selected ? 6 : 0}px ${color}33,0 2px 6px rgba(0,0,0,.25)"></div>
-    </div>`;
-  return el;
-}
-
-function MapLibreEarth() {
-  const ref = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markers = useRef<maplibregl.Marker[]>([]);
-  const [failed, setFailed] = useState(false);
-  const data = useStore((s) => s.data);
-  const predictions = useStore((s) => s.predictions);
-  const selectedId = useStore((s) => s.selectedId);
-  const select = useStore((s) => s.select);
-  const pas = usePAs();
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const map = new maplibregl.Map({
-      container: ref.current,
-      style: "https://tiles.openfreemap.org/styles/positron",
-      bounds: STUDY_BOUNDS,
-      fitBoundsOptions: { padding: { top: 60, bottom: 60, left: 60, right: 460 } },
-      attributionControl: { compact: true },
-    });
-    map.on("error", (e) => {
-      if (String(e.error?.message ?? "").match(/Failed to fetch|NetworkError|load/i) && !map.isStyleLoaded()) setFailed(true);
-    });
-    mapRef.current = map;
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
-  }, []);
-
-  // protected areas + context hotspots layers
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !data) return;
-    const apply = () => {
-      const ctx: FeatureCollection = {
-        type: "FeatureCollection",
-        features: data.context_hotspots.map((h) => ({
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [h.lon, h.lat] },
-          properties: { frp: h.frp_max_mw, t: h.observed_at },
-        })),
-      };
-      const setSrc = (id: string, d: FeatureCollection) => {
-        const src = map.getSource(id) as maplibregl.GeoJSONSource | undefined;
-        if (src) src.setData(d);
-        else map.addSource(id, { type: "geojson", data: d });
-      };
-      if (pas) {
-        setSrc("pas", pas);
-        if (!map.getLayer("pas-fill")) {
-          map.addLayer({ id: "pas-fill", type: "fill", source: "pas", paint: { "fill-color": "#16a34a", "fill-opacity": 0.12 } });
-          map.addLayer({ id: "pas-line", type: "line", source: "pas", paint: { "line-color": "#16a34a", "line-width": 1.5, "line-dasharray": [2, 1.5] } });
-          map.addLayer({
-            id: "pas-label", type: "symbol", source: "pas", minzoom: 6,
-            layout: { "text-field": ["concat", ["get", "name"], "\n(approx. boundary)"], "text-size": 11, "text-font": ["Noto Sans Regular"] },
-            paint: { "text-color": "#17784f", "text-halo-color": "#fff", "text-halo-width": 1.5 },
-          });
-        }
-      }
-      setSrc("ctx", ctx);
-      if (!map.getLayer("ctx-dots")) {
-        map.addLayer({
-          id: "ctx-dots", type: "circle", source: "ctx",
-          paint: {
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 2.5, 10, 6],
-            "circle-color": "#f59e0b", "circle-opacity": 0.85, "circle-stroke-color": "#fff", "circle-stroke-width": 1,
-          },
-        });
-      }
-    };
-    if (map.isStyleLoaded()) apply();
-    else map.once("load", apply);
-  }, [data, pas]);
-
-  // incident markers
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !data) return;
-    markers.current.forEach((m) => m.remove());
-    markers.current = data.incidents.map((inc) => {
-      const el = markerEl(inc, predictions[inc.id], inc.id === selectedId);
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        select(inc.id);
-      });
-      return new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([inc.lon, inc.lat]).addTo(map);
-    });
-  }, [data, predictions, selectedId, select]);
-
-  // fly to selection
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !data) return;
-    const inc = data.incidents.find((i) => i.id === selectedId);
-    if (inc) map.flyTo({ center: [inc.lon, inc.lat], zoom: 9.5, padding: { top: 0, bottom: 0, left: 0, right: 420 }, duration: 1600, essential: true });
-    else map.fitBounds(STUDY_BOUNDS, { padding: { top: 60, bottom: 60, left: 60, right: 460 }, duration: 1200 });
-  }, [selectedId, data]);
-
-  return (
-    <>
-      <div className="absolute inset-0">
-        <div ref={ref} className="h-full w-full" />
-      </div>
-      {failed && <OfflineCard />}
-    </>
-  );
-}
-
-function OfflineCard() {
-  const data = useStore((s) => s.data);
-  const select = useStore((s) => s.select);
-  return (
-    <div className="absolute inset-0 grid place-items-center bg-[var(--bg)]">
-      <div className="panel w-[420px] p-5">
-        <div className="text-[14px] font-bold">Map tiles unavailable (offline)</div>
-        <p className="mt-1 text-[12.5px] text-[var(--ink-2)]">The basemap needs internet. Incident coordinates are still available:</p>
-        <div className="mt-3 space-y-1.5">
-          {data?.incidents.map((i) => (
-            <button key={i.id} onClick={() => select(i.id)} className="flex w-full justify-between rounded-lg bg-[#faf8ef] px-3 py-2 text-left text-[12.5px] hover:bg-[var(--blue-50)]">
-              <span className="font-semibold">{shortId(i.id)} · {i.region}</span>
-              <span className="font-mono text-[11.5px] text-[var(--ink-2)]">{i.lat.toFixed(3)}, {i.lon.toFixed(3)}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ Google Maps (satellite) */
-function GoogleEarth() {
-  const data = useStore((s) => s.data);
-  const predictions = useStore((s) => s.predictions);
-  const selectedId = useStore((s) => s.selectedId);
-  const select = useStore((s) => s.select);
-  return (
-    <APIProvider apiKey={GOOGLE_KEY}>
-      <GMap
-        mapId={GOOGLE_MAP_ID}
-        mapTypeId="hybrid"
-        defaultBounds={{ west: STUDY_BOUNDS[0][0], south: STUDY_BOUNDS[0][1], east: STUDY_BOUNDS[1][0], north: STUDY_BOUNDS[1][1] }}
-        gestureHandling="greedy"
-        disableDefaultUI={false}
-        mapTypeControl={false}
-        streetViewControl={false}
-        fullscreenControl={false}
-        style={{ position: "absolute", inset: 0 }}
-      >
-        {data?.context_hotspots.map((h, i) => (
-          <AdvancedMarker key={`c${i}`} position={{ lat: h.lat, lng: h.lon }} zIndex={1}>
-            <span style={{ display: "block", width: 8, height: 8, borderRadius: 999, background: "#f59e0b", border: "1.5px solid #fff" }} />
-          </AdvancedMarker>
-        ))}
-        {data?.incidents.map((inc) => (
-          <GoogleIncidentMarker key={inc.id} inc={inc} pred={predictions[inc.id]} selected={inc.id === selectedId} onClick={() => select(inc.id)} />
-        ))}
-        <GoogleOverlays />
-      </GMap>
-    </APIProvider>
-  );
-}
-
-function GoogleIncidentMarker({ inc, pred, selected, onClick }: { inc: Incident; pred?: Prediction; selected: boolean; onClick: () => void }) {
-  const html = useMemo(() => markerEl(inc, pred, selected).innerHTML, [inc, pred, selected]);
-  return (
-    <AdvancedMarker position={{ lat: inc.lat, lng: inc.lon }} onClick={onClick} zIndex={selected ? 30 : 20} title={`${inc.id} · ${utc(inc.observed_at)}`}>
-      <div dangerouslySetInnerHTML={{ __html: html }} />
-    </AdvancedMarker>
-  );
-}
-
-function GoogleOverlays() {
-  const map = useMap();
-  const data = useStore((s) => s.data);
-  const selectedId = useStore((s) => s.selectedId);
-  const pas = usePAs();
-  useEffect(() => {
-    if (!map || !pas) return;
-    const added = map.data.addGeoJson(pas);
-    map.data.setStyle({ fillColor: "#16a34a", fillOpacity: 0.15, strokeColor: "#22c55e", strokeWeight: 1.5 });
-    return () => added.forEach((f) => map.data.remove(f));
-  }, [map, pas]);
-  useEffect(() => {
-    if (!map || !data) return;
-    const inc = data.incidents.find((i) => i.id === selectedId);
-    if (inc) {
-      map.panTo({ lat: inc.lat, lng: inc.lon });
-      const target = 13;
-      let z = map.getZoom() ?? 5;
-      const id = setInterval(() => {
-        z = Math.min(z + 1, target);
-        map.setZoom(z);
-        if (z >= target) clearInterval(id);
-      }, 160);
-      return () => clearInterval(id);
-    }
-    map.fitBounds({ west: STUDY_BOUNDS[0][0], south: STUDY_BOUNDS[0][1], east: STUDY_BOUNDS[1][0], north: STUDY_BOUNDS[1][1] });
-  }, [map, data, selectedId]);
-  return null;
 }

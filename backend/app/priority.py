@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 
 WEIGHTS = {"prediction": 0.45, "exposure": 0.25, "recency": 0.15, "evidence": 0.15}
+PRIORITY_POLICY_VERSION = "priority-v1 (0.45 model estimate / 0.25 exposure / 0.15 recency / 0.15 evidence)"
 EXPOSURE_SCALE_KM = 10.0   # exposure = exp(-distance / 10 km); 1.0 inside an (approximate) protected area
 RECENCY_SCALE_H = 12.0     # recency = exp(-hours since observation / 12 h)
 
@@ -21,36 +22,46 @@ CATEGORY_TEXT = {
 
 
 def evidence_quality(c: dict, missing: list[str], ood: list[str]) -> dict:
+    from ml.feature_catalog import info  # local import keeps priority.py free of ML imports at module load
+
     flags: list[str] = []
+    codes: list[str] = []
     score = 0.0
     npx = c.get("n_pixels", 1) or 1
     score += 0.25 * min(npx, 4) / 4
     if npx == 1:
         flags.append("Single-pixel detection")
+        codes.append("single_pixel")
     conf_l = c.get("conf_l_frac", 0) or 0
     score += 0.25 * (1 - conf_l)
     if conf_l >= 0.5:
         flags.append("Mostly low-confidence pixels")
+        codes.append("low_confidence")
     corroborated = (c.get("multi_sensor_2h", 0) or 0) >= 1 or (c.get("prior_24h", 0) or 0) > 0
     score += 0.2 if corroborated else 0.0
     if not corroborated:
         flags.append("No corroborating detection in the previous 24 h")
+        codes.append("no_corroboration")
     st = c.get("scan_track", 0.2) or 0.2
     score += 0.1 * max(0.0, min(1.0, (0.6 - st) / 0.45))
     if st > 0.35:
-        flags.append("Large edge-of-scan pixel footprint")
+        flags.append("Large satellite observation footprint")
+        codes.append("edge_of_scan")
     weather_missing = any(m in missing for m in ("relative_humidity_2m_min", "precip_7d", "days_since_rain")) \
         or (c.get("weather_missing", 0) or 0) >= 1
     score += 0.0 if weather_missing else 0.1
     if weather_missing:
         flags.append("Weather record missing")
+        codes.append("weather_missing")
     if ood:
         score -= 0.1 * min(len(ood), 2)
-        flags.append("Unfamiliar conditions: " + ", ".join(ood[:3]))
+        flags.append("Unusual input values: " + ", ".join(info(f).name.lower() for f in ood[:3]))
+        codes.append("ood")
     score += 0.1  # base credit for a georeferenced satellite observation
     score = max(0.0, min(1.0, score))
     quality = "High" if score >= 0.65 else ("Medium" if score >= 0.4 else "Low")
-    return {"quality": quality, "score": round(score, 3), "flags": flags}
+    return {"quality": quality, "score": round(score, 3), "flags": flags, "flag_codes": codes,
+            "corroborated": bool(corroborated)}
 
 
 def exposure_score(pa_dist_km: float) -> float:

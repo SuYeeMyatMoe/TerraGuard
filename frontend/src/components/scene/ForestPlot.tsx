@@ -4,7 +4,7 @@ import { Html, Line } from "@react-three/drei";
 import { ThreeEvent, useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import type { PlotInfo, Recommendation } from "@/lib/types";
+import type { Attendance, PlotInfo, Recommendation } from "@/lib/types";
 import { GRID, HALF, STATE, cellToLocal, decode, hash01 } from "./layout";
 
 const N = GRID * GRID;
@@ -45,6 +45,7 @@ export function ForestPlot({
   sublabel,
   recommendation,
   rank,
+  attendance,
   picking,
   hasTeam,
   onSelect,
@@ -58,6 +59,7 @@ export function ForestPlot({
   sublabel: string;
   recommendation?: Recommendation;
   rank?: number;
+  attendance?: Attendance;
   picking: boolean;
   hasTeam: boolean;
   onSelect: () => void;
@@ -357,7 +359,9 @@ export function ForestPlot({
             </span>
           )}
           <span className="text-[11.5px] font-bold text-[var(--ink)]">{label}</span>
-          <span className="text-[11px] font-medium text-[var(--ink-2)]">{sublabel}</span>
+          <span className="hidden text-[11px] font-medium text-[var(--ink-2)] lg:inline">{sublabel}</span>
+          {attendance === "assigned" && <span className="rounded-full bg-[var(--cyan-50)] px-1.5 text-[10px] font-bold text-[#0e7490]">CREW</span>}
+          {attendance === "unattended" && <span className="rounded-full bg-amber-50 px-1.5 text-[10px] font-bold text-amber-700">WAITING</span>}
         </div>
       </Html>
     </group>

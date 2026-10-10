@@ -3,8 +3,10 @@ import type { FeatureCollection } from "geojson";
 // Mirrors backend/app/schemas.py — keep in sync.
 
 export type Recommendation = "INSPECT" | "RECHECK" | "MONITOR";
-export type ActionType = "ASSIGN_INSPECTION" | "REQUEST_RECHECK" | "DISMISS";
-export type PolicyKey = "none" | "first_alert" | "ai_priority";
+export type ActionType = "ASSIGN_INSPECTION" | "REQUEST_RECHECK" | "DISMISS" | "CONTINUE_MONITORING" | "ESCALATE_COORDINATION";
+export type PolicyKey = "none" | "first_alert" | "ai_priority" | "coordinator";
+export type Attendance = "assigned" | "unattended" | "recheck" | "dismissed" | "open";
+export type RecordBackend = "supabase" | "sqlite" | "sqlite_fallback";
 
 export interface Provenance {
   source: string;
@@ -45,7 +47,25 @@ export interface Incident {
   protected_area: { id: string; name: string; distance_km: number; boundary: "approximate" | "verified" };
   weather: Weather;
   status: string;
+  attendance: Attendance;
   status_updated_at: string | null;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  short_name: string;
+  base: string;
+  base_lat: number;
+  base_lon: number;
+  size: number;
+  capability: string;
+  status: "available" | "assigned";
+  assigned_incident_id: string | null;
+  since: string | null;
+  action_id: number | null;
+  stored_in?: string | null;
+  released_from?: string | null;
 }
 
 export interface Scenario {
@@ -71,7 +91,8 @@ export interface IncidentsResponse {
   provenance: Provenance;
   incidents: Incident[];
   context_hotspots: ContextHotspot[];
-  teams_available: number;
+  team: Team;
+  record_backend: RecordBackend;
 }
 
 export interface Factor {
@@ -87,12 +108,24 @@ export interface Prediction {
   incident_id: string;
   model: { name: string; version: string; target: string; served: "random_forest" | "baseline" };
   probability: number;
-  interval: [number, number];
+  tree_variation: { p10: number; p90: number; note: string };
+  calibration_note: { band: string; observed_rate: number; n: number; text: string } | null;
+  decision_summary: string;
+  urgency: Urgency;
+  heat_signal?: HeatSignal;
+  anomaly?: AnomalyAssessment;
+  feasibility?: Feasibility;
+  footprint?: Footprint | null;
+  explained_factors: ExplainedFactor[];
+  ranking_explanation: RankingExplanation;
+  confidence_guidance: EvidenceGap[];
+  evidence_limitations: EvidenceLimitation[];
+  trace: Trace;
   threshold: number;
   above_alert_threshold: boolean;
   category: string;
   category_label: string;
-  evidence: { quality: "High" | "Medium" | "Low"; score: number; flags: string[] };
+  evidence: { quality: "High" | "Medium" | "Low"; score: number; flags: string[]; flag_codes: string[]; corroborated: boolean };
   factors: Factor[];
   missing_features: string[];
   ood_features: string[];
@@ -113,8 +146,246 @@ export interface Prediction {
     recommendation: Recommendation;
   }[];
   uncertainty_note: string;
-  limitations: string[];
+  model_limitations: string[];
   retrospective_label: string | null;
+}
+
+export type UrgencyTier = "CRITICAL_REVIEW" | "PRIORITY_REVIEW" | "ROUTINE_MONITORING" | "INSUFFICIENT_EVIDENCE";
+
+export interface Urgency {
+  tier: UrgencyTier;
+  label: string;
+  meaning?: string;
+  review_window?: string;
+  review_window_note?: string;
+  reasons: string[];
+  rule_based: boolean;
+}
+
+export interface HeatSignal {
+  level: "Strong" | "Moderate" | "Weak";
+  reasons: string[];
+  note: string;
+}
+
+export interface AnomalyAssessment {
+  pattern: string;
+  label: string;
+  meaning: string;
+  anomaly_score: number | null;
+  anomaly_percentile: number | null;
+  unusual: boolean;
+  proof: string[];
+  requires_verification: boolean;
+  disclaimer: string;
+}
+
+export interface Feasibility {
+  status: "FEASIBLE" | "REQUIRES_COORDINATION" | "UNKNOWN" | "UNAVAILABLE";
+  label: string;
+  straight_line_km: number;
+  distance_label: string;
+  crew_base: string;
+  crew_base_jurisdiction: string;
+  incident_jurisdiction: string;
+  cross_border: boolean;
+  travel_time: null;
+  travel_note: string;
+  access_note: string;
+  reasons: string[];
+  actionable: boolean;
+}
+
+export interface Footprint {
+  probability_any: number;
+  expected_km2: number;
+  median_km2: number;
+  p10_km2: number;
+  p90_km2: number;
+  cells_median: number;
+  past_cells_24h: number;
+  past_km2: number;
+  horizon_h: number;
+  radius_km: number;
+  note: string;
+  eval: {
+    mae_km2: number; persistence_mae_km2: number; spearman: number; persistence_spearman: number; auc_any: number;
+    coverage_10_90: number; beats_persistence: boolean; n_test: number;
+  };
+}
+
+export interface BurnReplay {
+  plot_index: number;
+  h: number;
+  w: number;
+  steps: number;
+  response_delay: number;
+  seed: number;
+  crew_here: string[];
+  no_crew: string[];
+  crew_here_burned: number;
+  no_crew_burned: number;
+  note: string;
+}
+
+export type ReportAction = "SEND_CREW" | "ESCALATE" | "RECHECK" | "MONITOR";
+
+export interface MeanCI {
+  mean: number;
+  ci95: number;
+}
+
+export interface PredictionReport {
+  title: string;
+  incident: {
+    id: string; region: string; country: string; lat: number; lon: number; first_detected: string; satellite: string;
+    protected_area: { name: string; distance_km: number; boundary: string };
+    recent_detections: { previous_24h: string; previous_7d: string };
+    weather: Weather;
+  };
+  prediction: {
+    probability: number; threshold: number; above_threshold: boolean; risk_category: "Low" | "Medium" | "High"; risk_rule: string;
+    evidence_quality: "Strong" | "Moderate" | "Weak"; target: string;
+    calibration_note: { text: string } | null; tree_variation: { p10: number; p90: number; note: string };
+  };
+  anomaly: AnomalyAssessment;
+  heat_signal: HeatSignal;
+  footprint: Footprint | null;
+  proof: string[];
+  reliability: {
+    missing_weather: boolean; unusual_inputs: boolean; satellite_evidence: string; confidence_note: string;
+    noise: { available: boolean; samples?: number; perturbation?: string; range_5_95?: [number, number];
+      same_side_of_threshold?: number; stable?: boolean; text?: string };
+    limitations: EvidenceLimitation[];
+    improve_confidence: EvidenceGap[];
+  };
+  false_alarms: { precision: number; false_positive_rate: number; recall: number; threshold: number; n: number; period: string; text: string };
+  limits: string[];
+}
+
+export interface RecommendationReport {
+  title: string;
+  action: ReportAction;
+  action_label: string;
+  record_action: ActionType;
+  deterministic_recommendation: Recommendation;
+  urgency: Urgency;
+  urgency_table: { level: string; meaning: string; action: string; window: string }[];
+  why: string;
+  why_points: string[];
+  ranking: RankingExplanation;
+  feasibility: Feasibility;
+  consequences: {
+    under_response: string[];
+    over_response: string[];
+    simulation: {
+      crew_here: MeanCI; no_crew_here: MeanCI; difference_cells: number; runs: number; response_delay_steps: number;
+      crew_benefit_by_incident: { incident_id: string; label: string; cells: number }[];
+      tradeoff: string | null; note: string; replay: BurnReplay;
+    };
+  };
+  waiting: { incident_id: string; label: string; region: string; rank: number; probability: number; recommendation: Recommendation;
+    unattended_burned_cells: MeanCI; simulated_crew_benefit_cells: number }[];
+  options: { action: ReportAction; label: string; record: ActionType; recommended: boolean }[];
+}
+
+export interface IncidentReports {
+  incident_id: string;
+  prediction_report: PredictionReport;
+  recommendation_report: RecommendationReport;
+}
+
+export interface ExplainedFactor {
+  feature: string;
+  name: string;
+  meaning: string;
+  value_text: string;
+  comparison: { rank: number; phrase: string; scope_label: string; n: number; text: string } | null;
+  comparison_text: string | null;
+  direction: "up" | "down";
+  effect_text: string;
+  /** relative influence |c|/max|c| among the shown factors: a visual scale, not a probability share */
+  influence: number;
+  influence_label: "Strong" | "Moderate" | "Smaller";
+  /** technical detail: additive path contribution in probability points */
+  contribution_pp: number;
+  imputed: boolean;
+}
+
+export type PriorityComponent = "prediction" | "exposure" | "recency" | "evidence";
+
+export interface RankingPair {
+  incident_id: string;
+  label: string;
+  region: string | null;
+  rank: number;
+  score: number;
+  score_diff: number;
+  component_diffs: Record<PriorityComponent, number>;
+  recommendation: Recommendation;
+}
+
+export interface RankingExplanation {
+  compared_with: string | null;
+  compared_with_label?: string;
+  relation?: "above" | "below";
+  text: string;
+  close?: boolean;
+  tie_rule?: string | null;
+  score_diff?: number;
+  component_diffs?: Record<PriorityComponent, number>;
+  drivers?: { component: PriorityComponent; label: string; diff: number }[];
+  tradeoff?: { component: PriorityComponent; label: string; diff: number } | null;
+  resource_note?: string;
+  tied?: boolean;
+  neighbour?: { incident_id: string; label: string; text: string; drivers: PriorityComponent[]; against: PriorityComponent[]; close: boolean } | null;
+  pairs: RankingPair[];
+}
+
+export interface EvidenceGap {
+  code: string;
+  missing: string;
+  why_it_matters: string;
+  verification_step: string;
+  keep_cautious: boolean;
+}
+
+export interface EvidenceLimitation {
+  code: string;
+  severity: "high" | "medium" | "low";
+  title: string;
+  text: string;
+}
+
+export interface TraceDetection {
+  latitude: number;
+  longitude: number;
+  acq_date: string;
+  acq_time_utc: string;
+  satellite: string;
+  source_product: string;
+  version: string;
+  type: number | null;
+  confidence: string;
+  frp_mw: number;
+  bright_ti4_k: number;
+  distance_km: number;
+}
+
+export interface Trace {
+  incident_id: string;
+  candidate_id: string;
+  firms: { source: string; product: string; is_synthetic: boolean; matching_rule: string; detections: TraceDetection[] };
+  weather: { source: string; tile_lat: number | null; tile_lon: number | null; date: string | null; alignment: string };
+  protected_area: { name: string; source: string; boundary: string; distance_km: number };
+  model: { name: string; version: string; trained_at: string | null; target: string };
+  inference_time_utc: string;
+  priority_policy_version: string;
+  priority_components: Record<PriorityComponent, number>;
+  priority_score: number;
+  rank: number;
+  substituted_values: { feature: string; substituted_value: string }[];
+  explanation_method: string;
 }
 
 export interface Stat {
@@ -187,13 +458,20 @@ export interface SimulateResponse {
   arrival_order: string[];
   ai_order: string[];
   plots: PlotInfo[];
-  policies: Record<PolicyKey, PolicyResult>;
+  coordinator_assignment: string | null;
+  policies: Record<"none" | "first_alert" | "ai_priority", PolicyResult> & { coordinator?: PolicyResult };
   comparison: {
     loss_index: ComparisonMetric;
     protected_cells_burned: ComparisonMetric;
     burned_cells: ComparisonMetric;
     same_allocation: boolean;
     note: string;
+    coordinator?: {
+      loss_index: { coordinator_mean: number; vs_first_alert: number; vs_ai_priority: number };
+      protected_cells_burned: { coordinator_mean: number; vs_first_alert: number; vs_ai_priority: number };
+      burned_cells: { coordinator_mean: number; vs_first_alert: number; vs_ai_priority: number };
+      matches: "ai_priority" | "first_alert" | null;
+    };
   };
   assumptions: Record<string, number | string>;
   disclaimer: string;
@@ -210,20 +488,51 @@ export interface SimulateRequest {
   scenario_id?: string;
   teams: number;
   response_delay: number;
+  burn_duration_steps?: number;
   steps: number;
   seed: number;
   n_seeds: number;
   per_incident: Record<string, IncidentOverride>;
+  coordinator_assignment?: string | null;
+}
+
+export interface WaitingIncident {
+  incident_id: string;
+  region: string | null;
+  probability: number | null;
+  rank: number | null;
+  recommendation: string | null;
 }
 
 export interface ActionRecord {
   id: number;
   scenario_id: string;
   incident_id: string;
+  incident_region: string | null;
   action: ActionType;
   reason: string | null;
-  recommendation_at_time: string | null;
+  recommendation_at_time: Recommendation | null;
   created_at: string;
+  team_name: string | null;
+  priority_rank: number | null;
+  priority_score: number | null;
+  probability: number | null;
+  followed_recommendation: boolean | null;
+  reassigned_from: string | null;
+  left_waiting: WaitingIncident[] | null;
+  archived_at: string | null;
+  stored_in: "supabase" | "sqlite" | "local_fallback";
+  fallback_reason: string | null;
+  snapshot_stored: boolean;
+  retrospective: Record<string, string | null>;
+}
+
+export interface ActionResponse {
+  action: ActionRecord;
+  incident_status: string;
+  team: Team;
+  attendance: Record<string, Attendance>;
+  record_backend: RecordBackend;
 }
 
 export interface BriefSection {
@@ -232,11 +541,13 @@ export interface BriefSection {
 }
 
 export interface IncidentBriefing {
-  summary: BriefSection;
-  why_matters: BriefSection;
-  prediction_interpretation: BriefSection;
+  incident_summary: BriefSection;
+  why_prediction: BriefSection;
+  why_priority: BriefSection;
+  comparison_with_next_incident: BriefSection;
+  uncertainties: BriefSection;
+  what_would_improve_confidence: BriefSection;
   recommended_next_step: BriefSection & { recommendation: Recommendation };
-  uncertainty: BriefSection;
 }
 
 export interface FieldBrief {
@@ -289,6 +600,56 @@ export interface GeoContext {
   };
   protected_areas: FeatureCollection;
   boundary_status: string;
+}
+
+export interface EarthEngineAnalysis {
+  scene_count: number;
+  acquisition_start: string | null;
+  acquisition_end: string | null;
+  ndvi_mean: number | null;
+  valid_coverage_pct: number;
+}
+export interface EarthEngineDisplay {
+  bounds: [number, number, number, number];
+  study_bounds: [number, number, number, number];
+  scene_count: number | null;
+  acquisition_start: string | null;
+  acquisition_end: string | null;
+}
+export interface EarthEngineImagery {
+  status:
+    | "not_configured"
+    | "select_incident"
+    | "ready"
+    | "preparing"
+    | "no_data"
+    | "unavailable";
+  available: boolean;
+  incident_id: string | null;
+  reason: string | null;
+  window: { start: string; end: string; days: number } | null;
+  bounds: [number, number, number, number] | null;
+  layers: {
+    id: "rgb" | "ndvi" | "rgb_after" | "ndvi_after";
+    tile_url: string;
+    attribution: string;
+  }[];
+  analysis: EarthEngineAnalysis | null;
+  analysis_status?: "preparing" | "ready" | "unavailable";
+  display?: EarthEngineDisplay | null;
+  analysis_region?: { center: [number, number]; radius_m: number };
+  comparison?: {
+    status: "preparing" | "ready" | "no_data" | "unavailable";
+    reason: string | null;
+    window: { start: string; end: string; days: number };
+    analysis: EarthEngineAnalysis | null;
+    analysis_status?: "preparing" | "ready" | "unavailable";
+    display: EarthEngineDisplay | null;
+  };
+  generated_at?: string;
+  refresh_after_seconds?: number;
+  method?: string;
+  limitations?: string;
 }
 
 export interface SplitMetrics {
@@ -373,5 +734,7 @@ export interface Health {
   data_source: string;
   is_synthetic: boolean;
   providers: { openai: boolean; openai_model: string | null; grafilab: boolean };
+  record_backend: RecordBackend;
   earth_engine: boolean;
+  operational_database: { status: "ready" | "unavailable" };
 }

@@ -1,17 +1,11 @@
 "use client";
 
-import { Bell, BookOpen, Box, ChevronDown, Database, Globe2, History, Leaf } from "lucide-react";
+import { BookOpen, Box, ChevronDown, ClipboardList, Database, Globe2, History, Leaf } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Segmented } from "@/components/ui";
 import { utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
-
-const ACTION_TEXT: Record<string, string> = {
-  ASSIGN_INSPECTION: "Inspection assigned",
-  REQUEST_RECHECK: "Recheck requested",
-  DISMISS: "Dismissed",
-};
 
 export function TopBar() {
   const data = useStore((s) => s.data);
@@ -20,30 +14,28 @@ export function TopBar() {
   const load = useStore((s) => s.load);
   const actions = useStore((s) => s.actions);
   const setMethodology = useStore((s) => s.setMethodology);
-  const [bellOpen, setBellOpen] = useState(false);
+  const setRecordOpen = useStore((s) => s.setRecordOpen);
   const [scenOpen, setScenOpen] = useState(false);
-  const [seen, setSeen] = useState(0);
-  const unread = Math.max(actions.length - seen, 0);
   const prov = data?.provenance;
 
   return (
-    <header className="simulation-header relative z-30 flex shrink-0 items-center gap-4 border-b border-[var(--line)] px-5">
-      <Link href="/" className="flex items-center gap-3" aria-label="TerraGuard AI home">
-        <span className="simulation-brand"><Leaf size={25} strokeWidth={1.5} />TerraGuard<span>AI</span></span>
+    <header className="command-header relative z-30 flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--line)] bg-white px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-4 lg:px-5 lg:py-0">
+      <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="TerraGuard AI home">
+        <span className="simulation-brand"><Leaf size={24} strokeWidth={1.6} />TerraGuard<span>AI</span></span>
       </Link>
-      <span className="h-6 w-px bg-[var(--line)]" />
-      <div className="leading-tight">
-        <h1 className="simulation-title">Forest Command Center</h1>
-        <div className="text-[11.5px] text-[var(--ink-2)]">Malaysia &amp; Indonesia study region</div>
+      <span className="hidden h-6 w-px bg-[var(--line)] 2xl:block" />
+      <div className="hidden leading-tight 2xl:block">
+        <div className="text-[13.5px] font-bold">Forest Command Center</div>
+        <div className="text-[11.5px] text-[var(--ink-2)]">{view === "earth" ? "Worldwide satellite view · regional incident demo" : "Malaysia & Indonesia study region"}</div>
       </div>
 
-      <div className="mx-auto">
+      <div className="command-view-switch order-4 w-full lg:order-none lg:mx-auto lg:w-auto">
         <Segmented
           value={view}
           onChange={setView}
           options={[
-            { value: "earth", label: (<><Globe2 size={15} /> Earth View</>), title: "Real coordinates of historical hotspots" },
-            { value: "sim", label: (<><Box size={15} /> 3D Simulation</>), title: "Hypothetical forest scenario" },
+            { value: "earth", label: (<><Globe2 size={15} /> Earth View</>), title: "Worldwide imagery and historical incident analysis" },
+            { value: "sim", label: (<><Box size={15} /> Test the response (3D)</>), title: "Hypothetical forest scenario for testing where the crew goes" },
           ]}
         />
       </div>
@@ -53,7 +45,7 @@ export function TopBar() {
         open={scenOpen}
         setOpen={setScenOpen}
         button={
-          <span className="flex items-center gap-2.5 rounded-[10px] border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 hover:border-[var(--blue-200)]">
+          <span className="flex items-center gap-2.5 rounded-[10px] border border-[var(--line)] bg-white px-3 py-1.5 hover:border-[#cdd8e5]">
             <History size={15} className="text-[var(--ink-2)]" />
             <span className="text-left leading-tight">
               <span className="block text-[10.5px] font-bold uppercase tracking-wider text-[var(--ink-3)]">Historical replay</span>
@@ -63,7 +55,7 @@ export function TopBar() {
           </span>
         }
       >
-        <div className="w-[300px] p-1.5">
+        <div className="max-h-[65dvh] w-[300px] max-w-[calc(100vw-24px)] overflow-y-auto p-1.5">
           <div className="px-2.5 pb-1.5 pt-1 text-[11.5px] text-[var(--ink-2)]">
             Replay days from the held-out 2025 test period. Selected by a fixed, outcome-blind rule.
           </div>
@@ -74,7 +66,7 @@ export function TopBar() {
                 setScenOpen(false);
                 if (s.id !== data.scenario.id) load(s.id);
               }}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left hover:bg-[var(--line-2)] ${s.id === data.scenario.id ? "bg-[var(--blue-50)]" : ""}`}
+              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left hover:bg-[#f3f6fa] ${s.id === data.scenario.id ? "bg-[var(--blue-50)]" : ""}`}
             >
               <span>
                 <span className="block text-[13px] font-semibold tnum">{utc(s.replay_time_utc)}</span>
@@ -100,50 +92,21 @@ export function TopBar() {
         </span>
       )}
 
-      <Dropdown
-        open={bellOpen}
-        setOpen={(v) => {
-          setBellOpen(v);
-          if (v) setSeen(actions.length);
-        }}
-        align="right"
-        button={
-          <span className="relative grid h-9 w-9 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" aria-label="Notifications">
-            <Bell size={18} />
-            {unread > 0 && (
-              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--red)] px-1 text-[10px] font-bold text-white">
-                {unread}
-              </span>
-            )}
-          </span>
-        }
+      <button
+        className="relative ml-auto flex h-11 shrink-0 items-center gap-2 rounded-[10px] border border-[var(--line)] bg-white px-3 text-[12.5px] font-semibold hover:border-[#cdd8e5] lg:ml-0 lg:h-9"
+        onClick={() => setRecordOpen(true)}
+        aria-label="Decision record"
+        title="Decision record: who got the crew, who waited, and why"
       >
-        <div className="w-[340px]">
-          <div className="border-b border-[var(--line)] px-4 py-3">
-            <div className="text-[13.5px] font-bold">Decision log</div>
-            <div className="text-[11.5px] text-[var(--ink-2)]">Every coordinator action is saved with a timestamp.</div>
-          </div>
-          <div className="scroll-thin max-h-[340px] overflow-y-auto p-1.5">
-            {actions.length === 0 && <div className="px-3 py-6 text-center text-[12.5px] text-[var(--ink-2)]">No decisions recorded yet.</div>}
-            {actions.map((a) => (
-              <div key={a.id} className="rounded-lg px-3 py-2 hover:bg-[var(--line-2)]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12.5px] font-semibold">{ACTION_TEXT[a.action]}</span>
-                  <span className="text-[11px] text-[var(--ink-3)] tnum">
-                    {new Date(a.created_at).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-                <div className="text-[11.5px] text-[var(--ink-2)]">
-                  {a.incident_id}
-                  {a.recommendation_at_time ? ` · model recommended ${a.recommendation_at_time.toLowerCase()}` : ""}
-                  {a.reason ? ` · “${a.reason}”` : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Dropdown>
-      <button className="btn btn-ghost h-9 px-2.5" onClick={() => setMethodology(true)} title="Methodology & evaluation">
+        <ClipboardList size={16} className="text-[var(--ink-2)]" />
+        <span className="hidden 2xl:inline">Decision record</span>
+        {actions.length > 0 && (
+          <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--blue)] px-1.5 text-[10.5px] font-bold text-white tnum">
+            {actions.length}
+          </span>
+        )}
+      </button>
+      <button className="btn btn-ghost h-11 shrink-0 px-2.5 lg:h-9" onClick={() => setMethodology(true)} aria-label="Methodology & evaluation" title="Methodology & evaluation">
         <BookOpen size={17} />
         <span className="hidden 2xl:inline">Methodology</span>
       </button>
@@ -179,12 +142,12 @@ function Dropdown({
     };
   }, [open, setOpen]);
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="command-replay relative order-5 w-full lg:order-none lg:w-auto">
       <button onClick={() => setOpen(!open)} aria-expanded={open}>
         {button}
       </button>
       {open && (
-        <div className={`panel-float animate-in absolute top-[calc(100%+8px)] z-50 overflow-hidden ${align === "right" ? "right-0" : "left-0"}`}>
+        <div className={`panel-float animate-in absolute top-[calc(100%+8px)] z-50 max-w-[calc(100vw-24px)] overflow-hidden ${align === "right" ? "right-0" : "left-0"}`}>
           {children}
         </div>
       )}

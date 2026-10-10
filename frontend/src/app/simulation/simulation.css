@@ -1,5 +1,5 @@
 /* The command center shares the landing page's moss, flax and warm paper. */
-.simulation-theme {
+.forest-command.simulation-theme {
   --bg: #f5f2e6;
   --surface: #faf8ef;
   --ink: #351903;
@@ -34,148 +34,43 @@
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
-.simulation-theme .panel,
-.simulation-theme .panel-float {
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
-  backdrop-filter: blur(18px);
+/* Palette and typography follow the homepage; the updated studio owns layout. */
+.forest-command.simulation-theme { background:var(--bg); color:var(--ink); }
+.simulation-theme > header { background:var(--bg); }
+.simulation-theme h1,.simulation-theme h2,.simulation-theme .panel-heading {
+  font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.035em;
 }
-
-.simulation-theme .simulation-header {
-  background: var(--bg);
-  min-height: 76px;
+.simulation-brand {display:inline-flex;align-items:center;gap:9px;color:var(--blue);font-size:21px;font-weight:750;letter-spacing:-.7px;white-space:nowrap}
+.simulation-brand span {font-size:9px;letter-spacing:1px;align-self:flex-start;margin-top:6px}
+.simulation-theme .eyebrow {color:var(--blue);letter-spacing:.12em}
+.simulation-theme .btn-secondary {background:var(--surface)}
+.simulation-theme .incident-roster,.simulation-theme .incident-list-panel {
+  --surface:#f7faef;--ink-2:#3f3416;--ink-3:#4b4228;--line:#cbd8b4;--blue-50:#edf3e1;
+  background:#e0ebce;border-color:#cbd8b4;
 }
-
-.simulation-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--blue);
-  font-size: 21px;
-  font-weight: 750;
-  letter-spacing: -.7px;
-  white-space: nowrap;
-}
-.simulation-brand span {
-  align-self: flex-start;
-  margin-top: 6px;
-  font-size: 9px;
-  letter-spacing: 1px;
-}
-
-.simulation-theme .simulation-title,
-.simulation-theme h2,
-.simulation-theme .panel-heading {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 400;
-  letter-spacing: -.035em;
-  line-height: 1.2;
-}
-.simulation-theme .simulation-title { font-size: 22px; }
-.simulation-theme .panel-heading { font-size: 20px; }
-.simulation-theme h2 { font-size: 25px; }
-.simulation-theme .eyebrow { color: var(--blue); letter-spacing: .12em; }
-
-.simulation-theme .btn-primary {
-  color: var(--bg);
-  box-shadow: 0 4px 16px #36500418;
-}
-.simulation-theme .btn-secondary { background: var(--surface); }
-.simulation-theme .btn-secondary:hover:not(:disabled) {
-  background: var(--blue-50);
-  border-color: var(--blue-200);
-}
-.simulation-theme [role="tablist"] { border-radius: 999px; }
-.simulation-theme [role="tab"] { border-radius: 999px; }
-.simulation-theme [role="tab"][aria-selected="true"] {
-  background: var(--blue);
-  color: var(--bg);
-  box-shadow: 0 2px 8px #36500414;
-}
-.simulation-theme .scroll-thin { scrollbar-color: var(--line) transparent; }
-.simulation-theme .skeleton {
-  background-image: linear-gradient(90deg, var(--line-2) 0px, var(--surface) 80px, var(--line-2) 160px);
-}
-.simulation-theme .tg-range::-webkit-slider-thumb { background: var(--surface); }
-.simulation-theme .tg-range::-moz-range-thumb { background: var(--surface); }
-.simulation-theme .maplibregl-ctrl-group { background: var(--surface); }
-
-@media (max-width: 1100px) {
-  .simulation-theme .simulation-title { font-size: 18px; }
-  .simulation-theme .simulation-header { gap: 12px; padding-inline: 16px; }
-  .simulation-brand { font-size: 18px; }
-}
-
-/* A single set of dimensions keeps the floating docks apart. */
-.command-workspace {
-  --sidebar-width: 350px;
-  --timeline-height: 108px;
-  isolation: isolate;
-}
-.forest-stage { z-index: 0; }
-.conditions-dock { left: 16px; top: 16px; bottom: calc(var(--timeline-height) + 32px); }
-.intelligence-dock { right: 16px; top: 16px; bottom: 16px; width: var(--sidebar-width); }
-.decision-slot { flex: 0 1 auto; max-height: 44%; border-radius: var(--radius-panel); }
-.incident-slot { overflow: hidden; border-radius: var(--radius-panel); }
-.camera-dock { right: calc(var(--sidebar-width) + 32px); top: 16px; }
-.timeline-dock {
-  left: 16px;
-  right: calc(var(--sidebar-width) + 32px);
-  bottom: 16px;
-  height: var(--timeline-height);
-}
-.simulation-timeline { height: 100%; }
-.timeline-transport { width: 270px; }
-.timeline-milestone-label { white-space: nowrap; }
-.scenario-note {
-  bottom: calc(var(--timeline-height) + 22px);
-  left: 332px;
-  right: calc(var(--sidebar-width) + 80px);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.stats-dock { left: 332px; right: calc(var(--sidebar-width) + 88px); top: 16px; }
-.simulation-theme .incident-list-header h2 { font-size: 21px; }
-.simulation-theme .incident-list-panel {
-  --surface: #f7faef;
-  --ink-2: #3f3416;
-  --ink-3: #4b4228;
-  --line: #cbd8b4;
-  --blue-50: #edf3e1;
-  background: #e0ebce;
-  border-color: #cbd8b4;
-}
-.simulation-theme .incident-list-panel .eyebrow { color: #351903; }
+.simulation-theme .roster-heading {color:#3f3416;font-size:8px;letter-spacing:.8px}
+.simulation-theme .incident-roster h2 {font-size:21px;margin-top:9px}
+.simulation-theme .roster-intro {margin:6px 0 10px}
+.simulation-theme .roster-card {padding:9px;background:var(--surface)}
+.simulation-theme .roster-card[aria-pressed=true] {background:#edf3e1}
+.simulation-theme .roster-card-bottom {margin-top:6px}
+.simulation-theme .roster-resource {margin-top:10px}
+.simulation-theme .incident-list-header {padding:14px 16px 10px}
+.simulation-theme .incident-list-header h2 {font-size:21px}
 .simulation-theme .decision-panel {
-  --surface: #faf0e1;
-  --ink: #351903;
-  --ink-2: #74634c;
-  --ink-3: #85765e;
-  --line: #ddc5a4;
-  --line-2: #e7ccb0;
-  --blue: #925e06;
-  --blue-200: #d9b882;
-  --blue-50: #f7e9d5;
-  --green-700: #365004;
-  --fire-50: #f8e7d1;
-  --fire-200: #e0c19a;
-  --fire-700: #925e06;
-  --red-700: #923327;
-  color: var(--ink);
-  background: #f4dfc7;
-  border-color: #ddc5a4;
+  --surface:#faf0e1;--line:#ddc5a4;--line-2:#e7ccb0;--blue:#925e06;--blue-200:#d9b882;--blue-50:#f7e9d5;
+  background:#f4dfc7;border-color:#ddc5a4;
 }
-.simulation-theme .decision-panel .eyebrow { color: #925e06; }
-.simulation-theme .decision-panel .btn-primary { background: #925e06; color: #fff8e9; }
-.simulation-theme .decision-panel .btn-primary:hover:not(:disabled) { background: #815105; }
-.simulation-theme .incident-card { padding: 8px; line-height: 1.35; }
-.simulation-theme [role="tab"] { white-space: nowrap; }
-.simulation-theme .decision-panel .btn { height: 34px; padding-inline: 10px; font-size: 12px; }
-.simulation-theme .decision-panel .btn > svg { flex-shrink: 0; }
-.policy-details > summary { list-style: none; border-radius: 8px; padding: 4px 0; }
-.policy-details > summary::-webkit-details-marker { display: none; }
-.policy-details[open] > summary > svg { transform: rotate(180deg); }
-
+.simulation-theme .decision-panel .eyebrow {color:#925e06}
+.simulation-theme .decision-panel .btn-primary {background:#925e06;color:#fff8e9}
+.simulation-theme .decision-panel .btn {padding-inline:10px;font-size:12px}
+.simulation-theme .decision-panel .btn > svg {flex-shrink:0}
+.simulation-theme .studio-workflow-note p {line-height:1.5}
+.simulation-theme [role="tab"] {white-space:nowrap}
+@media (prefers-reduced-motion:reduce) {
+  .simulation-theme button:not(:disabled):hover,.simulation-theme button:not(:disabled):active,
+  .simulation-theme summary:hover,.simulation-theme summary:active {transform:none}
+}
 /* Raised controls make their click affordance visible. */
 .simulation-theme button:not(:disabled),
 .simulation-theme summary,
@@ -198,42 +93,3 @@
   transform: translateY(1px) scale(.98);
   box-shadow: inset 0 2px 4px #35190316;
 }
-@media (min-width: 1600px) { .stats-dock { display: flex; } }
-@media (max-width: 1399px) { .timeline-scenario { display: none; } }
-@media (max-width: 1100px) and (min-width: 1001px) {
-  .command-workspace { --sidebar-width: 320px; }
-  .timeline-transport { width: 248px; }
-  .timeline-milestone-label { display: none; }
-  .simulation-theme .simulation-header > .leading-tight { display: none; }
-}
-
-/* On narrow screens the docks flow below the forest instead of overlapping. */
-@media (max-width: 1000px) {
-  .simulation-theme { height: auto; min-height: 100svh; overflow: visible; }
-  .simulation-theme .simulation-header { flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
-  .simulation-theme .simulation-header > .leading-tight,
-  .simulation-theme .simulation-header > span { display: none; }
-  .simulation-theme .simulation-header > .mx-auto { margin-left: auto; margin-right: 0; }
-  .command-workspace { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
-  .forest-stage { position: relative; inset: auto; height: 380px; flex: none; order: 0; overflow: hidden; border-radius: 20px; }
-  .earth-stage { position: relative; inset: auto; height: 380px; flex: none; order: 0; overflow: hidden; border-radius: 20px; }
-  .is-earth .forest-stage { position: absolute; width: calc(100% - 24px); }
-  .conditions-dock { position: relative; inset: auto; order: 1; }
-  .conditions-dock > div { width: 100%; }
-  .conditions-dock .panel-float { width: 100%; max-height: 320px; }
-  .camera-dock { top: 24px; right: 24px; }
-  .timeline-dock { position: relative; inset: auto; order: 2; height: auto; }
-  .simulation-timeline { flex-direction: column; gap: 10px; }
-  .timeline-transport { width: auto; flex-direction: row; justify-content: space-between; flex-wrap: wrap; }
-  .intelligence-dock { position: relative; inset: auto; width: 100%; order: 3; }
-  .incident-slot { min-height: 320px; max-height: 480px; }
-  .decision-slot { max-height: none; }
-  .scenario-note { position: relative; inset: auto; order: 4; white-space: normal; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .simulation-theme button:not(:disabled):hover,
-  .simulation-theme button:not(:disabled):active,
-  .simulation-theme summary:hover,
-  .simulation-theme summary:active { transform: none; }
-}
-@media (max-width: 500px) { .timeline-milestone-label { font-size: 8.5px; } }

@@ -1,6 +1,7 @@
-"""SQLite persistence for administrator actions (audit trail), incident status and AI brief logs.
+"""Local AI cache and compatibility facade for the independent legacy RPC client.
 
-Reset before a demo:  python -m app.db --reset
+Current application operational records use app.records. Cache initialization must
+not require the legacy Supabase backend to be configured.
 """
 from __future__ import annotations
 
@@ -10,6 +11,8 @@ import sys
 from datetime import datetime, timezone
 
 from ml.config import DATA_DIR
+
+from .operational_store import configured_store as _operations
 
 DB_PATH = DATA_DIR / "terraguard.db"
 
@@ -30,20 +33,6 @@ def _conn() -> sqlite3.Connection:
 def init() -> None:
     with _conn() as c:
         c.executescript("""
-        CREATE TABLE IF NOT EXISTS actions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            scenario_id TEXT NOT NULL,
-            incident_id TEXT NOT NULL,
-            action TEXT NOT NULL,
-            reason TEXT,
-            recommendation_at_time TEXT,
-            created_at TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS incident_status (
-            incident_id TEXT PRIMARY KEY,
-            status TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
         CREATE TABLE IF NOT EXISTS ai_briefs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             incident_id TEXT NOT NULL,
@@ -63,33 +52,25 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def record_action(scenario_id: str, incident_id: str, action: str, reason: str | None, recommendation: str | None) -> dict:
-    ts = now()
-    with _conn() as c:
-        cur = c.execute(
-            "INSERT INTO actions (scenario_id, incident_id, action, reason, recommendation_at_time, created_at) VALUES (?,?,?,?,?,?)",
-            (scenario_id, incident_id, action, reason, recommendation, ts))
-        c.execute("INSERT INTO incident_status (incident_id, status, updated_at) VALUES (?,?,?) "
-                  "ON CONFLICT(incident_id) DO UPDATE SET status=excluded.status, updated_at=excluded.updated_at",
-                  (incident_id, STATUS_TEXT[action], ts))
-        row = c.execute("SELECT * FROM actions WHERE id=?", (cur.lastrowid,)).fetchone()
-    return dict(row)
+def record_action(scenario_id: str, incident_id: str, action: str, reason: str | None,
+                  recommendation: str | None, team_name: str | None = None) -> dict:
+    return _operations().record_action(scenario_id, incident_id, action, reason, recommendation, team_name)
 
 
 def status_map() -> dict[str, tuple[str, str]]:
-    with _conn() as c:
-        return {r["incident_id"]: (r["status"], r["updated_at"]) for r in c.execute("SELECT * FROM incident_status")}
+    return _operations().status_map()
 
 
 def list_actions(limit: int = 50) -> list[dict]:
-    with _conn() as c:
-        return [dict(r) for r in c.execute("SELECT * FROM actions ORDER BY id DESC LIMIT ?", (limit,))]
+    return _operations().list_actions(limit)
+
+
+def check_ready() -> None:
+    _operations().check_ready()
 
 
 def get_action(action_id: int) -> dict | None:
-    with _conn() as c:
-        r = c.execute("SELECT * FROM actions WHERE id=?", (action_id,)).fetchone()
-    return dict(r) if r else None
+    return _operations().get_action(action_id)
 
 
 def cached_brief(incident_id: str, kind: str, evidence_hash: str) -> dict | None:
@@ -107,12 +88,13 @@ def log_brief(incident_id: str, kind: str, evidence_hash: str, provider: str | N
 
 
 def reset() -> None:
-    with _conn() as c:
-        c.executescript("DELETE FROM actions; DELETE FROM incident_status;")
+    raise RuntimeError("Operational records now live in Supabase. The local reset command cannot delete cloud audit history.")
 
 
 if __name__ == "__main__":
-    init()
     if "--reset" in sys.argv:
-        reset()
-        print("actions and incident statuses cleared")
+        try:
+            reset()
+        except RuntimeError as exc:
+            sys.exit(str(exc))
+    init()

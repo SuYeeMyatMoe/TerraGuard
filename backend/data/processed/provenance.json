@@ -1,7 +1,7 @@
 {
-  "source": "SYNTHETIC",
-  "is_synthetic": true,
-  "product": "Synthetic rows in the FIRMS VIIRS 375 m schema (demo fallback, not real observations)",
+  "source": "NASA_FIRMS_API",
+  "is_synthetic": false,
+  "product": "VIIRS 375 m active fire (S-NPP + NOAA-20)",
   "bbox": [
     95.0,
     -4.5,
@@ -12,23 +12,6 @@
     "2023-01-01",
     "2025-12-31"
   ],
-  "rows": 26895,
-  "generated_at": "2026-10-10T06:10:06+00:00",
-  "generator_seed": 20251010,
-  "zones": [
-    "Riau peat",
-    "Jambi",
-    "South Sumatra (OKI)",
-    "West Kalimantan",
-    "Ketapang",
-    "Central Kalimantan (Sebangau)",
-    "South Kalimantan",
-    "East Kalimantan",
-    "Sarawak (Mukah)",
-    "Sarawak (Miri)",
-    "Sabah (Kinabatangan)",
-    "Selangor peat",
-    "Pahang (Pekan)"
-  ],
-  "weather_conditioning": "13/13 zones conditioned on real Open-Meteo weather"
+  "rows": 570840,
+  "generated_at": "2026-10-10T09:33:24+00:00"
 }

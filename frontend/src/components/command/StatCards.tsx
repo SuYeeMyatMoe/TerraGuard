@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Crosshair, Users } from "lucide-react";
+import { Activity, Crosshair, Truck } from "lucide-react";
 import type { ReactNode } from "react";
 import { QualityPill } from "@/components/ui";
 import { pct, shortId } from "@/lib/format";
@@ -10,13 +10,10 @@ export function StatCards() {
   const data = useStore((s) => s.data);
   const selectedId = useStore((s) => s.selectedId);
   const predictions = useStore((s) => s.predictions);
-  const teams = useStore((s) => s.teams);
-  const sim = useStore((s) => s.sim);
-  const policy = useStore((s) => s.policy);
   const inc = data?.incidents.find((i) => i.id === selectedId);
   const p = selectedId ? predictions[selectedId] : undefined;
-  const assigned = sim?.policies[policy]?.assigned ?? [];
-  const policyName = policy === "ai_priority" ? "AI-priority" : policy === "first_alert" ? "first-alert" : "no response";
+  const team = data?.team;
+  const waiting = data?.incidents.filter((i) => i.attendance === "unattended").length ?? 0;
 
   return (
     <div className="flex gap-3">
@@ -31,12 +28,12 @@ export function StatCards() {
         </div>
         <div className="text-[11.5px] text-[var(--ink-2)]">{p ? `Model ${p.model.version} · rank ${p.priority.rank} of ${p.priority.of}` : "Satellite re-detection probability"}</div>
       </Card>
-      <Card icon={<Users size={18} />} tone="green" label="Available resources">
-        <div className="text-[22px] font-extrabold leading-tight tnum">
-          {teams} <span className="text-[13px] font-semibold text-[var(--ink-2)]">team{teams === 1 ? "" : "s"}</span>
+      <Card icon={<Truck size={18} />} tone="green" label="The only field crew">
+        <div className="text-[16px] font-extrabold leading-tight">
+          {team?.assigned_incident_id ? `At ${shortId(team.assigned_incident_id)}` : "Available"}
         </div>
         <div className="text-[11.5px] text-[var(--ink-2)]">
-          {sim ? (assigned.length ? `${policyName}: ${assigned.map(shortId).join(", ")}` : `${policyName}: unassigned`) : "Run a simulation to allocate"}
+          {team?.assigned_incident_id ? `${waiting} incident${waiting === 1 ? "" : "s"} waiting` : team?.name ?? ""}
         </div>
       </Card>
     </div>

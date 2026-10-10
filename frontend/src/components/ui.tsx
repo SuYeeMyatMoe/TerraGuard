@@ -17,7 +17,7 @@ export function Logo({ size = 28, withText = true }: { size?: number; withText?:
         </defs>
         <path d="M16 2 28 8.5v15L16 30 4 23.5v-15z" fill="url(#tg-a)" />
         <path d="M16 2 28 8.5 16 15 4 8.5z" fill="#5cc08a" />
-        <path d="M16 8.2c2.6 3 4.2 5.6 4.2 7.9a4.2 4.2 0 0 1-8.4 0c0-1.3.5-2.6 1.5-3.9.3 1.2 1 2 1.9 2.3-.2-2.3.1-4.4.8-6.3z" fill="var(--fire)" />
+        <path d="M16 8.2c2.6 3 4.2 5.6 4.2 7.9a4.2 4.2 0 0 1-8.4 0c0-1.3.5-2.6 1.5-3.9.3 1.2 1 2 1.9 2.3-.2-2.3.1-4.4.8-6.3z" fill="#ff8a35" />
       </svg>
       {withText && (
         <span className="text-[17px] font-extrabold tracking-tight text-[var(--ink)]">
@@ -58,7 +58,7 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
 }) {
   return (
-    <div className="inline-flex rounded-[11px] bg-[var(--line-2)] p-[3px]" role="tablist">
+    <div className="inline-flex max-w-full flex-wrap rounded-[11px] bg-[#eef2f7] p-[3px]" role="tablist">
       {options.map((o) => (
         <button
           key={o.value}
@@ -68,7 +68,7 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
           className={`inline-flex items-center gap-1.5 rounded-[8px] font-semibold transition-all ${
             size === "sm" ? "h-7 px-2.5 text-[12px]" : "h-8 px-3.5 text-[13px]"
-          } ${value === o.value ? "bg-[var(--surface)] text-[var(--ink)] shadow-[0_1px_3px_rgba(53,25,3,0.08)]" : "text-[var(--ink-2)] hover:text-[var(--ink)]"}`}
+          } ${value === o.value ? "bg-white text-[var(--ink)] shadow-[0_1px_3px_rgba(23,38,56,0.12)]" : "text-[var(--ink-2)] hover:text-[var(--ink)]"}`}
         >
           {o.label}
         </button>

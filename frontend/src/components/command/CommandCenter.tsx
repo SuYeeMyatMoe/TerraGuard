@@ -1,80 +1,89 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { ControlsPanel } from "./ControlsPanel";
 import { DecisionPanel } from "./DecisionPanel";
 import { IntelligencePanel } from "./IntelligencePanel";
+import { DecisionRecord } from "./DecisionRecord";
 import { MethodologyDrawer } from "./MethodologyDrawer";
-import { FieldBriefModal, MapControls, Toasts } from "./Overlays";
-import { StatCards } from "./StatCards";
+import { ConsequenceBanner, ReportCanvas } from "./ReportCanvas";
+import { FieldBriefModal, Toasts } from "./Overlays";
+import { IncidentRoster } from "./IncidentRoster";
 import { Timeline } from "./Timeline";
 import { TopBar } from "./TopBar";
+import { RecPill } from "@/components/ui";
+import { pct, shortId } from "@/lib/format";
+import "./studio.css";
+import "./mainSync.css";
 
-const ForestCanvas = dynamic(() => import("@/components/scene/ForestCanvas"), { ssr: false });
+const ForestStudio = dynamic(() => import("@/components/scene/ForestStudio").then(m => m.ForestStudio), { ssr: false });
 const EarthView = dynamic(() => import("./EarthView").then((m) => m.EarthView), { ssr: false });
 
 export function CommandCenter() {
   const load = useStore((s) => s.load);
-  const data = useStore((s) => s.data);
+
   const loadError = useStore((s) => s.loadError);
   const view = useStore((s) => s.view);
   const sim = useStore((s) => s.sim);
-  const simLoading = useStore((s) => s.simLoading);
   const started = useRef(false);
+  const [leftTab, setLeftTab] = useState<"incidents" | "conditions">("incidents");
+  const [rightTab, setRightTab] = useState<"decision" | "evidence">("decision");
+  const [expanded, setExpanded] = useState(false);
+  const selectedId = useStore(s => s.selectedId);
+  const predictions = useStore(s => s.predictions);
+  const prediction = selectedId ? predictions[selectedId] : undefined;
+
+  useEffect(() => {
+    if (!expanded) return;
+    const exit = (event: KeyboardEvent) => { if (event.key === "Escape") setExpanded(false); };
+    window.addEventListener("keydown", exit);
+    return () => window.removeEventListener("keydown", exit);
+  }, [expanded]);
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
     const q = new URLSearchParams(window.location.search);
-    if (q.get("view") === "sim") useStore.getState().setView("sim");
+    useStore.getState().setView(q.get("view") === "earth" ? "earth" : "sim");
     load(q.get("scenario") ?? undefined).then(() => {
       const sel = q.get("incident");
       if (sel) useStore.getState().select(sel);
+      else {
+        const store = useStore.getState();
+        const first = Object.values(store.predictions).sort((a, b) => a.priority.rank - b.priority.rank)[0];
+        if (first) store.select(first.incident_id);
+      }
     });
   }, [load]);
 
-  // prepare the initial scenario (step 0, paused) so the forest is ready when the user switches views
+  // deep links for demos / backup recordings: ?view=sim&incident=…&step=…&policy=…
+  const applied = useRef(false);
   useEffect(() => {
-    if (data && !sim && !simLoading) {
-      useStore
-        .getState()
-        .runSimulation()
-        .then(() => {
-          const q = new URLSearchParams(window.location.search);
-          const st = Number(q.get("step") ?? 0);
-          const pol = q.get("policy");
-          useStore.setState({
-            playing: false,
-            step: Number.isFinite(st) ? st : 0,
-            ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" ? { policy: pol } : {}),
-          });
-        });
-    }
-  }, [data, sim, simLoading]);
+    if (!sim || applied.current) return;
+    applied.current = true;
+    const q = new URLSearchParams(window.location.search);
+    const st = Number(q.get("step") ?? NaN);
+    const pol = q.get("policy");
+    if (Number.isFinite(st) || pol)
+      useStore.setState({
+        playing: false,
+        ...(Number.isFinite(st) ? { step: st } : {}),
+        ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" || (pol === "coordinator" && sim.teams === 1) ? { policy: pol } : {}),
+      });
+  }, [sim]);
 
   return (
-    <div className="simulation-theme flex h-screen flex-col overflow-hidden bg-[var(--bg)]">
+    <div className={`forest-command simulation-theme ${view === "sim" ? "studio-mode" : "map-mode"}`}>
       <TopBar />
-      <main className={`command-workspace relative min-h-0 flex-1 ${view === "sim" ? "is-simulation" : "is-earth"}`}>
-        {/* main view: the 3D canvas stays mounted so switching back is instant */}
-        <div className={`forest-stage absolute inset-0 ${view === "sim" ? "visible" : "invisible"}`} aria-hidden={view !== "sim"}>
-          <ForestCanvas />
-          {simLoading && !sim && (
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="panel flex items-center gap-2.5 px-4 py-3 text-[13px] font-semibold">
-                <Loader2 size={16} className="animate-spin text-[var(--blue)]" /> Preparing the forest scenario…
-              </div>
-            </div>
-          )}
-        </div>
-        {view === "earth" && <div className="earth-stage absolute inset-0"><EarthView /></div>}
+      <main className="studio-main">
+        {view === "earth" && <div className="studio-earth-viewport"><EarthView /></div>}
 
         {loadError && (
           <div className="absolute inset-0 z-20 grid place-items-center bg-[var(--bg)]/80">
-            <div className="panel w-[420px] p-6 text-center">
+            <div className="panel mx-3 w-full max-w-[420px] p-6 text-center">
               <AlertTriangle className="mx-auto text-[var(--fire)]" />
               <div className="mt-2 text-[15px] font-bold">Can’t reach the TerraGuard API</div>
               <p className="mt-1 text-[13px] text-[var(--ink-2)]">{loadError}</p>
@@ -85,57 +94,36 @@ export function CommandCenter() {
           </div>
         )}
 
-        {/* left: controls (3D only) */}
-        {view === "sim" && (
-          <div className="conditions-dock pointer-events-none absolute z-10 flex">
-            <div className="pointer-events-auto flex max-h-full">
-              <ControlsPanel />
+        {view === "sim" ? <div className={`studio-workspace ${expanded ? "studio-expanded" : ""}`}>
+          <aside className="studio-conditions" aria-label="Incidents and conditions">
+            <div className="studio-tabs" aria-label="Left panel">
+              <button aria-pressed={leftTab === "incidents"} onClick={() => setLeftTab("incidents")}>Incidents</button>
+              <button aria-pressed={leftTab === "conditions"} onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Test conditions</button>
             </div>
-          </div>
-        )}
-
-        {/* top: stat cards (3D only) */}
-        {view === "sim" && (
-          <div className="stats-dock pointer-events-none absolute z-10 hidden justify-start">
-            <div className="pointer-events-auto">
-              <StatCards />
+            <div hidden={leftTab !== "incidents"}><IncidentRoster/></div>
+            <div className="studio-control-content" hidden={leftTab !== "conditions"}><ControlsPanel/></div>
+            <div className="studio-workflow-note"><span>01 / COMPARE THE INCIDENTS</span><p>{sim?.teams === 1 ? "Select an incident to review its response." : "Select A, B or C to review its crew and evidence."}</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
+          </aside>
+          <div className="studio-center"><ForestStudio expanded={expanded} onExpand={() => setExpanded(!expanded)}/><div className="studio-timeline"><Timeline/></div></div>
+          <aside className="studio-intelligence" aria-label="Recommendations and decision">
+            <div className="studio-tabs" aria-label="Right panel">
+              <button aria-pressed={rightTab === "decision"} onClick={() => setRightTab("decision")}>Decision & comparison</button>
+              <button aria-pressed={rightTab === "evidence"} onClick={() => setRightTab("evidence")}>Evidence</button>
             </div>
-          </div>
-        )}
-
-        {/* camera controls */}
-        {view === "sim" && (
-          <div className="camera-dock absolute z-10">
-            <MapControls />
-          </div>
-        )}
-
-        {/* right column: intelligence + decision */}
-        <div className="intelligence-dock pointer-events-none absolute z-10 flex flex-col gap-3">
-          <div className="incident-slot pointer-events-auto flex min-h-0 flex-1 flex-col">
-            <IntelligencePanel />
-          </div>
-          <div className="decision-slot scroll-thin pointer-events-auto overflow-y-auto">
-            <DecisionPanel />
-          </div>
-        </div>
-
-        {/* bottom timeline (3D only) */}
-        {view === "sim" && (
-          <div className="timeline-dock absolute z-10">
-            <Timeline />
-          </div>
-        )}
-
-        {view === "sim" && sim && (
-          <div className="scenario-note pointer-events-none absolute z-[5] text-center text-[10px] font-medium text-[var(--ink-3)]">
-            Hypothetical scenario on procedurally generated plots · not a reconstruction of the real sites
-          </div>
-        )}
+            <div className="studio-decision-content" hidden={rightTab !== "decision"}>
+              {prediction && <section className="studio-recommendation"><div className="eyebrow">RECOMMENDATION · {shortId(prediction.incident_id)}</div><div className="studio-rec-score"><strong>{pct(prediction.probability)}</strong><RecPill rec={prediction.priority.recommendation}/></div><p className="studio-rec-caption">Probability of a 48 h follow-up detection</p><p>{prediction.priority.reason}</p><button onClick={() => setRightTab("evidence")}>Review evidence →</button><button onClick={() => useStore.getState().openReport(prediction.incident_id, "prediction")}>Prediction & recommendation →</button></section>}
+              <DecisionPanel/>
+            </div>
+            <div className="studio-detail" hidden={rightTab !== "evidence"}><IntelligencePanel/></div>
+          </aside>
+        </div> : <div className="map-intelligence"><IntelligencePanel/><DecisionPanel/></div>}
+        <ConsequenceBanner />
       </main>
       <Toasts />
       <FieldBriefModal />
       <MethodologyDrawer />
+      <DecisionRecord />
+      <ReportCanvas />
     </div>
   );
 }

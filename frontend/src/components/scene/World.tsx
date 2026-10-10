@@ -28,7 +28,7 @@ export function World() {
   const toast = useStore((s) => s.toast);
 
   const plots = sim?.plots ?? [];
-  const pol = sim?.policies[policy];
+  const pol = sim ? (policy === "coordinator" ? sim.policies.coordinator : sim.policies[policy]) : undefined;
   const frameIdx = Math.min(step, (pol?.frames.length ?? 1) - 1);
   const assigned = pol?.assigned ?? [];
   const regionOf = (id: string) => data?.incidents.find((i) => i.id === id)?.region ?? "";
@@ -58,6 +58,7 @@ export function World() {
             sublabel={regionOf(p.incident_id)}
             recommendation={pred?.priority.recommendation}
             rank={pred?.priority.rank}
+            attendance={data?.incidents.find((i) => i.id === p.incident_id)?.attendance}
             picking={picking}
             hasTeam={assigned.includes(p.incident_id) && step >= (sim?.response_delay ?? 0)}
             onSelect={() => select(p.incident_id)}
@@ -82,27 +83,31 @@ export function World() {
 
 function CameraRig({ selectedIndex }: { selectedIndex: number }) {
   const controls = useRef<OrbitControlsImpl>(null);
-  const { camera } = useThree();
+  const { camera, size } = useThree();
+  const homeZoom = Math.min(HOME_ZOOM, size.width / 95, size.height / 60);
+  const selectedZoom = Math.min(19, size.width / 40, size.height / 32);
   const cmd = useStore((s) => s.cameraCommand);
+  const handledCommand = useRef<number | null>(null);
   const goal = useRef<{ target: THREE.Vector3; zoom: number } | null>({ target: HOME_TARGET.clone(), zoom: HOME_ZOOM });
 
   useEffect(() => {
     if (selectedIndex >= 0) {
       const [x, z] = PLOT_POS[selectedIndex];
-      goal.current = { target: new THREE.Vector3(x * 0.92 - 1, 0, z + 3), zoom: 19 };
+      goal.current = { target: new THREE.Vector3(x * 0.92 - 1, 0, z + 3), zoom: selectedZoom };
     } else {
-      goal.current = { target: HOME_TARGET.clone(), zoom: HOME_ZOOM };
+      goal.current = { target: HOME_TARGET.clone(), zoom: homeZoom };
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, homeZoom, selectedZoom]);
 
   useEffect(() => {
     const c = controls.current;
-    if (!cmd || !c) return;
+    if (!cmd || !c || handledCommand.current === cmd.n) return;
+    handledCommand.current = cmd.n;
     const cam = camera as THREE.OrthographicCamera;
     if (cmd.kind === "zoomIn") goal.current = { target: c.target.clone(), zoom: Math.min(cam.zoom * 1.25, 48) };
-    if (cmd.kind === "zoomOut") goal.current = { target: c.target.clone(), zoom: Math.max(cam.zoom / 1.25, 8) };
+    if (cmd.kind === "zoomOut") goal.current = { target: c.target.clone(), zoom: Math.max(cam.zoom / 1.25, 2.5) };
     if (cmd.kind === "reset") {
-      goal.current = { target: HOME_TARGET.clone(), zoom: HOME_ZOOM };
+      goal.current = { target: HOME_TARGET.clone(), zoom: homeZoom };
       c.setAzimuthalAngle(AZ0);
       c.setPolarAngle(POLAR0);
     }
@@ -111,13 +116,13 @@ function CameraRig({ selectedIndex }: { selectedIndex: number }) {
       c.setAzimuthalAngle(a);
     }
     c.update();
-  }, [cmd, camera]);
+  }, [cmd, camera, homeZoom]);
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     const c = controls.current;
     const g = goal.current;
     if (!c || !g) return;
-    const cam = camera as THREE.OrthographicCamera;
+    const cam = state.camera as THREE.OrthographicCamera;
     const k = 1 - Math.exp(-dt * 5);
     const delta = g.target.clone().sub(c.target).multiplyScalar(k);
     c.target.add(delta);
@@ -135,7 +140,7 @@ function CameraRig({ selectedIndex }: { selectedIndex: number }) {
       target={HOME_TARGET.toArray() as [number, number, number]}
       enableDamping
       dampingFactor={0.12}
-      minZoom={8}
+      minZoom={2.5}
       maxZoom={48}
       minPolarAngle={0.55}
       maxPolarAngle={1.18}

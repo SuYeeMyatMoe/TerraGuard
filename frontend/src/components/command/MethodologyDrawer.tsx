@@ -30,8 +30,8 @@ export function MethodologyDrawer() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-[var(--ink)]/20" onClick={() => setOpen(false)}>
-      <aside className="slide-in flex h-full w-[640px] flex-col bg-[var(--surface)] shadow-[-20px_0_60px_rgba(53,25,3,0.12)]" onClick={(e) => e.stopPropagation()} aria-label="Methodology">
+    <div className="fixed inset-0 z-40 flex justify-end bg-[#172638]/20" onClick={() => setOpen(false)}>
+      <aside className="command-drawer methodology-drawer slide-in flex h-full w-full max-w-[640px] flex-col bg-white shadow-[-20px_0_60px_rgba(23,38,56,0.15)]" onClick={(e) => e.stopPropagation()} aria-label="Methodology">
         <div className="flex items-start justify-between border-b border-[var(--line)] px-6 pb-4 pt-5">
           <div>
             <div className="eyebrow">Methodology &amp; evaluation</div>
@@ -135,13 +135,13 @@ function ModelTab({ ev }: { ev: Evaluation }) {
         <div className="h-52">
           <ResponsiveContainer>
             <LineChart data={pr} margin={{ left: -18, right: 8, top: 6 }}>
-              <CartesianGrid stroke="var(--line-2)" />
-              <XAxis dataKey="recall" type="number" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="var(--ink-3)" />
-              <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="var(--ink-3)" />
-              <Tooltip formatter={(v: number) => pct(v)} labelFormatter={(v) => `Recall ${pct(Number(v))}`} />
+              <CartesianGrid stroke="#eef2f7" />
+              <XAxis dataKey="recall" type="number" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
+              <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
+              <Tooltip formatter={(v) => pct(typeof v === "number" ? v : undefined)} labelFormatter={(v) => `Recall ${pct(Number(v))}`} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line dataKey="rf" name="Random Forest" stroke="var(--green)" strokeWidth={2.2} dot={false} />
-              <Line dataKey="base" name="Historical-frequency baseline" stroke="var(--ink-3)" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+              <Line dataKey="rf" name="Random Forest" stroke="#22a06b" strokeWidth={2.2} dot={false} />
+              <Line dataKey="base" name="Historical-frequency baseline" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 4" dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -151,13 +151,13 @@ function ModelTab({ ev }: { ev: Evaluation }) {
         <div className="h-48">
           <ResponsiveContainer>
             <LineChart data={rel} margin={{ left: -18, right: 8, top: 6 }}>
-              <CartesianGrid stroke="var(--line-2)" />
-              <XAxis dataKey="x" type="number" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="var(--ink-3)" />
-              <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="var(--ink-3)" />
-              <Tooltip formatter={(v: number) => pct(v)} labelFormatter={(v) => `Predicted ${pct(Number(v))}`} />
+              <CartesianGrid stroke="#eef2f7" />
+              <XAxis dataKey="x" type="number" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
+              <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} fontSize={11} stroke="#94a3b8" />
+              <Tooltip formatter={(v) => pct(typeof v === "number" ? v : undefined)} labelFormatter={(v) => `Predicted ${pct(Number(v))}`} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line dataKey="ideal" name="Perfect calibration" stroke="var(--line)" dot={false} strokeDasharray="4 4" />
-              <Line dataKey="observed" name="Observed rate" stroke="var(--blue)" strokeWidth={2.2} />
+              <Line dataKey="ideal" name="Perfect calibration" stroke="#cbd5e1" dot={false} strokeDasharray="4 4" />
+              <Line dataKey="observed" name="Observed rate" stroke="#2563eb" strokeWidth={2.2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -172,7 +172,7 @@ function ModelTab({ ev }: { ev: Evaluation }) {
             {ev.random_forest.top_features.slice(0, 8).map((f) => (
               <div key={f.feature} className="flex items-center gap-2 text-[12px]">
                 <span className="w-44 truncate text-[var(--ink-2)]">{f.feature}</span>
-                <div className="h-2 flex-1 rounded-full bg-[var(--line-2)]">
+                <div className="h-2 flex-1 rounded-full bg-[#eef2f7]">
                   <div className="h-2 rounded-full bg-[var(--green)]" style={{ width: `${(f.importance / ev.random_forest.top_features![0].importance) * 100}%` }} />
                 </div>
                 <span className="w-12 text-right tnum">{f.importance.toFixed(3)}</span>
@@ -185,19 +185,22 @@ function ModelTab({ ev }: { ev: Evaluation }) {
   );
 }
 
+function PolicyBar({ label, v, color }: { label: string; v: number; color: string }) {
+  return (
+    <div className="flex items-center gap-3 text-[12.5px]">
+      <span className="w-40 text-[var(--ink-2)]">{label}</span>
+      <div className="h-3 flex-1 rounded-full bg-[#eef2f7]"><div className="h-3 rounded-full" style={{ width: `${Math.min(v / 0.3, 1) * 100}%`, background: color }} /></div>
+      <b className="w-12 text-right tnum">{pct(v, 1)}</b>
+    </div>
+  );
+}
+
 function PolicyTab({ ev }: { ev: Evaluation }) {
   const bt = ev.policy_backtest;
   if (!bt) return <div className="text-[13px] text-[var(--ink-2)]">Policy backtest not available. Run python -m ml.policy_backtest.</div>;
   const r = bt.retrospective.all_days;
   const d = bt.retrospective.disagreement_days;
   const s = bt.simulation;
-  const Bar = ({ label, v, color }: { label: string; v: number; color: string }) => (
-    <div className="flex items-center gap-3 text-[12.5px]">
-      <span className="w-40 text-[var(--ink-2)]">{label}</span>
-      <div className="h-3 flex-1 rounded-full bg-[var(--line-2)]"><div className="h-3 rounded-full" style={{ width: `${Math.min(v / 0.3, 1) * 100}%`, background: color }} /></div>
-      <b className="w-12 text-right tnum">{pct(v, 1)}</b>
-    </div>
-  );
   return (
     <div className="space-y-6">
       <p className="text-[13px] leading-relaxed text-[var(--ink-2)]">
@@ -208,9 +211,9 @@ function PolicyTab({ ev }: { ev: Evaluation }) {
         <div className="eyebrow mb-2">Retrospective check on real labels · all days</div>
         <p className="mb-3 text-[12px] text-[var(--ink-2)]">How often did the incident each policy chose actually show follow-up satellite activity within 48 h?</p>
         <div className="space-y-2">
-          <Bar label="AI-priority pick" v={r.ai_pick_followup_rate} color="var(--green)" />
-          <Bar label="First-alert pick" v={r.first_alert_pick_followup_rate} color="var(--ink-3)" />
-          <Bar label="Random pick (expected)" v={r.random_pick_followup_rate} color="var(--line)" />
+          <PolicyBar label="AI-priority pick" v={r.ai_pick_followup_rate} color="#22a06b" />
+          <PolicyBar label="First-alert pick" v={r.first_alert_pick_followup_rate} color="#94a3b8" />
+          <PolicyBar label="Random pick (expected)" v={r.random_pick_followup_rate} color="#cbd5e1" />
         </div>
         <p className="mt-2 text-[12px] text-[var(--ink-2)]">
           Difference (AI − first-alert): 95% bootstrap CI {pct(r.difference_ai_minus_first_alert_ci95[0], 1)} to {pct(r.difference_ai_minus_first_alert_ci95[1], 1)}.

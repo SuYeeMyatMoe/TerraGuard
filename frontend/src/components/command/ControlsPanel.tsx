@@ -1,6 +1,6 @@
 "use client";
 
-import { Crosshair, Droplets, Loader2, PanelLeftClose, Play, RotateCcw, SlidersHorizontal, Timer, Users, Wind } from "lucide-react";
+import { Crosshair, Droplets, Loader2, PanelLeftClose, Play, RotateCcw, SlidersHorizontal, Timer, Wind } from "lucide-react";
 import type { ReactNode } from "react";
 import { compass, shortId } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -13,9 +13,9 @@ export function ControlsPanel() {
   const overrides = useStore((s) => s.overrides);
   const setOverride = useStore((s) => s.setOverride);
   const resetOverride = useStore((s) => s.resetOverride);
-  const teams = useStore((s) => s.teams);
-  const setTeams = useStore((s) => s.setTeams);
   const responseDelay = useStore((s) => s.responseDelay);
+  const burnDuration = useStore((s) => s.burnDuration);
+  const crewMode = useStore((s) => s.crewMode);
   const steps = useStore((s) => s.steps);
   const setParam = useStore((s) => s.setParam);
   const run = useStore((s) => s.runSimulation);
@@ -27,11 +27,12 @@ export function ControlsPanel() {
 
   if (!open) {
     return (
-      <div className="panel-float flex flex-col items-center gap-1 p-1.5">
-        <button className="grid h-10 w-10 place-items-center rounded-[10px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" onClick={() => setOpen(true)} title="Simulation controls">
+      <div className="panel-float flex w-full items-center justify-between gap-1 p-1.5 lg:w-auto lg:flex-col">
+        <button className="flex min-h-11 items-center justify-center gap-2 rounded-[10px] px-3 text-[var(--ink-2)] hover:bg-[#f1f5f9] lg:h-10 lg:w-10 lg:px-0" onClick={() => setOpen(true)} aria-label="Simulation controls" title="Simulation controls">
           <SlidersHorizontal size={18} />
+          <span className="text-sm font-semibold lg:hidden">Test conditions</span>
         </button>
-        <button className="grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--blue)] text-white disabled:opacity-60" onClick={run} disabled={loading} title="Run simulation">
+        <button className="grid h-10 w-10 place-items-center rounded-[10px] bg-[var(--blue)] text-white disabled:opacity-60" onClick={() => run()} disabled={loading} title="Test response">
           {loading ? <Loader2 size={17} className="animate-spin" /> : <Play size={17} />}
         </button>
       </div>
@@ -45,12 +46,12 @@ export function ControlsPanel() {
   const dry = o?.dryness ?? plot?.dryness ?? 0.5;
 
   return (
-    <div className="panel-float slide-in flex max-h-full w-[296px] flex-col">
+    <div className="panel-float slide-in flex max-h-full w-full min-w-0 flex-col lg:w-[296px]">
       <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
-        <div className="panel-heading flex items-center gap-2">
-          <SlidersHorizontal size={16} className="text-[var(--blue)]" /> Simulation conditions
+        <div className="flex items-center gap-2 text-[13.5px] font-bold">
+          <SlidersHorizontal size={16} className="text-[var(--blue)]" /> Test conditions
         </div>
-        <button className="grid h-7 w-7 place-items-center rounded-lg text-[var(--ink-2)] hover:bg-[var(--line-2)]" onClick={() => setOpen(false)} aria-label="Collapse controls">
+        <button className="grid h-7 w-7 place-items-center rounded-lg text-[var(--ink-2)] hover:bg-[#f1f5f9]" onClick={() => setOpen(false)} aria-label="Collapse controls">
           <PanelLeftClose size={16} />
         </button>
       </div>
@@ -82,7 +83,7 @@ export function ControlsPanel() {
                     <div className="grid flex-1 grid-cols-4 gap-1">
                       {[0, 90, 180, 270, 45, 135, 225, 315].map((d) => (
                         <button key={d} onClick={() => setOverride(selectedId, { wind_dir_deg: d })}
-                          className={`h-7 rounded-md text-[11px] font-semibold ${Math.round(dir) === d ? "bg-[var(--blue)] text-white" : "bg-[var(--line-2)] text-[var(--ink-2)] hover:bg-[var(--line)]"}`}>
+                          className={`h-7 rounded-md text-[11px] font-semibold ${Math.round(dir) === d ? "bg-[var(--blue)] text-white" : "bg-[#f1f5f9] text-[var(--ink-2)] hover:bg-[#e8eef5]"}`}>
                           {compass(d)}
                         </button>
                       ))}
@@ -107,21 +108,21 @@ export function ControlsPanel() {
           <div className="eyebrow mb-3">Response</div>
           <div className="space-y-3.5">
             <Slider icon={<Timer size={14} />} label="Response delay" value={responseDelay} min={0} max={16} step={1}
-              display={`${responseDelay} steps`} onChange={(v) => setParam("responseDelay", v)} />
-            <Slider icon={<Users size={14} />} label="Available teams" value={teams} min={0} max={3} step={1}
-              display={`${teams}`} onChange={(v) => setTeams(v)} />
-            <Slider icon={<Timer size={14} />} label="Simulation horizon" value={steps} min={24} max={72} step={4}
+              display={`${responseDelay} steps · ${(responseDelay * mps / 60).toFixed(1)} h`} onChange={(v) => setParam("responseDelay", v)} />
+            <Slider icon={<Timer size={14} />} label="Burn time per cell" value={burnDuration} min={2} max={24} step={1}
+              display={`${(burnDuration * mps / 60).toFixed(1)} h`} onChange={(v) => setParam("burnDuration", v)} />
+            <Slider icon={<Timer size={14} />} label="Test horizon" value={steps} min={24} max={72} step={4}
               display={`${steps} steps`} onChange={(v) => setParam("steps", v)} />
             <p className="text-[11px] leading-snug text-[var(--ink-3)]">
-              1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). Teams are assumed to have suppression capacity.
+              {crewMode === 1 ? "One shared crew, as in the command map." : "Three response crews, one per incident."} 1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). Each crew carries initial suppression kit.
             </p>
           </div>
         </div>
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-[var(--line)] p-3">
-        <button className="btn btn-primary" onClick={run} disabled={loading}>
+        <button className="btn btn-primary" onClick={() => run()} disabled={loading}>
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-          {loading ? "Simulating…" : stale ? "Run updated simulation" : "Run Simulation"}
+          {loading ? "Testing…" : stale ? "Test again" : "Test response"}
         </button>
         <button
           className="btn btn-secondary px-3"
@@ -129,7 +130,8 @@ export function ControlsPanel() {
           onClick={() => {
             const st = useStore.getState();
             Object.keys(st.overrides).forEach((k) => st.resetOverride(k));
-            st.setParam("responseDelay", 4);
+            st.setParam("responseDelay", 1);
+            st.setParam("burnDuration", 8);
             st.setParam("steps", 48);
           }}
         >
@@ -206,17 +208,17 @@ function Dial({ value, onChange }: { value: number; onChange: (v: number) => voi
       aria-label="Wind direction"
       aria-valuenow={Math.round(value)}
     >
-      <circle r="29" fill="var(--surface)" stroke="var(--line)" />
+      <circle r="29" fill="#f7f9fc" stroke="#e3eaf2" />
       {["N", "E", "S", "W"].map((l, i) => (
-        <text key={l} x={Math.sin((i * Math.PI) / 2) * 21} y={-Math.cos((i * Math.PI) / 2) * 21 + 3.5} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--ink-3)">
+        <text key={l} x={Math.sin((i * Math.PI) / 2) * 21} y={-Math.cos((i * Math.PI) / 2) * 21 + 3.5} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#94a3b8">
           {l}
         </text>
       ))}
       <g transform={`rotate(${(rad * 180) / Math.PI})`}>
-        <line x1="0" y1="10" x2="0" y2="-12" stroke="var(--cyan)" strokeWidth="3" strokeLinecap="round" />
-        <path d="M0 -17 L5 -9 L-5 -9 Z" fill="var(--cyan)" />
+        <line x1="0" y1="10" x2="0" y2="-12" stroke="#06b6d4" strokeWidth="3" strokeLinecap="round" />
+        <path d="M0 -17 L5 -9 L-5 -9 Z" fill="#06b6d4" />
       </g>
-      <circle r="2.5" fill="var(--cyan)" />
+      <circle r="2.5" fill="#06b6d4" />
     </svg>
   );
 }
