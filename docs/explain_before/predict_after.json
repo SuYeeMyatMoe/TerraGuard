@@ -1,0 +1,652 @@
+{
+ "INC-20250626-A": {
+  "probability": 0.1571,
+  "decision_summary": "Ranked below Incident B, which has a higher model estimate of follow-up detection and a higher evidence-quality score. In its favour: a detection 1.8 hours before the review time.",
+  "urgency": {
+   "tier": "ROUTINE_MONITORING",
+   "label": "Routine monitoring",
+   "reasons": [
+    "Model estimate is below the validated alert threshold.",
+    "Not recommended for the crew under current capacity."
+   ],
+   "rule_based": true
+  },
+  "ranking_explanation": {
+   "compared_with": "INC-20250626-B",
+   "compared_with_label": "Incident B",
+   "relation": "below",
+   "text": "Incident B ranks above Incident A mainly because it has a higher model estimate of follow-up detection and a higher evidence-quality score.",
+   "close": false,
+   "tie_rule": null,
+   "score_diff": -0.3203,
+   "component_diffs": {
+    "prediction": -0.2634,
+    "exposure": 0.0,
+    "recency": -0.0144,
+    "evidence": -0.0425
+   },
+   "drivers": [
+    {
+     "component": "prediction",
+     "label": "Model estimate",
+     "diff": 0.2634
+    },
+    {
+     "component": "evidence",
+     "label": "Evidence strength",
+     "diff": 0.0425
+    }
+   ],
+   "tradeoff": null,
+   "resource_note": "With one crew, Incident B is recommended first.",
+   "pairs": [
+    {
+     "incident_id": "INC-20250626-B",
+     "label": "Incident B",
+     "region": "South Kalimantan",
+     "rank": 1,
+     "score": 0.5995,
+     "score_diff": -0.3203,
+     "component_diffs": {
+      "prediction": -0.2634,
+      "exposure": 0.0,
+      "recency": -0.0144,
+      "evidence": -0.0425
+     },
+     "recommendation": "INSPECT"
+    },
+    {
+     "incident_id": "INC-20250626-C",
+     "label": "Incident C",
+     "region": "Central Kalimantan",
+     "rank": 2,
+     "score": 0.2801,
+     "score_diff": -0.0009,
+     "component_diffs": {
+      "prediction": 0.0263,
+      "exposure": 0.0,
+      "recency": -0.0144,
+      "evidence": -0.0128
+     },
+     "recommendation": "MONITOR"
+    }
+   ]
+  },
+  "explained_factors": [
+   {
+    "feature": "prior_7d",
+    "name": "Nearby detections, past 7 days",
+    "meaning": "Detections within 2 km in the 7 days before this one.",
+    "value_text": "0 detections",
+    "comparison": {
+     "rank": 20,
+     "phrase": "lower than most",
+     "scope_label": "training observations in Malaysia, dry season (Jun\u2013Oct)",
+     "n": 10486,
+     "text": "lower than most training observations in Malaysia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "lower than most training observations in Malaysia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 1.0,
+    "influence_label": "Strong",
+    "contribution_pp": -9.74,
+    "imputed": false
+   },
+   {
+    "feature": "hist_365d",
+    "name": "Past-year detections in this area",
+    "meaning": "Satellite detections in the surrounding ~10 km grid cell over the previous year.",
+    "value_text": "6 detections",
+    "comparison": {
+     "rank": 30,
+     "phrase": "within the typical range of",
+     "scope_label": "training observations in Malaysia, dry season (Jun\u2013Oct)",
+     "n": 10486,
+     "text": "within the typical range of training observations in Malaysia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "within the typical range of training observations in Malaysia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 0.6997,
+    "influence_label": "Strong",
+    "contribution_pp": -6.82,
+    "imputed": false
+   },
+   {
+    "feature": "track_age_h",
+    "name": "Time since activity was first seen here",
+    "meaning": "Hours since the first linked detection at this location.",
+    "value_text": "first detection at this location",
+    "comparison": {
+     "rank": 25,
+     "phrase": "within the typical range of",
+     "scope_label": "training observations in Malaysia, dry season (Jun\u2013Oct)",
+     "n": 10486,
+     "text": "within the typical range of training observations in Malaysia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "within the typical range of training observations in Malaysia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 0.6132,
+    "influence_label": "Moderate",
+    "contribution_pp": -5.97,
+    "imputed": false
+   },
+   {
+    "feature": "prior_72h",
+    "name": "Nearby detections, past 72 h",
+    "meaning": "Detections within 2 km in the 72 hours before this one.",
+    "value_text": "0 detections",
+    "comparison": {
+     "rank": 25,
+     "phrase": "within the typical range of",
+     "scope_label": "training observations in Malaysia, dry season (Jun\u2013Oct)",
+     "n": 10486,
+     "text": "within the typical range of training observations in Malaysia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "within the typical range of training observations in Malaysia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 0.5597,
+    "influence_label": "Moderate",
+    "contribution_pp": -5.45,
+    "imputed": false
+   }
+  ],
+  "confidence_guidance": [
+   {
+    "code": "single_pixel",
+    "missing": "Only one satellite pixel",
+    "why_it_matters": "A single pixel gives limited evidence that activity is continuing.",
+    "verification_step": "An additional qualifying satellite observation nearby may help confirm whether activity continues.",
+    "keep_cautious": true
+   },
+   {
+    "code": "high_tree_variation",
+    "missing": "Model trees disagree",
+    "why_it_matters": "Wide disagreement inside the model means the estimate is less settled.",
+    "verification_step": "Additional observations may help; treat the estimate with caution.",
+    "keep_cautious": true
+   },
+   {
+    "code": "no_corroboration",
+    "missing": "No recent prior detections nearby",
+    "why_it_matters": "Without earlier nearby detections there is less sign of ongoing activity.",
+    "verification_step": "A detection by the other satellite or a later pass may help confirm activity.",
+    "keep_cautious": true
+   },
+   {
+    "code": "edge_of_scan",
+    "missing": "Large satellite observation footprint",
+    "why_it_matters": "Large footprints blur location and heat signal.",
+    "verification_step": "A pass viewed closer to overhead may give a clearer observation.",
+    "keep_cautious": false
+   },
+   {
+    "code": "pa_boundary_approximate",
+    "missing": "Protected-area boundary is approximate",
+    "why_it_matters": "Distances to protected areas may be over- or under-estimated.",
+    "verification_step": "Verified protected-area boundaries would help improve the exposure assessment.",
+    "keep_cautious": false
+   }
+  ],
+  "evidence_limitations": [
+   {
+    "code": "single_pixel",
+    "severity": "high",
+    "title": "Only one satellite pixel",
+    "text": "Limited evidence of continuing activity. Another observation could provide additional information."
+   },
+   {
+    "code": "high_tree_variation",
+    "severity": "medium",
+    "title": "Model trees disagree",
+    "text": "Individual trees in the model gave quite different estimates for this incident."
+   },
+   {
+    "code": "no_corroboration",
+    "severity": "medium",
+    "title": "No recent prior detections nearby",
+    "text": "Historical activity offers limited support for the estimate."
+   },
+   {
+    "code": "edge_of_scan",
+    "severity": "low",
+    "title": "Large satellite observation footprint",
+    "text": "The pixel was observed at a steep angle, so its position and signal are less precise."
+   },
+   {
+    "code": "pa_boundary_approximate",
+    "severity": "low",
+    "title": "Protected-area boundary is approximate",
+    "text": "Exposure uses an approximate circle around the protected area, not a verified boundary."
+   }
+  ],
+  "tree_variation": {
+   "p10": 0.0194,
+   "p90": 0.3612,
+   "note": "Individual trees in the model produced different estimates. This illustrates variation within the model and is not a statistically validated confidence interval."
+  },
+  "calibration_note": {
+   "band": "10\u201320%",
+   "observed_rate": 0.0944,
+   "n": 18738,
+   "text": "On held-out 2025 data, incidents scored 10\u201320% had a follow-up detection 9% of the time (n = 18,738)."
+  }
+ },
+ "INC-20250626-B": {
+  "probability": 0.7425,
+  "decision_summary": "Prioritized because of 441 satellite detections in this area over the past year, a detection 0.5 hours before the review time and 2 supporting detections in the previous 24 hours.",
+  "urgency": {
+   "tier": "PRIORITY_REVIEW",
+   "label": "Priority review",
+   "reasons": [
+    "Recommended for the available crew.",
+    "Open evidence concern: only one satellite pixel."
+   ],
+   "rule_based": true
+  },
+  "ranking_explanation": {
+   "compared_with": "INC-20250626-C",
+   "compared_with_label": "Incident C",
+   "relation": "above",
+   "text": "Incident B ranks above Incident C mainly because it has a higher model estimate of follow-up detection and a higher evidence-quality score.",
+   "close": false,
+   "tie_rule": null,
+   "score_diff": 0.3194,
+   "component_diffs": {
+    "prediction": 0.2897,
+    "exposure": 0.0,
+    "recency": 0.0,
+    "evidence": 0.0297
+   },
+   "drivers": [
+    {
+     "component": "prediction",
+     "label": "Model estimate",
+     "diff": 0.2897
+    },
+    {
+     "component": "evidence",
+     "label": "Evidence strength",
+     "diff": 0.0297
+    }
+   ],
+   "tradeoff": null,
+   "resource_note": "One field crew is available. Sending it here leaves Incident C and Incident A waiting.",
+   "pairs": [
+    {
+     "incident_id": "INC-20250626-C",
+     "label": "Incident C",
+     "region": "Central Kalimantan",
+     "rank": 2,
+     "score": 0.2801,
+     "score_diff": 0.3194,
+     "component_diffs": {
+      "prediction": 0.2897,
+      "exposure": 0.0,
+      "recency": 0.0,
+      "evidence": 0.0297
+     },
+     "recommendation": "MONITOR"
+    },
+    {
+     "incident_id": "INC-20250626-A",
+     "label": "Incident A",
+     "region": "Sabah",
+     "rank": 3,
+     "score": 0.2792,
+     "score_diff": 0.3203,
+     "component_diffs": {
+      "prediction": 0.2634,
+      "exposure": 0.0,
+      "recency": 0.0144,
+      "evidence": 0.0425
+     },
+     "recommendation": "MONITOR"
+    }
+   ]
+  },
+  "explained_factors": [
+   {
+    "feature": "hist_365d",
+    "name": "Past-year detections in this area",
+    "meaning": "Satellite detections in the surrounding ~10 km grid cell over the previous year.",
+    "value_text": "441 detections",
+    "comparison": {
+     "rank": 92,
+     "phrase": "among the highest 10% of",
+     "scope_label": "training observations in Indonesia, dry season (Jun\u2013Oct)",
+     "n": 125034,
+     "text": "among the highest 10% of training observations in Indonesia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "among the highest 10% of training observations in Indonesia, dry season (Jun\u2013Oct)",
+    "direction": "up",
+    "effect_text": "increased the model's estimate",
+    "influence": 1.0,
+    "influence_label": "Strong",
+    "contribution_pp": 18.11,
+    "imputed": false
+   },
+   {
+    "feature": "prior_7d",
+    "name": "Nearby detections, past 7 days",
+    "meaning": "Detections within 2 km in the 7 days before this one.",
+    "value_text": "5 detections",
+    "comparison": {
+     "rank": 62,
+     "phrase": "within the typical range of",
+     "scope_label": "training observations in Indonesia, dry season (Jun\u2013Oct)",
+     "n": 125034,
+     "text": "within the typical range of training observations in Indonesia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "within the typical range of training observations in Indonesia, dry season (Jun\u2013Oct)",
+    "direction": "up",
+    "effect_text": "increased the model's estimate",
+    "influence": 0.3527,
+    "influence_label": "Moderate",
+    "contribution_pp": 6.38,
+    "imputed": false
+   },
+   {
+    "feature": "track_age_h",
+    "name": "Time since activity was first seen here",
+    "meaning": "Hours since the first linked detection at this location.",
+    "value_text": "12.7 h",
+    "comparison": {
+     "rank": 50,
+     "phrase": "within the typical range of",
+     "scope_label": "training observations in Indonesia, dry season (Jun\u2013Oct)",
+     "n": 125034,
+     "text": "within the typical range of training observations in Indonesia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "within the typical range of training observations in Indonesia, dry season (Jun\u2013Oct)",
+    "direction": "up",
+    "effect_text": "increased the model's estimate",
+    "influence": 0.2862,
+    "influence_label": "Smaller",
+    "contribution_pp": 5.18,
+    "imputed": false
+   },
+   {
+    "feature": "prior_72h",
+    "name": "Nearby detections, past 72 h",
+    "meaning": "Detections within 2 km in the 72 hours before this one.",
+    "value_text": "2 detections",
+    "comparison": {
+     "rank": 58,
+     "phrase": "within the typical range of",
+     "scope_label": "training observations in Indonesia, dry season (Jun\u2013Oct)",
+     "n": 125034,
+     "text": "within the typical range of training observations in Indonesia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "within the typical range of training observations in Indonesia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 0.2535,
+    "influence_label": "Smaller",
+    "contribution_pp": -4.59,
+    "imputed": false
+   }
+  ],
+  "confidence_guidance": [
+   {
+    "code": "single_pixel",
+    "missing": "Only one satellite pixel",
+    "why_it_matters": "A single pixel gives limited evidence that activity is continuing.",
+    "verification_step": "An additional qualifying satellite observation nearby may help confirm whether activity continues.",
+    "keep_cautious": true
+   },
+   {
+    "code": "high_tree_variation",
+    "missing": "Model trees disagree",
+    "why_it_matters": "Wide disagreement inside the model means the estimate is less settled.",
+    "verification_step": "Additional observations may help; treat the estimate with caution.",
+    "keep_cautious": true
+   },
+   {
+    "code": "pa_boundary_approximate",
+    "missing": "Protected-area boundary is approximate",
+    "why_it_matters": "Distances to protected areas may be over- or under-estimated.",
+    "verification_step": "Verified protected-area boundaries would help improve the exposure assessment.",
+    "keep_cautious": false
+   }
+  ],
+  "evidence_limitations": [
+   {
+    "code": "single_pixel",
+    "severity": "medium",
+    "title": "Only one satellite pixel",
+    "text": "Limited evidence of continuing activity. Another observation could provide additional information."
+   },
+   {
+    "code": "high_tree_variation",
+    "severity": "medium",
+    "title": "Model trees disagree",
+    "text": "Individual trees in the model gave quite different estimates for this incident."
+   },
+   {
+    "code": "pa_boundary_approximate",
+    "severity": "low",
+    "title": "Protected-area boundary is approximate",
+    "text": "Exposure uses an approximate circle around the protected area, not a verified boundary."
+   }
+  ],
+  "tree_variation": {
+   "p10": 0.4984,
+   "p90": 0.949,
+   "note": "Individual trees in the model produced different estimates. This illustrates variation within the model and is not a statistically validated confidence interval."
+  },
+  "calibration_note": {
+   "band": "70\u201380%",
+   "observed_rate": 0.641,
+   "n": 4304,
+   "text": "On held-out 2025 data, incidents scored 70\u201380% had a follow-up detection 64% of the time (n = 4,304)."
+  }
+ },
+ "INC-20250626-C": {
+  "probability": 0.0987,
+  "decision_summary": "Ranked below Incident B, which has a higher model estimate of follow-up detection and a higher evidence-quality score. In its favour: a detection 0.5 hours before the review time.",
+  "urgency": {
+   "tier": "ROUTINE_MONITORING",
+   "label": "Routine monitoring",
+   "reasons": [
+    "Model estimate is below the validated alert threshold.",
+    "Not recommended for the crew under current capacity."
+   ],
+   "rule_based": true
+  },
+  "ranking_explanation": {
+   "compared_with": "INC-20250626-B",
+   "compared_with_label": "Incident B",
+   "relation": "below",
+   "text": "Incident B ranks above Incident C mainly because it has a higher model estimate of follow-up detection and a higher evidence-quality score.",
+   "close": false,
+   "tie_rule": null,
+   "score_diff": -0.3194,
+   "component_diffs": {
+    "prediction": -0.2897,
+    "exposure": 0.0,
+    "recency": 0.0,
+    "evidence": -0.0297
+   },
+   "drivers": [
+    {
+     "component": "prediction",
+     "label": "Model estimate",
+     "diff": 0.2897
+    },
+    {
+     "component": "evidence",
+     "label": "Evidence strength",
+     "diff": 0.0297
+    }
+   ],
+   "tradeoff": null,
+   "resource_note": "With one crew, Incident B is recommended first.",
+   "pairs": [
+    {
+     "incident_id": "INC-20250626-B",
+     "label": "Incident B",
+     "region": "South Kalimantan",
+     "rank": 1,
+     "score": 0.5995,
+     "score_diff": -0.3194,
+     "component_diffs": {
+      "prediction": -0.2897,
+      "exposure": 0.0,
+      "recency": 0.0,
+      "evidence": -0.0297
+     },
+     "recommendation": "INSPECT"
+    },
+    {
+     "incident_id": "INC-20250626-A",
+     "label": "Incident A",
+     "region": "Sabah",
+     "rank": 3,
+     "score": 0.2792,
+     "score_diff": 0.0009,
+     "component_diffs": {
+      "prediction": -0.0263,
+      "exposure": 0.0,
+      "recency": 0.0144,
+      "evidence": 0.0128
+     },
+     "recommendation": "MONITOR"
+    }
+   ]
+  },
+  "explained_factors": [
+   {
+    "feature": "prior_7d",
+    "name": "Nearby detections, past 7 days",
+    "meaning": "Detections within 2 km in the 7 days before this one.",
+    "value_text": "0 detections",
+    "comparison": {
+     "rank": 15,
+     "phrase": "lower than most",
+     "scope_label": "training observations in Indonesia, dry season (Jun\u2013Oct)",
+     "n": 125034,
+     "text": "lower than most training observations in Indonesia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "lower than most training observations in Indonesia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 1.0,
+    "influence_label": "Strong",
+    "contribution_pp": -10.09,
+    "imputed": false
+   },
+   {
+    "feature": "track_age_h",
+    "name": "Time since activity was first seen here",
+    "meaning": "Hours since the first linked detection at this location.",
+    "value_text": "first detection at this location",
+    "comparison": {
+     "rank": 20,
+     "phrase": "lower than most",
+     "scope_label": "training observations in Indonesia, dry season (Jun\u2013Oct)",
+     "n": 125034,
+     "text": "lower than most training observations in Indonesia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "lower than most training observations in Indonesia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 0.5635,
+    "influence_label": "Moderate",
+    "contribution_pp": -5.69,
+    "imputed": false
+   },
+   {
+    "feature": "prior_72h",
+    "name": "Nearby detections, past 72 h",
+    "meaning": "Detections within 2 km in the 72 hours before this one.",
+    "value_text": "0 detections",
+    "comparison": {
+     "rank": 20,
+     "phrase": "lower than most",
+     "scope_label": "training observations in Indonesia, dry season (Jun\u2013Oct)",
+     "n": 125034,
+     "text": "lower than most training observations in Indonesia, dry season (Jun\u2013Oct)"
+    },
+    "comparison_text": "lower than most training observations in Indonesia, dry season (Jun\u2013Oct)",
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 0.5036,
+    "influence_label": "Moderate",
+    "contribution_pp": -5.08,
+    "imputed": false
+   },
+   {
+    "feature": "season",
+    "name": "Seasonal timing",
+    "meaning": "Time of year, which captures the usual dry- and wet-season pattern.",
+    "value_text": "time of year",
+    "comparison": null,
+    "comparison_text": null,
+    "direction": "down",
+    "effect_text": "lowered the model's estimate",
+    "influence": 0.4659,
+    "influence_label": "Moderate",
+    "contribution_pp": -4.7,
+    "imputed": false
+   }
+  ],
+  "confidence_guidance": [
+   {
+    "code": "single_pixel",
+    "missing": "Only one satellite pixel",
+    "why_it_matters": "A single pixel gives limited evidence that activity is continuing.",
+    "verification_step": "An additional qualifying satellite observation nearby may help confirm whether activity continues.",
+    "keep_cautious": true
+   },
+   {
+    "code": "no_corroboration",
+    "missing": "No recent prior detections nearby",
+    "why_it_matters": "Without earlier nearby detections there is less sign of ongoing activity.",
+    "verification_step": "A detection by the other satellite or a later pass may help confirm activity.",
+    "keep_cautious": true
+   },
+   {
+    "code": "pa_boundary_approximate",
+    "missing": "Protected-area boundary is approximate",
+    "why_it_matters": "Distances to protected areas may be over- or under-estimated.",
+    "verification_step": "Verified protected-area boundaries would help improve the exposure assessment.",
+    "keep_cautious": false
+   }
+  ],
+  "evidence_limitations": [
+   {
+    "code": "single_pixel",
+    "severity": "high",
+    "title": "Only one satellite pixel",
+    "text": "Limited evidence of continuing activity. Another observation could provide additional information."
+   },
+   {
+    "code": "no_corroboration",
+    "severity": "medium",
+    "title": "No recent prior detections nearby",
+    "text": "Historical activity offers limited support for the estimate."
+   },
+   {
+    "code": "pa_boundary_approximate",
+    "severity": "low",
+    "title": "Protected-area boundary is approximate",
+    "text": "Exposure uses an approximate circle around the protected area, not a verified boundary."
+   }
+  ],
+  "tree_variation": {
+   "p10": 0.0248,
+   "p90": 0.1926,
+   "note": "Individual trees in the model produced different estimates. This illustrates variation within the model and is not a statistically validated confidence interval."
+  },
+  "calibration_note": {
+   "band": "0\u201310%",
+   "observed_rate": 0.0353,
+   "n": 5268,
+   "text": "On held-out 2025 data, incidents scored 0\u201310% had a follow-up detection 4% of the time (n = 5,268)."
+  }
+ }
+}

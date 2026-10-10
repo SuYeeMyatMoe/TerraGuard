@@ -130,10 +130,14 @@ def ranking_explanation(target_id: str, table: dict[str, dict], recs: dict[str, 
     opposing = sorted([k for k in wd if wd[k] <= -MIN_COMPONENT_DIFF], key=lambda k: wd[k])[:1]
     W, L = short(winner), short(loser)
 
-    if close:
+    tied = abs(score_diff) < 1e-4
+    if tied:
+        text = (f"{short(target_id)} and {short(other)} have the same priority score ({table[target_id]['score']:.2f}). "
+                "Their order follows the tie-breaking policy: when scores are equal, the earlier alert ranks first.")
+    elif close:
         text = (f"{short(target_id)} and {short(other)} have similar priority scores "
-                f"({table[target_id]['score']:.2f} vs {table[other]['score']:.2f}). Their order depends on the tie-breaking "
-                "policy: when scores are equal, the earlier alert ranks first.")
+                f"({table[target_id]['score']:.3f} vs {table[other]['score']:.3f}). {W} is ahead by a small margin, "
+                "so small changes in the evidence could swap their order.")
     elif drivers:
         because = " and ".join(COMPONENT_PHRASE[k] for k in drivers)
         text = f"{W} ranks above {L} mainly because it has {because}"
@@ -157,6 +161,30 @@ def ranking_explanation(target_id: str, table: dict[str, dict], recs: dict[str, 
         resource = (f"With {'one crew' if teams == 1 else f'{teams} crews'}, {top} is recommended first." if top
                     else "No incident currently has a recommended inspection.")
 
+    neighbour = None
+    if t_rank >= 3:
+        above = ranked[t_rank - 2]
+        nd = {k: -v for k, v in diffs(target_id, above).items()}       # positive = favours the incident above
+        nd_drivers = sorted([k for k in nd if nd[k] >= MIN_COMPONENT_DIFF], key=lambda k: -nd[k])[:2]
+        nd_against = sorted([k for k in nd if nd[k] <= -MIN_COMPONENT_DIFF], key=lambda k: nd[k])[:1]
+        n_close = abs(table[target_id]["score"] - table[above]["score"]) < CLOSE_SCORE
+        n_tied = abs(table[target_id]["score"] - table[above]["score"]) < 1e-4
+        if n_tied:
+            ntext = (f"{short(above)} and {short(target_id)} have the same priority score; the earlier alert ranks first "
+                     "under the tie-breaking policy.")
+        elif n_close:
+            ntext = (f"{short(above)} ranks just above {short(target_id)} by a small margin "
+                     f"({table[above]['score']:.3f} vs {table[target_id]['score']:.3f}), mainly through "
+                     f"{_and([COMPONENT_PHRASE[k] for k in nd_drivers]) if nd_drivers else 'several small differences'}"
+                     + (f", even though {short(target_id)} has {COMPONENT_PHRASE[nd_against[0]]}." if nd_against else "."))
+        elif nd_drivers:
+            ntext = f"{short(above)} ranks just above {short(target_id)} because it has {_and([COMPONENT_PHRASE[k] for k in nd_drivers])}"
+            ntext += f", even though {short(target_id)} has {COMPONENT_PHRASE[nd_against[0]]}." if nd_against else "."
+        else:
+            ntext = f"{short(above)} ranks just above {short(target_id)} by a small margin."
+        neighbour = {"incident_id": above, "label": short(above), "text": ntext, "drivers": nd_drivers,
+                     "against": nd_against, "close": n_close}
+
     pairs = []
     for o in ranked:
         if o == target_id:
@@ -171,13 +199,15 @@ def ranking_explanation(target_id: str, table: dict[str, dict], recs: dict[str, 
         "relation": relation,
         "text": text,
         "close": close,
-        "tie_rule": "Equal scores are ordered by alert time (earlier alert first)." if close else None,
+        "tied": tied,
+        "tie_rule": "Equal scores are ordered by alert time (earlier alert first)." if tied else None,
         "score_diff": score_diff,
         "component_diffs": d,
         "drivers": [{"component": k, "label": COMPONENT_LABEL[k], "diff": wd[k]} for k in drivers],
         "tradeoff": ({"component": opposing[0], "label": COMPONENT_LABEL[opposing[0]], "diff": wd[opposing[0]]}
                      if opposing else None),
         "resource_note": resource,
+        "neighbour": neighbour,
         "pairs": pairs,
     }
 
@@ -376,8 +406,17 @@ def decision_summary(target_id: str, rec: str, evidence_quality: str, components
     drivers = [COMPONENT_PHRASE[d["component"]] for d in ranking.get("drivers", [])]
     support = [c for c in picked if "model estimate of follow-up detection" not in c][:2]
     tail = f" In its favour: {join(support)}." if support else ""
+    nb = ranking.get("neighbour")
+    if nb and nb["close"]:
+        return f"Ranked just below {nb['label']} by a small margin; the order could change with new evidence.{tail}"
+    if nb and nb["drivers"]:
+        why = _and([COMPONENT_PHRASE[k] for k in nb["drivers"]])
+        despite = f", despite this incident's {COMPONENT_PHRASE[nb['against'][0]].replace('a higher ', 'higher ').replace('a more ', 'more ').replace('closer ', 'closer ')}" if nb["against"] else ""
+        return f"Ranked below {nb['label']}, which has {why}{despite}.{tail}"
+    if ranking.get("tied") and other:
+        return f"Same priority score as {other}; the order follows the tie-breaking rule (earlier alert first).{tail}"
     if ranking.get("close") and other:
-        return f"Close in priority to {other}; the order follows the tie-breaking rule.{tail}"
+        return f"Close in priority to {other}; small changes in the evidence could swap their order.{tail}"
     if ranking.get("relation") == "below" and other and drivers:
         return f"Ranked below {other}, which has {join(drivers)}.{tail}"
     return f"Lower priority under current capacity.{tail}"

@@ -197,6 +197,8 @@ export interface RankingExplanation {
   drivers?: { component: PriorityComponent; label: string; diff: number }[];
   tradeoff?: { component: PriorityComponent; label: string; diff: number } | null;
   resource_note?: string;
+  tied?: boolean;
+  neighbour?: { incident_id: string; label: string; text: string; drivers: PriorityComponent[]; against: PriorityComponent[]; close: boolean } | null;
   pairs: RankingPair[];
 }
 

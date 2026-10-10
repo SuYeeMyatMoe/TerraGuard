@@ -173,6 +173,11 @@ export function RankingBlock({ pred }: { pred: Prediction }) {
         <span className="inline-flex items-center gap-1.5"><Scale size={12} /> {first ? "Why this incident ranks first" : `Why it ranks below ${rk.compared_with_label}`}</span>
       </SectionTitle>
       <p className="text-[12.5px] leading-relaxed">{rk.text}</p>
+      {rk.neighbour && (
+        <p className="mt-1.5 rounded-lg bg-[#f7f9fc] px-2.5 py-2 text-[12px] leading-relaxed text-[var(--ink-2)]">
+          <b className="text-[var(--ink)]">Next one up:</b> {rk.neighbour.text}
+        </p>
+      )}
       {!rk.close && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {(Object.keys(COMP_LABEL) as PriorityComponent[]).map((k) => {
