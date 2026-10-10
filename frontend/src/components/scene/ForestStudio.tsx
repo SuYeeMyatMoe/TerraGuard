@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Crosshair, Flame, Loader2, Grid2X2, Layers, Leaf, Maximize2, Minimize2, Minus, Play, Plus, RotateCcw, Trees, Truck } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { pct, shortId } from "@/lib/format";
@@ -13,7 +13,7 @@ import { SceneQualityProvider } from "./SceneQuality";
 import type { QualityMode } from "@/lib/sceneQuality";
 import { getFireHistory } from "@/lib/fireLifetime";
 
-export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpand: () => void }) {
+export function ForestStudio({ expanded, onExpand, onReady }: { expanded: boolean; onExpand: () => void; onReady?: () => void }) {
   const data = useStore(s => s.data);
   const sim = useStore(s => s.sim);
   const policy = useStore(s => s.policy);
@@ -63,13 +63,17 @@ export function ForestStudio({ expanded, onExpand }: { expanded: boolean; onExpa
   }, [sim, result, step, data, playing, showHabitat, showGrid, resetKey, focusKey]);
   // Ignition editing needs the detailed cell view for the selected incident.
   const overviewVisible = allIncidents && !picking;
+  useEffect(() => {
+    // Reveal the existing frame error instead of leaving a loading screen stuck.
+    if (overviewVisible ? overview.error : frame?.error) onReady?.();
+  }, [overviewVisible, overview.error, frame?.error, onReady]);
   const assignedElsewhere=result?.assigned.find(id=>id!==plot?.incident_id);
   const minutesPerStep=Number(sim?.assumptions.minutes_per_step??30);
   const endedBeforeArrival=!!(crew?.assigned&&crew.arrival!=null&&crew.arrival>0&&!result?.frames[Math.min(crew.arrival,result.frames.length-1)]?.[index]?.includes("2")&&!result?.frames.slice(0,crew.arrival+1).some(step=>step[index]?.includes("4")));
   const waterStatus=water?.phase==="suppression"?(frame?.value?.metrics.burning?"Water suppression · crew on site":"Cooling suppressed cells · crew on site"):water?.phase==="en-route"?`Crew en route · arrival at ${((crew?.arrival??0)*minutesPerStep/60).toFixed(1)} h`:water?.phase==="complete"?"Crew on site · no active fire":assignedElsewhere?`Crew sent to ${shortId(assignedElsewhere)}`:"Monitoring only · no crew dispatched";
   return <SceneQualityProvider mode={quality}><section className={`forest-stage ${overviewVisible ? "forest-overview" : ""}`} aria-label="Interactive forest simulation">
-    {overviewVisible && overview.plots.length > 0 && <ForestOverview plots={overview.plots} selectedId={selectedId} resetKey={resetKey} focusKey={focusKey} playing={playing}/>}
-    {!overviewVisible && frame?.value && plot && result && water && crew && <ForestScene frame={frame.value} fireHistory={getFireHistory(result,index)} water={water} crew={crew} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
+    {overviewVisible && overview.plots.length > 0 && <ForestOverview plots={overview.plots} selectedId={selectedId} resetKey={resetKey} focusKey={focusKey} playing={playing} onReady={onReady}/>}
+    {!overviewVisible && frame?.value && plot && result && water && crew && <ForestScene onReady={onReady} frame={frame.value} fireHistory={getFireHistory(result,index)} water={water} crew={crew} ignition={plot.ignition} label={incident ? shortId(incident.id) : "Forest plot"} playing={playing} active={true} showHabitat={showHabitat} showGrid={showGrid} resetKey={resetKey} focusKey={focusKey} picking={picking && selectedId === plot.incident_id} onPick={(row, col) => {
       if (plot.fuel[row * 20 + col] === "0") return;
       const store = useStore.getState();
       store.setOverride(plot.incident_id, { ignition: [[row, col]] });

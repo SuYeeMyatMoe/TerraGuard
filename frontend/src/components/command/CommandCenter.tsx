@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { ControlsPanel } from "./ControlsPanel";
 import { DecisionPanel } from "./DecisionPanel";
@@ -14,6 +13,8 @@ import { FieldBriefModal, Toasts } from "./Overlays";
 import { IncidentRoster } from "./IncidentRoster";
 import { Timeline } from "./Timeline";
 import { TopBar } from "./TopBar";
+import { CommandLoading } from "./CommandLoading";
+import type { SimulateResponse } from "@/lib/types";
 import { RecPill } from "@/components/ui";
 import { pct, shortId } from "@/lib/format";
 import "./studio.css";
@@ -26,15 +27,28 @@ export function CommandCenter() {
   const load = useStore((s) => s.load);
 
   const loadError = useStore((s) => s.loadError);
+  const data = useStore((s) => s.data);
+  const loading = useStore((s) => s.loading);
+  const simLoading = useStore((s) => s.simLoading);
+  const simError = useStore((s) => s.simError);
   const view = useStore((s) => s.view);
   const sim = useStore((s) => s.sim);
   const started = useRef(false);
+  const [initialized, setInitialized] = useState(false);
+  const [renderedSim, setRenderedSim] = useState<SimulateResponse | null>(null);
   const [leftTab, setLeftTab] = useState<"incidents" | "conditions">("incidents");
   const [rightTab, setRightTab] = useState<"decision" | "evidence">("decision");
   const [expanded, setExpanded] = useState(false);
   const selectedId = useStore(s => s.selectedId);
   const predictions = useStore(s => s.predictions);
+  const predictionErrors = useStore(s => s.predictionErrors);
   const prediction = selectedId ? predictions[selectedId] : undefined;
+  const onSceneReady = useCallback(() => setRenderedSim(sim), [sim]);
+  const predicting = !!data?.incidents.some(incident => !predictions[incident.id] && !predictionErrors[incident.id]);
+  const preparing = !initialized || loading || !data || predicting || (view === "sim" && (simLoading || !sim || renderedSim !== sim));
+  const error = loadError ?? (view === "sim" ? simError : null);
+  const covered = preparing || !!error;
+  const stage = !initialized || loading || !data ? "Loading historical incidents…" : predicting ? "Assessing incident priorities…" : !sim || simLoading ? "Running the response test…" : "Building the 3D forest…";
 
   useEffect(() => {
     if (!expanded) return;
@@ -56,6 +70,7 @@ export function CommandCenter() {
         const first = Object.values(store.predictions).sort((a, b) => a.priority.rank - b.priority.rank)[0];
         if (first) store.select(first.incident_id);
       }
+      setInitialized(true);
     });
   }, [load]);
 
@@ -77,22 +92,14 @@ export function CommandCenter() {
 
   return (
     <div className={`forest-command ${view === "sim" ? "studio-mode" : "map-mode"}`}>
+      {covered && <CommandLoading stage={stage} error={error} onRetry={() => {
+        if (loadError) void load();
+        else void useStore.getState().runSimulation({ autoplay: false });
+      }} onEarthView={view === "sim" && !loadError ? () => useStore.getState().setView("earth") : undefined}/>}
+      <div className="command-content" inert={covered} aria-hidden={covered ? true : undefined} style={covered ? { opacity: 0 } : undefined}>
       <TopBar />
       <main className="studio-main">
         {view === "earth" && <div className="studio-earth-viewport"><EarthView /></div>}
-
-        {loadError && (
-          <div className="absolute inset-0 z-20 grid place-items-center bg-[var(--bg)]/80">
-            <div className="panel mx-3 w-full max-w-[420px] p-6 text-center">
-              <AlertTriangle className="mx-auto text-[var(--fire)]" />
-              <div className="mt-2 text-[15px] font-bold">Can’t reach the TerraGuard API</div>
-              <p className="mt-1 text-[13px] text-[var(--ink-2)]">{loadError}</p>
-              <button className="btn btn-primary mt-4" onClick={() => load()}>
-                <RefreshCw size={15} /> Retry
-              </button>
-            </div>
-          </div>
-        )}
 
         {view === "sim" ? <div className={`studio-workspace ${expanded ? "studio-expanded" : ""}`}>
           <aside className="studio-conditions" aria-label="Incidents and conditions">
@@ -102,9 +109,9 @@ export function CommandCenter() {
             </div>
             <div hidden={leftTab !== "incidents"}><IncidentRoster/></div>
             <div className="studio-control-content" hidden={leftTab !== "conditions"}><ControlsPanel/></div>
-            <div className="studio-workflow-note"><span>01 / COMPARE THE INCIDENTS</span><p>{sim?.teams === 1 ? "Preview the decision with one shared crew. Select an incident to review its response." : "Watch a dedicated crew respond to each of A, B and C. Select an incident to review its evidence and live response."}</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
+            <div className="studio-workflow-note"><span>01 / COMPARE THE INCIDENTS</span><p>{sim?.teams === 1 ? "Compare policies with one shared crew. Select an incident to review its response." : "Watch a dedicated crew respond to each of A, B and C. Select an incident to review its evidence and live response."}</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
           </aside>
-          <div className="studio-center"><ForestStudio expanded={expanded} onExpand={() => setExpanded(!expanded)}/><div className="studio-timeline"><Timeline/></div></div>
+          <div className="studio-center"><ForestStudio expanded={expanded} onExpand={() => setExpanded(!expanded)} onReady={onSceneReady}/><div className="studio-timeline"><Timeline/></div></div>
           <aside className="studio-intelligence" aria-label="Recommendations and decision">
             <div className="studio-tabs" aria-label="Right panel">
               <button aria-pressed={rightTab === "decision"} onClick={() => setRightTab("decision")}>Decision & comparison</button>
@@ -124,6 +131,7 @@ export function CommandCenter() {
       <MethodologyDrawer />
       <DecisionRecord />
       <ReportCanvas />
+      </div>
     </div>
   );
 }

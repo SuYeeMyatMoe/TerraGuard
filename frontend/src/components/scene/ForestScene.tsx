@@ -47,6 +47,7 @@ import type { CrewPlan } from "@/lib/crewMotion";
 import { SceneReflections } from "./SceneReflections";
 import { NaturalTrees } from "./NaturalTrees";
 import { SceneQualityRuntime, useSceneQuality } from "./SceneQuality";
+import { SceneReady, SceneReadyFallback } from "./SceneReady";
 import { createSmokeVisuals } from "./smokeMaterial";
 import { sampleSmokePuff } from "@/lib/smokePuff";
 import { sampleFireLife, type FireLife } from "@/lib/fireLifetime";
@@ -475,18 +476,18 @@ export class SceneBoundary extends Component<{ children: ReactNode; fallback: Re
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function ForestScene(props: ForestSceneProps) {
+export default function ForestScene(props: ForestSceneProps & { onReady?: () => void }) {
   const portal = useRef<HTMLDivElement>(null!);
   const [contextLost, setContextLost] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const { settings, visible } = useSceneQuality();
-  const fallback = <div className="fallback-map"><p>3D unavailable · live 20 × 20 forest grid</p><button className="btn btn-primary" onClick={() => { setContextLost(false); setAttempt(n => n + 1); }}>Retry 3D view</button><div className="fallback-grid">{props.frame.cells.map(cell => <button key={cell.id} style={{background:palette[cell.state]}} title={`Cell ${cell.z+1}, ${cell.x+1}: ${cell.state}`} disabled={!props.picking || cell.terrain === "non-vegetated"} onClick={() => props.onPick(cell.z,cell.x)}/>)}</div></div>;
+  const fallback = <SceneReadyFallback onReady={props.onReady}><div className="fallback-map"><p>3D unavailable · live 20 × 20 forest grid</p><button className="btn btn-primary" onClick={() => { setContextLost(false); setAttempt(n => n + 1); }}>Retry 3D view</button><div className="fallback-grid">{props.frame.cells.map(cell => <button key={cell.id} style={{background:palette[cell.state]}} title={`Cell ${cell.z+1}, ${cell.x+1}: ${cell.state}`} disabled={!props.picking || cell.terrain === "non-vegetated"} onClick={() => props.onPick(cell.z,cell.x)}/>)}</div></div></SceneReadyFallback>;
   if (contextLost) return fallback;
   return <div ref={portal} className="scene-canvas" style={{cursor:props.picking ? "crosshair" : "grab"}}>
     <SceneBoundary key={attempt} fallback={fallback}>
-      <Canvas eventSource={portal} shadows dpr={settings.dpr} frameloop={!props.active || !visible ? "never" : props.playing ? "always" : "demand"} camera={{position:[8,17,13],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
+      <Canvas eventSource={portal} shadows dpr={settings.dpr} frameloop={!props.active || !visible ? "never" : props.playing ? "always" : "demand"} camera={{position:[8,17,13],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={fallback} onCreated={({gl}) => {
         gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); setContextLost(true); });
-      }}><SceneQualityRuntime playing={props.playing}/><ForestSceneContent {...props} portal={portal}/></Canvas>
+      }}><SceneQualityRuntime playing={props.playing}/><ForestSceneContent {...props} portal={portal}/><SceneReady onReady={props.onReady}/></Canvas>
     </SceneBoundary>
   </div>;
 }

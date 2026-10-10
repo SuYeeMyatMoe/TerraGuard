@@ -12,6 +12,7 @@ import { SharedLandscape, SHARED_PLOT_POSITIONS } from "./SharedLandscape";
 import { ForestSceneContent, SceneBoundary, type ForestSceneProps } from "./ForestScene";
 import { SceneReflections } from "./SceneReflections";
 import { SceneQualityRuntime, useSceneQuality } from "./SceneQuality";
+import { SceneReady, SceneReadyFallback } from "./SceneReady";
 
 export interface OverviewPlot extends ForestSceneProps {
   id: string;
@@ -66,22 +67,22 @@ function OverviewCamera({ resetKey, focusKey, selected }: { resetKey: number; fo
   return null;
 }
 
-export default function ForestOverview({ plots, selectedId, resetKey, focusKey, playing }: {
-  plots: OverviewPlot[]; selectedId: string | null; resetKey: number; focusKey: number; playing: boolean;
+export default function ForestOverview({ plots, selectedId, resetKey, focusKey, playing, onReady }: {
+  plots: OverviewPlot[]; selectedId: string | null; resetKey: number; focusKey: number; playing: boolean; onReady?: () => void;
 }) {
   const portal = useRef<HTMLDivElement>(null!);
   const [contextLost, setContextLost] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const { settings, visible } = useSceneQuality();
-  const fallback = <div className="overview-fallback">
+  const fallback = <SceneReadyFallback onReady={onReady}><div className="overview-fallback">
     <p>3D unavailable · synchronized forest grids</p>
     <button className="btn" onClick={() => { setContextLost(false); setAttempt(n => n + 1); }}>Retry 3D view</button>
     <div>{plots.map(plot => <section key={plot.id}><strong>{plot.label}</strong><div className="fallback-grid">{plot.frame.cells.map(cell => <span key={cell.id} title={`Cell ${cell.z + 1}, ${cell.x + 1}: ${cell.state}`} style={{ background: cell.state === "burning" ? "#ff7a22" : cell.state === "burned" ? "#25271f" : cell.state === "non-vegetated" ? "#b6a586" : cell.protected ? "#c9e676" : "#72944c" }}/>)}</div></section>)}</div>
-  </div>;
+  </div></SceneReadyFallback>;
   if (contextLost) return fallback;
   return <div className="scene-canvas overview-canvas" ref={portal}>
     <SceneBoundary key={attempt} fallback={fallback}>
-      <Canvas eventSource={portal} shadows dpr={settings.dpr} frameloop={!visible ? "never" : playing ? "always" : "demand"} camera={{ position: [5, 49, 42], fov: 50, near: .1, far: 300 }} gl={{ antialias: true }} onCreated={({ gl }) => {
+      <Canvas eventSource={portal} shadows dpr={settings.dpr} frameloop={!visible ? "never" : playing ? "always" : "demand"} camera={{ position: [5, 49, 42], fov: 50, near: .1, far: 300 }} gl={{ antialias: true }} fallback={fallback} onCreated={({ gl }) => {
         gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); setContextLost(true); });
       }}>
         <SceneQualityRuntime playing={playing}/>
@@ -94,6 +95,7 @@ export default function ForestOverview({ plots, selectedId, resetKey, focusKey, 
         <directionalLight key={settings.shadowSize} position={[-24, 50, 20]} intensity={2.5} color="#fff1cf" castShadow shadow-mapSize={[settings.shadowSize, settings.shadowSize]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={40} shadow-camera-bottom={-40} shadow-camera-far={130} shadow-normalBias={.025}/>
         <SharedLandscape/>
         <OverviewPlots plots={plots} selectedId={selectedId} resetKey={resetKey} focusKey={focusKey} portal={portal}/>
+        <SceneReady onReady={onReady}/>
       </Canvas>
     </SceneBoundary>
   </div>;
