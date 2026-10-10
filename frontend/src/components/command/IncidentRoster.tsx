@@ -10,14 +10,14 @@ export function IncidentRoster() {
   const predictions = useStore(s => s.predictions);
   const sim = useStore(s => s.sim);
   const selectedId = useStore(s => s.selectedId);
-  const select = useStore(s => s.select);
+  const focusIncident = useStore(s => s.focusIncident);
   return <section className="incident-roster">
     <div className="roster-heading"><Radio size={15}/><span>INCIDENT QUEUE</span><b>{data?.incidents.length ?? "—"}</b></div>
     <h2>Three incidents.<br/>{sim?.teams === 1 ? "One response crew." : "Three response crews."}</h2>
     <p className="roster-intro">{sim?.teams === 1 ? "Preview the recorded crew assignment and its consequences." : "A dedicated vehicle and suppression crew for A, B and C."}</p>
     <div className="roster-cards">{data?.incidents.map(inc => {
       const prediction = predictions[inc.id];
-      return <button key={inc.id} className="roster-card" aria-pressed={selectedId === inc.id} onClick={() => select(inc.id)}>
+      return <button key={inc.id} className="roster-card" aria-pressed={selectedId === inc.id} onClick={() => focusIncident(inc.id)}>
         <div className="roster-card-top"><span>{shortId(inc.id)}</span><span>{prediction ? `PRIORITY ${prediction.priority.rank}` : "ASSESSING"}<ArrowUpRight size={13}/></span></div>
         <strong>{inc.region}</strong><small>{inc.country} · {prediction?.category_label ?? "Loading evidence"}</small>
         <div className="roster-card-bottom"><span><b>{prediction ? pct(prediction.probability) : "—"}</b><small>48 h follow-up</small></span>{prediction && <RecPill rec={prediction.priority.recommendation} size="sm"/>}</div>

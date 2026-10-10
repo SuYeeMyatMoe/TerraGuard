@@ -280,7 +280,7 @@ export function EarthMap(props: Props) {
   const data = useStore((s) => s.data),
     predictions = useStore((s) => s.predictions),
     selectedId = useStore((s) => s.selectedId),
-    select = useStore((s) => s.select);
+    focusIncident = useStore((s) => s.focusIncident);
   const [pas, setPas] = useState<FeatureCollection | null>(null);
   const [detail, setDetail] = useState(false);
   const tileFailures = useRef(new Set<string>());
@@ -611,6 +611,7 @@ export function EarthMap(props: Props) {
   ]);
 
   const overviewBoundsKey = JSON.stringify(replayBounds(data?.incidents ?? [], data?.team));
+  const focusRequest = useStore((s) => s.focusRequest);
   const selectedIncident = data?.incidents.find((i) => i.id === selectedId);
   const selectedLon = selectedIncident?.lon,
     selectedLat = selectedIncident?.lat;
@@ -642,7 +643,8 @@ export function EarthMap(props: Props) {
         });
       }
     });
-  }, [selectedId, selectedLon, selectedLat, overviewBoundsKey]);
+    // focusRequest: clicking the same incident again flies back to it after the map was panned away
+  }, [selectedId, selectedLon, selectedLat, overviewBoundsKey, focusRequest]);
   const comparing = props.compare && props.visibility.historical;
   return (
     <>
@@ -690,7 +692,7 @@ export function EarthMap(props: Props) {
                 key={inc.id}
                 aria-label={`${inc.id} ${inc.region}${inc.attendance === "assigned" ? " · crew assigned" : inc.attendance === "unattended" ? " · waiting, no crew" : ""}`}
                 disabled={props.measurement.drawing}
-                onClick={() => select(inc.id)}
+                onClick={() => focusIncident(inc.id)}
                 className="pointer-events-auto absolute flex -translate-x-1/2 -translate-y-full flex-col items-center disabled:pointer-events-none"
                 style={{ left: p[0], top: p[1] }}
               >

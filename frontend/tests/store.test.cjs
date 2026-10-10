@@ -246,3 +246,13 @@ test("switching crew mode reruns the response test with that many crews", async 
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.deepEqual(teams, [3, 1]);
 });
+
+test("clicking an incident selects it and requests a camera focus; automatic selection does not", () => {
+  const store = makeStore({});
+  store.getState().select("A");
+  assert.equal(store.getState().focusRequest, 0);
+  store.getState().focusIncident("B");
+  store.getState().focusIncident("B");
+  assert.equal(store.getState().selectedId, "B");
+  assert.equal(store.getState().focusRequest, 2);
+});

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, OrbitControls, Sky } from "@react-three/drei";
 import { PerspectiveCamera, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -25,10 +25,25 @@ export function overviewPosition(index: number): [number, number, number] {
 }
 
 function OverviewCamera({ resetKey, focusKey, selected }: { resetKey: number; focusKey: number; selected?: OverviewPlot }) {
-  const { camera, size, controls } = useThree();
+  const { camera, size, controls, invalidate } = useThree();
   const command = useStore(s => s.cameraCommand);
-  const lastFocus = useRef(focusKey);
+  const focusRequest = useStore(s => s.focusRequest);
+  const lastFocus = useRef(`${focusKey}:${focusRequest}`);
+  // camera glide towards a clicked incident (target + position), finished when close enough
+  const glide = useRef<{ target: Vector3; position: Vector3 } | null>(null);
+  useFrame((_, delta) => {
+    const g = glide.current;
+    const orbit = controls as OrbitControlsImpl | null;
+    if (!g || !orbit) return;
+    const k = 1 - Math.exp(-delta * 6);
+    orbit.target.lerp(g.target, k);
+    camera.position.lerp(g.position, k);
+    orbit.update();
+    if (camera.position.distanceTo(g.position) < .05 && orbit.target.distanceTo(g.target) < .05) glide.current = null;
+    else invalidate();
+  });
   useLayoutEffect(() => {
+    glide.current = null;   // a camera reset cancels any glide in progress
     const aspect = size.width / size.height;
     const distance = Math.max(.5, 1.4 / aspect);
     camera.position.set(5 * distance, 34 * distance, 59 * distance);
@@ -40,6 +55,7 @@ function OverviewCamera({ resetKey, focusKey, selected }: { resetKey: number; fo
   }, [camera, controls, size, resetKey]);
   useEffect(() => {
     if (!command || !controls) return;
+    glide.current = null;
     const orbit = controls as OrbitControlsImpl;
     const offset = camera.position.clone().sub(orbit.target);
     if (command.kind === "zoomIn" || command.kind === "zoomOut") {
@@ -51,18 +67,27 @@ function OverviewCamera({ resetKey, focusKey, selected }: { resetKey: number; fo
     orbit.update();
   }, [camera, command, controls]);
   useEffect(() => {
-    if (!controls || !selected || lastFocus.current === focusKey) return;
-    lastFocus.current = focusKey;
+    const key = `${focusKey}:${focusRequest}`;
+    if (!controls || !selected || lastFocus.current === key) return;
+    lastFocus.current = key;
     const orbit = controls as OrbitControlsImpl;
     const burning = selected.frame.cells.filter(cell => cell.state === "burning");
     const x = burning.length ? burning.reduce((sum, cell) => sum + cell.x, 0) / burning.length - 9.5 : 0;
     const z = burning.length ? burning.reduce((sum, cell) => sum + cell.z, 0) / burning.length - 9.5 : 0;
     const crewX = selected.crew.station[0] - 9.5, crewZ = selected.crew.station[1] - 9.5;
-    orbit.target.set(selected.position[0] + (selected.crew.assigned ? (x + crewX) / 2 : x), 2, selected.position[2] + (selected.crew.assigned ? (z + crewZ) / 2 : z));
+    const target = new Vector3(selected.position[0] + (selected.crew.assigned ? (x + crewX) / 2 : x), 2, selected.position[2] + (selected.crew.assigned ? (z + crewZ) / 2 : z));
     const heading = getCrewPose(selected.crew, selected.frame.tick).heading + .9;
-    camera.position.copy(orbit.target).add(new Vector3(Math.sin(heading) * 10, 7, Math.cos(heading) * 10));
-    orbit.update();
-  }, [camera, controls, focusKey, selected]);
+    const position = target.clone().add(new Vector3(Math.sin(heading) * 14, 10, Math.cos(heading) * 14));
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      orbit.target.copy(target);
+      camera.position.copy(position);
+      orbit.update();
+      invalidate();
+    } else {
+      glide.current = { target, position };
+      invalidate();
+    }
+  }, [camera, controls, focusKey, focusRequest, selected, invalidate]);
   return null;
 }
 
@@ -102,12 +127,12 @@ export default function ForestOverview({ plots, selectedId, resetKey, focusKey, 
 function OverviewPlots({ plots, selectedId, resetKey, focusKey, portal }: {
   plots: OverviewPlot[]; selectedId: string | null; resetKey: number; focusKey: number; portal: RefObject<HTMLDivElement>;
 }) {
-  const select = useStore(s => s.select);
+  const focusIncident = useStore(s => s.focusIncident);
   const selected = plots.find(plot => plot.id === selectedId);
   return <>
         {plots.map(plot => <group key={plot.id} position={plot.position}>
           <ForestSceneContent {...plot} portal={portal} overview/>
-          <Html portal={portal} position={worldPosition(plot.ignition[0]?.[1] ?? 10, plot.ignition[0]?.[0] ?? 10, 6.5)} center zIndexRange={[22, 1]}><button className="overview-plot-label" aria-label={`Select ${plot.label}`} title={`${plot.label} · ${plot.region}`} aria-pressed={plot.id === selectedId} onClick={() => select(plot.id)}><b>{plot.label.replace("Incident ", "")}</b><span>{plot.frame.metrics.burning} burning</span></button></Html>
+          <Html portal={portal} position={worldPosition(plot.ignition[0]?.[1] ?? 10, plot.ignition[0]?.[0] ?? 10, 6.5)} center zIndexRange={[22, 1]}><button className="overview-plot-label" aria-label={`Select ${plot.label}`} title={`${plot.label} · ${plot.region}`} aria-pressed={plot.id === selectedId} onClick={() => focusIncident(plot.id)}><b>{plot.label.replace("Incident ", "")}</b><span>{plot.frame.metrics.burning} burning</span></button></Html>
         </group>)}
         <OrbitControls makeDefault enablePan minDistance={8} maxDistance={150} minPolarAngle={.2} maxPolarAngle={Math.PI / 2.6} target={[0, 1, 0]}/>
         <OverviewCamera resetKey={resetKey} focusKey={focusKey} selected={selected}/>

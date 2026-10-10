@@ -77,6 +77,9 @@ interface State {
   load: (scenario?: string) => Promise<void>;
   loadActions: (scenario?: string) => Promise<void>;
   select: (id: string | null) => void;
+  /** Select an incident because the user clicked it: the 3D overview camera moves in on that plot. */
+  focusIncident: (id: string) => void;
+  focusRequest: number;
   setView: (v: View) => void;
   setParam: (k: "responseDelay" | "burnDuration" | "steps", v: number) => void;
   setOverride: (id: string, o: IncidentOverride) => void;
@@ -229,6 +232,8 @@ export const useStore = create<State>((set, get) => ({
   },
 
   select: (id) => set({ selectedId: id, pickingIgnition: false }),
+  focusRequest: 0,
+  focusIncident: (id) => set((s) => ({ selectedId: id, pickingIgnition: false, focusRequest: s.focusRequest + 1 })),
   setView: (v) => {
     set({ view: v, pickingIgnition: false });
     // the 3D test runs on demand: first visit, or after a decision changed the crew's assignment
