@@ -55,6 +55,8 @@ interface State {
   step: number;
   playbackRun: number;
   playing: boolean;
+  /** A user-started run continues into the Prediction report when its playback reaches the last step. */
+  reportAfterPlayback: boolean;
   speed: number;
 
   actions: ActionRecord[];
@@ -88,6 +90,7 @@ interface State {
   closeReport: () => void;
   setPolicy: (p: PolicyKey) => void;
   replay: () => void;
+  playbackEnded: () => void;
   setStep: (s: number) => void;
   setPlaying: (v: boolean) => void;
   setSpeed: (v: number) => void;
@@ -130,6 +133,7 @@ export const useStore = create<State>((set, get) => ({
   step: 0,
   playbackRun: 0,
   playing: false,
+  reportAfterPlayback: false,
   speed: 1,
   actions: [],
   archivedActions: [],
@@ -239,12 +243,9 @@ export const useStore = create<State>((set, get) => ({
         ...(opts?.coordinator !== undefined ? { coordinator_assignment: opts.coordinator } : {}),
       });
       const policy: PolicyKey = sim.teams === 1 && sim.policies.coordinator ? "coordinator" : get().policy === "coordinator" ? "ai_priority" : get().policy;
-      set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy });
-      // a user-run response test ends with the Prediction Report for the selected (or top-ranked) incident
-      if (opts?.openReport ?? opts?.autoplay ?? true) {
-        const target = get().selectedId ?? sim.ai_order[0] ?? null;
-        if (target) setTimeout(() => get().openReport(target, "prediction"), 1800);
-      }
+      set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy,
+        // a user-run response test ends with the Prediction Report once its playback finishes
+        reportAfterPlayback: (opts?.autoplay ?? true) && (opts?.openReport ?? true) });
     } catch (e) {
       set({ simLoading: false, simError: errMsg(e) });
       get().toast({ tone: "error", title: "Response test failed", body: errMsg(e) });
@@ -288,16 +289,24 @@ export const useStore = create<State>((set, get) => ({
   setReportTab: (tab) => set((st) => ({ report: { ...st.report, tab } })),
   closeReport: () => set((st) => ({ report: { ...st.report, open: false } })),
   setPolicy: (p) => set(s => ({
-    policy: p, step: 0, playing: true, pickingIgnition: false,
+    policy: p, step: 0, playing: true, pickingIgnition: false, reportAfterPlayback: !s.consequence,
     playbackRun: s.playbackRun + 1,
     selectedId: s.sim?.policies[p]?.assigned[0] ?? s.selectedId,
   })),
-  replay: () => set(s => ({ step: 0, playing: true, playbackRun: s.playbackRun + 1 })),
+  replay: () => set(s => ({ step: 0, playing: true, playbackRun: s.playbackRun + 1, reportAfterPlayback: !s.consequence })),
+  playbackEnded: () => {
+    const s = get();
+    set({ playing: false, reportAfterPlayback: false });
+    // the consequence preview keeps its own banner ("Back to report") instead of reopening the report
+    if (!s.reportAfterPlayback || s.consequence || s.report.open || !s.sim) return;
+    const target = s.selectedId ?? s.sim.ai_order[0] ?? null;
+    if (target) void get().openReport(target, "prediction");
+  },
   setStep: (step) => set({ step }),
   setPlaying: (playing) => {
     const s = get();
     if (playing && s.sim && s.step >= s.sim.steps) set({ step: 0 });
-    set({ playing });
+    set(playing ? { playing, reportAfterPlayback: !s.consequence } : { playing });
   },
   setSpeed: (speed) => set({ speed }),
 

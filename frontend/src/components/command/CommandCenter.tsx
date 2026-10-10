@@ -111,7 +111,7 @@ export function CommandCenter() {
               <button aria-pressed={rightTab === "evidence"} onClick={() => setRightTab("evidence")}>Evidence</button>
             </div>
             <div className="studio-decision-content" hidden={rightTab !== "decision"}>
-              {prediction && <section className="studio-recommendation"><div className="eyebrow">RECOMMENDATION · {shortId(prediction.incident_id)}</div><div className="studio-rec-score"><strong>{pct(prediction.probability)}</strong><RecPill rec={prediction.priority.recommendation}/></div><p className="studio-rec-caption">Probability of a 48 h follow-up detection</p><p>{prediction.priority.reason}</p><button onClick={() => setRightTab("evidence")}>Review evidence →</button></section>}
+              {prediction && <section className="studio-recommendation"><div className="eyebrow">RECOMMENDATION · {shortId(prediction.incident_id)}</div><div className="studio-rec-score"><strong>{pct(prediction.probability)}</strong><RecPill rec={prediction.priority.recommendation}/></div><p className="studio-rec-caption">Probability of a 48 h follow-up detection</p><p>{prediction.priority.reason}</p><button onClick={() => setRightTab("evidence")}>Review evidence →</button><button onClick={() => useStore.getState().openReport(prediction.incident_id, "prediction")}>Prediction & recommendation →</button></section>}
               <DecisionPanel/>
             </div>
             <div className="studio-detail" hidden={rightTab !== "evidence"}><IntelligencePanel/></div>

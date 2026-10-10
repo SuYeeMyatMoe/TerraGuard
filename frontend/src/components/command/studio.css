@@ -25,6 +25,7 @@
 .studio-recommendation p {font-size:11px;line-height:1.65;color:var(--ink-2);margin-top:10px}
 .studio-recommendation .studio-rec-caption {font-size:9px;margin:0;color:var(--ink-3)}
 .studio-recommendation button,.studio-workflow-note button {font-size:10px;font-weight:600;color:#365004;margin-top:12px;cursor:pointer}
+.studio-recommendation button + button {margin-left:14px}
 .studio-workflow-note {margin-top:auto;padding:17px 10px 8px;border-top:1px solid var(--line)}
 .studio-workflow-note > span {font-size:8px;font-weight:700;letter-spacing:1.4px;color:#7d865e}
 .studio-workflow-note p {font-size:11px;line-height:1.8;color:var(--ink-2);margin-top:8px}

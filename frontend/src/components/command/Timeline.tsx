@@ -29,7 +29,7 @@ export function Timeline() {
     if (!playing || !sim) return;
     const id = setInterval(() => {
       const state = useStore.getState();
-      if (state.step >= steps) state.setPlaying(false);
+      if (state.step >= steps) state.playbackEnded();
       else state.setStep(state.step + 1);
     }, PLAYBACK_STEP_MS / speed);
     return () => clearInterval(id);

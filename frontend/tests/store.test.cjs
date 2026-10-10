@@ -199,3 +199,27 @@ test("a failed consequence request does not resume an old simulation", async () 
   assert.equal(store.getState().step, 7);
   assert.equal(store.getState().simError, "Simulation unavailable");
 });
+
+test("a user-started playback continues into the Prediction report; scrubbing and previews do not", async () => {
+  const opened = [];
+  const store = makeStore({ reports: async (id) => { opened.push(id); return { incident_id: id }; } });
+  const sim = { steps: 48, ai_order: ["B", "C", "A"], policies: {} };
+  store.setState({ sim, selectedId: "B", step: 48 });
+
+  store.getState().playbackEnded();                       // silent first run / scrubbing: not armed
+  assert.deepEqual(opened, []);
+
+  store.getState().setPlaying(true);                      // user presses play
+  store.setState({ step: 48 });
+  store.getState().playbackEnded();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(opened, ["B"]);
+  assert.equal(store.getState().report.open, true);
+  assert.equal(store.getState().report.tab, "prediction");
+
+  store.setState({ report: { ...store.getState().report, open: false }, consequence: { incidentId: "B", action: "CONTINUE_MONITORING", crewHere: false } });
+  store.getState().setPlaying(true);                      // consequence preview keeps its banner instead
+  store.getState().playbackEnded();
+  assert.deepEqual(opened, ["B"]);
+  assert.equal(store.getState().playing, false);
+});
