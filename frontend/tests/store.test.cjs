@@ -256,3 +256,46 @@ test("clicking an incident selects it and requests a camera focus; automatic sel
   assert.equal(store.getState().selectedId, "B");
   assert.equal(store.getState().focusRequest, 2);
 });
+
+test("reports match the burn duration and refresh after rerunning with new settings", async () => {
+  const bodies = [];
+  const store = makeStore({ reports: async (id, body) => {
+    bodies.push(body);
+    return { incident_id: id, duration: body.burn_duration_steps };
+  } });
+  await store.getState().openReport("B");
+  assert.equal(bodies[0].burn_duration_steps, 8);
+  store.getState().setParam("burnDuration", 12);
+  store.setState({ simStale: false }); // a rerun has applied the new settings
+  await store.getState().openReport("B");
+  assert.equal(bodies.length, 2);
+  assert.equal(store.getState().report.data.duration, 12);
+  await store.getState().openReport("B");
+  assert.equal(bodies.length, 2);
+});
+
+test("a previous report failure cannot replace a newer report", async () => {
+  let rejectOld;
+  const store = makeStore({ reports: id => id === "A"
+    ? new Promise((resolve, reject) => { rejectOld = reject; })
+    : Promise.resolve({ incident_id: id }) });
+  const old = store.getState().openReport("A");
+  await store.getState().openReport("B");
+  rejectOld(new ApiError(503, "Old report unavailable"));
+  await old;
+  assert.equal(store.getState().report.error, null);
+  assert.equal(store.getState().report.data.incident_id, "B");
+});
+
+test("a slower report for the same incident cannot overwrite updated settings", async () => {
+  let releaseOld;
+  const store = makeStore({ reports: (id, body) => body.burn_duration_steps === 8
+    ? new Promise(resolve => { releaseOld = resolve; })
+    : Promise.resolve({ incident_id: id, duration: body.burn_duration_steps }) });
+  const old = store.getState().openReport("B");
+  store.getState().setParam("burnDuration", 12);
+  await store.getState().openReport("B");
+  releaseOld({ incident_id: "B", duration: 8 });
+  await old;
+  assert.equal(store.getState().report.data.duration, 12);
+});
