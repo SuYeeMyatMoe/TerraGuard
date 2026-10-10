@@ -1,25 +1,25 @@
 {
   "description": "Backtest of the team-allocation policies over every qualifying test-period day.\n\nTwo complementary measurements (both with one team, the core problem setting):\n  1. Retrospective (real labels): how often did the incident each policy would have sent the team to actually\n     show follow-up satellite activity within 48 h? Compared with first-alert-first and a random pick.\n  2. Simulation (hypothetical): mean loss-index difference, first-alert minus AI-priority, using the same\n     cellular automaton and common random numbers as the Command Center.",
-  "days_evaluated": 357,
-  "days_with_known_labels": 353,
-  "days_policies_disagree": 237,
+  "days_evaluated": 361,
+  "days_with_known_labels": 360,
+  "days_policies_disagree": 248,
   "retrospective": {
     "all_days": {
-      "ai_pick_followup_rate": 0.1445,
-      "first_alert_pick_followup_rate": 0.0623,
-      "random_pick_followup_rate": 0.0661,
+      "ai_pick_followup_rate": 0.3278,
+      "first_alert_pick_followup_rate": 0.1639,
+      "random_pick_followup_rate": 0.175,
       "difference_ai_minus_first_alert_ci95": [
-        0.0538,
-        0.1161
+        0.1194,
+        0.2111
       ]
     },
     "disagreement_days": {
-      "n": 234,
-      "ai_pick_followup_rate": 0.1496,
-      "first_alert_pick_followup_rate": 0.0256,
+      "n": 247,
+      "ai_pick_followup_rate": 0.3401,
+      "first_alert_pick_followup_rate": 0.1012,
       "difference_ai_minus_first_alert_ci95": [
-        0.0769,
-        0.1709
+        0.1741,
+        0.3036
       ]
     },
     "note": "Follow-up detection is a proxy for persistent activity, not confirmed damage."
@@ -28,16 +28,16 @@
     "n_seeds_per_day": 8,
     "response_delay_steps": 4,
     "steps": 48,
-    "mean_loss_first_alert": 23.01,
-    "mean_loss_ai_priority": 21.79,
-    "mean_loss_difference": 1.22,
+    "mean_loss_first_alert": 26.76,
+    "mean_loss_ai_priority": 25.94,
+    "mean_loss_difference": 0.82,
     "difference_ci95": [
-      -0.0133,
-      2.457
+      -0.8873,
+      2.4818
     ],
-    "days_ai_lower_loss": 143,
-    "days_first_alert_lower_loss": 91,
-    "days_tied": 123,
+    "days_ai_lower_loss": 136,
+    "days_first_alert_lower_loss": 111,
+    "days_tied": 114,
     "note": "Hypothetical simulation on procedural plots; not a forecast of real outcomes."
   }
 }
