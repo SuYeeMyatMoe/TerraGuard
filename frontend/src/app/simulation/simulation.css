@@ -137,37 +137,37 @@
 .stats-dock { left: 332px; right: calc(var(--sidebar-width) + 88px); top: 16px; }
 .simulation-theme .incident-list-header h2 { font-size: 21px; }
 .simulation-theme .incident-list-panel {
-  --surface: #f0f2df;
+  --surface: #f7faef;
   --ink-2: #3f3416;
   --ink-3: #4b4228;
-  --line: #788d27;
-  --blue-50: #e8ecc9;
-  background: #8da432;
-  border-color: #788d27;
+  --line: #cbd8b4;
+  --blue-50: #edf3e1;
+  background: #e0ebce;
+  border-color: #cbd8b4;
 }
 .simulation-theme .incident-list-panel .eyebrow { color: #351903; }
 .simulation-theme .decision-panel {
-  --surface: #a67220;
-  --ink: #fff8e9;
-  --ink-2: #f1e0c3;
-  --ink-3: #e4c99f;
-  --line: #b78c43;
-  --line-2: #ffffff29;
-  --blue: #fff0cf;
-  --blue-200: #dfc288;
-  --blue-50: #aa7730;
-  --green-700: #ede383;
-  --fire-50: #ab7423;
-  --fire-200: #d8af6a;
-  --fire-700: #fff0cf;
-  --red-700: #ffd0bf;
+  --surface: #faf0e1;
+  --ink: #351903;
+  --ink-2: #74634c;
+  --ink-3: #85765e;
+  --line: #ddc5a4;
+  --line-2: #e7ccb0;
+  --blue: #925e06;
+  --blue-200: #d9b882;
+  --blue-50: #f7e9d5;
+  --green-700: #365004;
+  --fire-50: #f8e7d1;
+  --fire-200: #e0c19a;
+  --fire-700: #925e06;
+  --red-700: #923327;
   color: var(--ink);
-  background: #925e06;
-  border-color: #815105;
+  background: #f4dfc7;
+  border-color: #ddc5a4;
 }
-.simulation-theme .decision-panel .eyebrow { color: #ede383; }
-.simulation-theme .decision-panel .btn-primary { background: #ede383; color: #351903; }
-.simulation-theme .decision-panel .btn-primary:hover:not(:disabled) { background: #f5edaa; }
+.simulation-theme .decision-panel .eyebrow { color: #925e06; }
+.simulation-theme .decision-panel .btn-primary { background: #925e06; color: #fff8e9; }
+.simulation-theme .decision-panel .btn-primary:hover:not(:disabled) { background: #815105; }
 .simulation-theme .incident-card { padding: 8px; line-height: 1.35; }
 .simulation-theme [role="tab"] { white-space: nowrap; }
 .simulation-theme .decision-panel .btn { height: 34px; padding-inline: 10px; font-size: 12px; }
