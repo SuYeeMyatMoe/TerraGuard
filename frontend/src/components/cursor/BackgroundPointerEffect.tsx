@@ -24,7 +24,7 @@ export function BackgroundPointerEffect() {
         const localX = x - rect.left, localY = y - rect.top;
         lens.style.setProperty("--lens-x", `${localX}px`);
         lens.style.setProperty("--lens-y", `${localY}px`);
-        // Anchor the enlarged pattern at the pointer: 19px dots become 32.3px dots.
+        // Anchor the enlarged pattern at the pointer: 12px dots become 20.4px dots.
         lens.style.setProperty("--lens-pattern-x", `${localX * -.7}px`);
         lens.style.setProperty("--lens-pattern-y", `${localY * -.7}px`);
         lens.style.setProperty("--lens-visible", "1");
