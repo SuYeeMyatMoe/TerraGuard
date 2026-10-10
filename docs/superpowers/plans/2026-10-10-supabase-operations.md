@@ -40,5 +40,5 @@ assert row["action"] == "ASSIGN_INSPECTION"
 
 - [x] Update backend/.env.example, README.md, docs/API.md, and docs/SUPABASE.md with backend-only setup, RPC permissions, optional named teams, and cloud reset restrictions.
 - [x] Create ignored backend/.env with the connected URL and an empty secret only if absent. Ask the operator to enter the secret locally; never print it. The operator supplied a publishable key, which was used only to prove browser denial.
-- [ ] When populated, test REST reads and an action through FastAPI against Supabase; remove only the test rows and verify status after a new client/store instance.
-- [x] Run the full backend suite (41 pass, two pre-existing on_event deprecation warnings), `git diff --check`, inspect the final diff and branch, and report the remaining credential limitation. Main remains at 20e9049; frontend contains no Supabase credentials or changes.
+- [x] With the backend secret configured, verify live FastAPI reads and a named-team decision through Supabase. Confirm audit/status persistence with a new client and file-backed Store, verify the assignment via the plugin, and remove only isolated verification rows. Committed incident/model/simulation files remained unchanged.
+- [x] Run the full backend suite (41 pass, two pre-existing on_event deprecation warnings), `git diff --check`, inspect the final diff and branch. Credentials are now configured in the ignored backend/.env, and the live connection is verified. Main remains at 20e9049; frontend contains no Supabase credentials or changes.
