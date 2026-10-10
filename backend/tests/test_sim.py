@@ -50,3 +50,33 @@ def test_frames_shape_and_states():
     assert len(frames) == 21 and all(len(p) == 400 for p in frames[0])
     assert set("".join(frames[-1])) <= set("01234")
     assert str(BURNING) in "".join(frames[1]) or str(BURNED) in "".join(frames[1])
+
+
+def test_response_sequence_and_fire_residence_are_shared_across_policies():
+    # No spreading: isolate timing from random weather and prove that only arrival enables suppression.
+    plot = make_plot("TIMING", 0, 1, 0, 0, 0, [(10, 10)])
+    plot.fuel[:] = 0
+    plot.fuel[10, 10] = .5
+    r = simulate_policies([plot], ["TIMING"], ["TIMING"], 1, 4, 12, 7, 2,
+                          burn_duration_steps=8)
+    assert r["assumptions"]["burn_duration_steps"] == 8
+    assert r["policies"]["none"]["assigned"] == []
+    for key in ("first_alert", "ai_priority"):
+        frames = r["policies"][key]["frames"]
+        assert [f[0][210] for f in frames[:5]] == [str(BURNING)] * 5
+        assert frames[5][0][210] == str(INTERVENED)
+        assert next(e["step"] for e in r["policies"][key]["events"] if e["type"] == "arrival") == 4
+    baseline = r["policies"]["none"]["frames"]
+    assert baseline[7][0][210] == str(BURNING)
+    assert baseline[8][0][210] == str(BURNED)
+    assert r["comparison"]["same_allocation"]
+
+
+def test_extended_duration_never_creates_a_team_or_changes_legacy_defaults():
+    extended = simulate_policies(_plots(), IDS, ["T-C", "T-A", "T-B"], 0, 4, 12, 7, 2,
+                                 burn_duration_steps=8)
+    frames = [p["frames"] for p in extended["policies"].values()]
+    assert frames[0] == frames[1] == frames[2]
+    assert all(p["assigned"] == [] for p in extended["policies"].values())
+    legacy = simulate_policies(_plots(), IDS, IDS, 1, 4, 12, 7, 2)
+    assert legacy["assumptions"]["burn_duration_steps"] == 2

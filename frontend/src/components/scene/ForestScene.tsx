@@ -52,7 +52,7 @@ const palette = {
   "non-vegetated": "#8c8065",
   intervened: "#70965b",
 };
-const TREES_PER_CELL = 4;
+const TREES_PER_CELL = 2;
 const TREE_COUNT = 400 * TREES_PER_CELL;
 
 function Terrain({ cells, showGrid, picking, onPick }: { cells: Cell[]; showGrid: boolean; picking: boolean; onPick: (row: number, col: number) => void }) {
@@ -158,8 +158,8 @@ function Forest({ cells }: { cells: Cell[] }) {
         const x =
           cell.x - 9.5 + (j % 2 ? 0.23 : -0.24) + (seed(i * 3) - 0.5) * 0.25;
         const z =
-          cell.z - 9.5 + (j >= 2 ? 0.24 : -0.24) + (seed(i * 5) - 0.5) * 0.25;
-        const h = 0.46 + seed(i * 23) * 0.48;
+          cell.z - 9.5 + (j % 2 ? 0.2 : -0.2) + (seed(i * 5) - 0.5) * 0.15;
+        const h = 0.5 + seed(i * 23) * 0.28;
         const vegetated = cell.terrain === "forest",
           living = cell.state === "healthy" || cell.state === "protected" || cell.state === "intervened",
           broad = i % 5 === 0;
@@ -266,7 +266,7 @@ function Landscape() {
     const d = new Object3D(),
       color = new Color();
     let placed = 0;
-    for (let i = 0; i < 2200; i++) {
+    for (let i = 0; i < 1000; i++) {
       const x = (seed(i * 5) - 0.5) * 67,
         z = (seed(i * 11) - 0.5) * 55 - 5;
       if (Math.abs(x) < 10.2 && Math.abs(z) < 10.2) continue;
@@ -292,7 +292,7 @@ function Landscape() {
       <mesh geometry={geometry} receiveShadow>
         <meshStandardMaterial vertexColors roughness={1} />
       </mesh>
-      <instancedMesh ref={trees} args={[pine, undefined, 2200]}>
+      <instancedMesh ref={trees} args={[pine, undefined, 1000]}>
         <meshStandardMaterial vertexColors roughness={1} />
       </instancedMesh>
       <mesh
@@ -311,7 +311,7 @@ function Landscape() {
   );
 }
 
-function FireEffects({ cells, ignition }: { cells: Cell[]; ignition: [number, number] }) {
+function FireEffects({ cells, ignition, playing }: { cells: Cell[]; ignition: [number, number]; playing: boolean }) {
   const flames = useRef<InstancedMesh>(null),
     smoke = useRef<InstancedMesh>(null);
   const active = useMemo(
@@ -375,8 +375,7 @@ function FireEffects({ cells, ignition }: { cells: Cell[]; ignition: [number, nu
   }, [active]);
   useLayoutEffect(() => animate(1.5), [animate]);
   useFrame(({ clock }) => {
-    // Playback pauses the simulated time; flames remain a visual indicator of active cells.
-    if (!reducedMotion) {
+    if (playing && !reducedMotion) {
       material.uniforms.time.value = clock.elapsedTime;
       animate(clock.elapsedTime);
     }
@@ -412,16 +411,16 @@ function FireEffects({ cells, ignition }: { cells: Cell[]; ignition: [number, nu
   );
 }
 
-function CameraSetup({ resetKey, focusKey, focusX, focusZ }: { resetKey: number; focusKey: number; focusX: number; focusZ: number }) {
+function CameraSetup({ resetKey, sceneKey, focusKey, focusX, focusZ }: { resetKey: number; sceneKey: string; focusKey: number; focusX: number; focusZ: number }) {
   const { camera, size, controls } = useThree();
   const command = useStore(s => s.cameraCommand);
   const lastFocus = useRef(0);
   useLayoutEffect(() => {
-    camera.position.set(12, 15, 17);
+    camera.position.set(8, 17, 13);
     camera.lookAt(0, 0.8, 0);
     const orbit = controls as OrbitControlsImpl | null;
     if (orbit) { orbit.target.set(0, 0.8, 0); orbit.update(); }
-  }, [camera, resetKey, controls]);
+  }, [camera, resetKey, sceneKey, controls]);
   useLayoutEffect(() => {
     const cam = camera as PerspectiveCamera;
     // Preserve a readable plot on portrait screens without pulling the camera away.
@@ -432,7 +431,7 @@ function CameraSetup({ resetKey, focusKey, focusX, focusZ }: { resetKey: number;
     if (!command || !controls) return;
     const orbit = controls as OrbitControlsImpl;
     const offset = camera.position.clone().sub(orbit.target);
-    if (command.kind === "reset") { camera.position.set(12, 15, 17); orbit.target.set(0, 0.8, 0); }
+    if (command.kind === "reset") { camera.position.set(8, 17, 13); orbit.target.set(0, 0.8, 0); }
     else {
       if (command.kind === "zoomIn" || command.kind === "zoomOut") offset.multiplyScalar(command.kind === "zoomIn" ? 0.8 : 1.25).clampLength(8, 49);
       else offset.applyAxisAngle(new Vector3(0, 1, 0), command.kind === "rotateL" ? -Math.PI / 8 : Math.PI / 8);
@@ -446,7 +445,7 @@ function CameraSetup({ resetKey, focusKey, focusX, focusZ }: { resetKey: number;
     const orbit = controls as OrbitControlsImpl;
     const target = worldPosition(focusX, focusZ, 1.6);
     orbit.target.set(...target);
-    camera.position.set(target[0] + 6, target[1] + 8, target[2] + 9);
+    camera.position.set(target[0] + 4.5, target[1] + 11, target[2] + 8);
     orbit.update();
   }, [camera, controls, focusKey, focusX, focusZ]);
   return null;
@@ -496,7 +495,7 @@ function Scene({ frame, water, crew, ignition, label, playing, showHabitat, show
     return { segments, center: count ? worldPosition(x / count, z / count, 3.5) : null };
   }, [frame.cells]);
   return <>
-    <CameraSetup resetKey={resetKey} focusKey={focusKey} focusX={fire.x} focusZ={fire.z}/>
+    <CameraSetup resetKey={resetKey} sceneKey={label} focusKey={focusKey} focusX={crew.assigned ? (fire.x + crew.station[0]) / 2 : fire.x} focusZ={crew.assigned ? (fire.z + crew.station[1]) / 2 : fire.z}/>
     <color attach="background" args={["#94b4bf"]}/>
     <fog attach="fog" args={["#a0bdc7", 36, 90]}/>
     <Sky distance={450000} sunPosition={[-30, 25, 10]} inclination={.5} azimuth={.25} turbidity={3.5} rayleigh={.8}/>
@@ -506,12 +505,12 @@ function Scene({ frame, water, crew, ignition, label, playing, showHabitat, show
     <Landscape/>
     <Terrain cells={frame.cells} showGrid={showGrid} picking={picking} onPick={onPick}/>
     <Forest cells={frame.cells}/>
-    <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]}/>
+    <FireEffects cells={frame.cells} ignition={[fire.x, fire.z]} playing={playing}/>
     {water.spraying && water.target && <WaterEffects target={water.target} source={water.source} playing={playing}/>}
-    {fire.count > 0 && <Html portal={portal} position={worldPosition(fire.x, fire.z, 4.8)} center zIndexRange={[21,1]}><div className="map-label fire-label"><Flame size={14}/>ACTIVE FIRE · {fire.count} {fire.count === 1 ? "cell" : "cells"}</div></Html>}
+    {fire.count > 0 && <Html portal={portal} position={worldPosition(fire.x, fire.z, 2.3)} center zIndexRange={[21,1]}><div className="map-label fire-label"><Flame size={14}/>FIRE FRONT · {fire.count} {fire.count === 1 ? "cell" : "cells"}</div></Html>}
     {showHabitat && <>
       {habitat.segments.map((points, i) => <Line key={i} points={points} color="#c9e676" lineWidth={1.5} transparent opacity={.85}/>) }
-      {frame.cells.filter(c => c.protected).map(c => <mesh key={c.id} position={worldPosition(c.x,c.z,1.7)} rotation={[-Math.PI/2,0,0]} raycast={() => null}><planeGeometry args={[1,1]}/><meshBasicMaterial color="#8da432" transparent opacity={.12} depthWrite={false} side={DoubleSide}/></mesh>)}
+      {frame.cells.filter(c => c.protected).map(c => <mesh key={c.id} position={worldPosition(c.x,c.z,.06)} rotation={[-Math.PI/2,0,0]} raycast={() => null}><planeGeometry args={[1,1]}/><meshBasicMaterial color="#8da432" transparent opacity={.12} depthWrite={false} side={DoubleSide}/></mesh>)}
       {habitat.center && <Html portal={portal} position={habitat.center} center zIndexRange={[18,1]}><div className="map-label habitat-label"><Trees size={13}/>Protected habitat</div></Html>}
     </>}
     {ignition.map(([row,col], i) => <group key={i} position={worldPosition(col,row,.08)}>
@@ -539,7 +538,7 @@ export default function ForestScene(props: ForestSceneProps) {
   if (contextLost) return fallback;
   return <div ref={portal} className="scene-canvas" style={{cursor:props.picking ? "crosshair" : "grab"}}>
     <SceneBoundary key={attempt} fallback={fallback}>
-      <Canvas eventSource={portal} shadows dpr={attempt ? 1 : [1,1.5]} frameloop={props.active ? "always" : "never"} camera={{position:[12,15,17],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
+      <Canvas eventSource={portal} shadows dpr={1} frameloop={!props.active ? "never" : props.playing ? "always" : "demand"} camera={{position:[8,17,13],fov:50,near:.1,far:160}} gl={{antialias:true}} fallback={<span aria-hidden="true">3D view unavailable</span>} onCreated={({gl}) => {
         gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); setContextLost(true); });
       }}><Scene {...props} portal={portal}/></Canvas>
     </SceneBoundary>

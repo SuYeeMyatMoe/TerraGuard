@@ -38,6 +38,7 @@ interface State {
   view: View;
 
   responseDelay: number;
+  burnDuration: number;
   steps: number;
   seed: number;
   nSeeds: number;
@@ -50,6 +51,7 @@ interface State {
   simStale: boolean;
   policy: PolicyKey;
   step: number;
+  playbackRun: number;
   playing: boolean;
   speed: number;
 
@@ -68,12 +70,13 @@ interface State {
   loadActions: () => Promise<void>;
   select: (id: string | null) => void;
   setView: (v: View) => void;
-  setParam: (k: "responseDelay" | "steps", v: number) => void;
+  setParam: (k: "responseDelay" | "burnDuration" | "steps", v: number) => void;
   setOverride: (id: string, o: IncidentOverride) => void;
   resetOverride: (id: string) => void;
   setPickingIgnition: (v: boolean) => void;
   runSimulation: (opts?: { autoplay?: boolean }) => Promise<void>;
   setPolicy: (p: PolicyKey) => void;
+  replay: () => void;
   setStep: (s: number) => void;
   setPlaying: (v: boolean) => void;
   setSpeed: (v: number) => void;
@@ -101,6 +104,7 @@ export const useStore = create<State>((set, get) => ({
   selectedId: null,
   view: "earth",
   responseDelay: 4,
+  burnDuration: 8,
   steps: 48,
   seed: 7,
   nSeeds: 30,
@@ -112,6 +116,7 @@ export const useStore = create<State>((set, get) => ({
   simStale: false,
   policy: "ai_priority",
   step: 0,
+  playbackRun: 0,
   playing: false,
   speed: 1,
   actions: [],
@@ -200,6 +205,7 @@ export const useStore = create<State>((set, get) => ({
         scenario_id: s.data.scenario.id,
         teams: TEAMS,
         response_delay: s.responseDelay,
+        burn_duration_steps: s.burnDuration,
         steps: s.steps,
         seed: s.seed,
         n_seeds: s.nSeeds,
@@ -212,7 +218,12 @@ export const useStore = create<State>((set, get) => ({
       get().toast({ tone: "error", title: "Response test failed", body: errMsg(e) });
     }
   },
-  setPolicy: (p) => set({ policy: p, step: 0, playing: true }),
+  setPolicy: (p) => set(s => ({
+    policy: p, step: 0, playing: true, pickingIgnition: false,
+    playbackRun: s.playbackRun + 1,
+    selectedId: s.sim?.policies[p]?.assigned[0] ?? s.selectedId,
+  })),
+  replay: () => set(s => ({ step: 0, playing: true, playbackRun: s.playbackRun + 1 })),
   setStep: (step) => set({ step }),
   setPlaying: (playing) => {
     const s = get();

@@ -8,6 +8,7 @@ import { PLAYBACK_STEP_MS } from "@/lib/crewMotion";
 export function Timeline() {
   const sim = useStore(s => s.sim);
   const policy = useStore(s => s.policy);
+  const playbackRun = useStore(s => s.playbackRun);
   const setPolicy = useStore(s => s.setPolicy);
   const step = useStore(s => s.step);
   const setStep = useStore(s => s.setStep);
@@ -18,6 +19,8 @@ export function Timeline() {
   const loading = useStore(s => s.simLoading);
   const steps = sim?.steps ?? 48;
   const minutesPerStep = Number(sim?.assumptions.minutes_per_step ?? 30);
+  const assigned = sim?.policies[policy]?.assigned[0];
+  const destination = assigned ? sim?.plots.findIndex(plot => plot.incident_id === assigned) : -1;
 
   useEffect(() => {
     if (!playing || !sim) return;
@@ -27,7 +30,7 @@ export function Timeline() {
       else state.setStep(state.step + 1);
     }, PLAYBACK_STEP_MS / speed);
     return () => clearInterval(id);
-  }, [playing, speed, steps, sim]);
+  }, [playing, speed, steps, sim, policy, playbackRun]);
 
   const policies = [
     { value: "none" as const, label: "No intervention" },
@@ -43,6 +46,6 @@ export function Timeline() {
       <div className="playback-track"><div><span>Fire progression</span><b className="tnum">Step {step} / {steps} <small>· ≈{(step * minutesPerStep / 60).toFixed(1)} h</small></b></div><input type="range" className="tg-range" min={0} max={steps} value={step} disabled={!sim} onChange={e => { setStep(Number(e.target.value)); setPlaying(false); }} style={{ ["--fill" as string]: `${step / steps * 100}%` }} aria-label="Simulation step"/></div>
       <label className="playback-speed"><span>Speed</span><select aria-label="Playback speed" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[1,2,4].map(v => <option key={v} value={v}>{v}×</option>)}</select></label>
     </div>
-    <p className="playback-clock-note">Playback {(PLAYBACK_STEP_MS / speed / 1000).toFixed(2)} s per step · {minutesPerStep} simulated minutes per step</p>
+    <p className="playback-clock-note">{assigned && destination != null && destination >= 0 ? `Crew → Incident ${String.fromCharCode(65 + destination)}` : "No crew dispatched"} · {minutesPerStep} simulated min/step · Burn time {(Number(sim?.assumptions.burn_duration_steps ?? 8) * minutesPerStep / 60).toFixed(1)} h/cell</p>
   </section>;
 }

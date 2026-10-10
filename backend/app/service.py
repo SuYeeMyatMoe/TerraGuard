@@ -439,7 +439,8 @@ class Store:
             coordinator = None
         plots, infos = self.build_plots([self.incident(iid, att) for iid in ids], req.per_incident)
         res = simulate_policies(plots, arrival_order, ai_order, req.teams, req.response_delay, req.steps,
-                                req.seed, req.n_seeds, coordinator=coordinator)
+                                req.seed, req.n_seeds, coordinator=coordinator,
+                                burn_duration_steps=req.burn_duration_steps)
         return {
             "scenario_id": scenario["scenario_id"],
             "grid": {"plots": len(plots), "h": H, "w": W},

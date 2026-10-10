@@ -29,7 +29,8 @@ def allocate(policy: str, arrival_order: list[str], ai_order: list[str], teams: 
 
 
 def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order: list[str], teams: int,
-                      response_delay: int, steps: int, seed: int, n_seeds: int, coordinator: str | None = None) -> dict:
+                      response_delay: int, steps: int, seed: int, n_seeds: int, coordinator: str | None = None,
+                      burn_duration_steps: int | None = None) -> dict:
     ids = [p.incident_id for p in plots]
     P = len(plots)
     rng = np.random.default_rng(seed)
@@ -40,7 +41,8 @@ def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order:
         assigned = allocate(policy, arrival_order, ai_order, teams, coordinator)
         arrivals = np.array([response_delay if i in assigned else np.inf for i in ids])
         teams_at = np.array([1 if i in assigned else 0 for i in ids])
-        out = run(plots, arrivals, teams_at, steps, rand, keep_frames=True)
+        out = run(plots, arrivals, teams_at, steps, rand, keep_frames=True,
+                  burn_duration_steps=burn_duration_steps)
         events = []
         for i in assigned:
             pi = ids.index(i)
@@ -59,5 +61,6 @@ def simulate_policies(plots: list[PlotSpec], arrival_order: list[str], ai_order:
     return {
         "policies": results,
         "comparison": compare(results),
-        "assumptions": ASSUMPTIONS,
+        "assumptions": {**ASSUMPTIONS, "burn_duration_steps": ASSUMPTIONS["burn_duration_steps"]
+                        if burn_duration_steps is None else burn_duration_steps},
     }

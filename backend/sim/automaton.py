@@ -145,13 +145,16 @@ def _direction_probs(plot: PlotSpec) -> np.ndarray:
 
 
 def run(plots: list[PlotSpec], arrivals: np.ndarray, teams_at: np.ndarray, steps: int,
-        rand: np.ndarray, keep_frames: bool) -> dict:
+        rand: np.ndarray, keep_frames: bool, burn_duration_steps: int | None = None) -> dict:
     """Run the automaton for S seeds at once.
 
     arrivals : (P,) arrival step for each plot (np.inf when no team assigned)
     teams_at : (P,) number of teams assigned to each plot
     rand     : (S, steps, P, H, W) uniform random numbers, SHARED across policies (common random numbers)
     """
+    duration = ASSUMPTIONS["burn_duration_steps"] if burn_duration_steps is None else burn_duration_steps
+    if not 2 <= duration <= 24:
+        raise ValueError("Burn duration must be between 2 and 24 steps")
     S, P = rand.shape[0], len(plots)
     fuel = np.stack([p.fuel for p in plots])                        # (P,H,W)
     prot = np.stack([p.protected for p in plots])
@@ -167,7 +170,7 @@ def run(plots: list[PlotSpec], arrivals: np.ndarray, teams_at: np.ndarray, steps
     for pi, p in enumerate(plots):
         for r, c in p.ignition:
             state[:, pi, r, c] = BURNING
-            timer[:, pi, r, c] = ASSUMPTIONS["burn_duration_steps"]
+            timer[:, pi, r, c] = duration
     frames = [state[0].copy()] if keep_frames else []
     contained_step = np.full((S, P), -1)
     active_until = np.zeros((S, P))
@@ -209,7 +212,7 @@ def run(plots: list[PlotSpec], arrivals: np.ndarray, teams_at: np.ndarray, steps
         timer = np.where(burning, timer - 1, timer)
         state = np.where(burning & (timer <= 0), BURNED, state).astype(np.int8)
         state = np.where(ignite, BURNING, state).astype(np.int8)
-        timer = np.where(ignite, ASSUMPTIONS["burn_duration_steps"], timer)
+        timer = np.where(ignite, duration, timer)
         if keep_frames:
             frames.append(state[0].copy())
 

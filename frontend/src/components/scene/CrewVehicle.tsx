@@ -7,8 +7,10 @@ import { Group, MeshStandardMaterial } from "three";
 import { Truck } from "lucide-react";
 import { getCrewPose, PLAYBACK_STEP_MS, type CrewPlan } from "@/lib/crewMotion";
 import { worldPosition } from "./forestGeometry";
+import { useStore } from "@/lib/store";
 
 export function CrewVehicle({ plan, tick, playing, speed, spraying, portal }: { plan:CrewPlan; tick:number; playing:boolean; speed:number; spraying:boolean; portal:RefObject<HTMLDivElement> }) {
+  const playbackRun=useStore(s=>s.playbackRun);
   const vehicle=useRef<Group>(null),wheels=useRef<Group>(null),beacon=useRef<MeshStandardMaterial>(null);
   const fraction=useRef(0),previous=useRef<[number,number]>([0,0]);
   const route=useMemo(()=>plan.route.map(point=>worldPosition(...point,.12)),[plan]);
@@ -19,7 +21,7 @@ export function CrewVehicle({ plan, tick, playing, speed, spraying, portal }: { 
     vehicle.current.position.set(...worldPosition(...pose.position,.08));
     vehicle.current.rotation.y=pose.heading;
     previous.current=pose.position;
-  },[plan,tick]);
+  },[plan,tick,playbackRun]);
   useFrame(({clock},delta)=>{
     if (!vehicle.current) return;
     if (playing) fraction.current=Math.min(1,fraction.current+delta*speed/(PLAYBACK_STEP_MS/1000));
@@ -37,7 +39,7 @@ export function CrewVehicle({ plan, tick, playing, speed, spraying, portal }: { 
   const arrived=plan.arrival!=null&&tick>=plan.arrival;
   return <>
     {route.length>1&&<Line points={route} color="#d5dfa7" dashed dashSize={.22} gapSize={.14} lineWidth={1.2} transparent opacity={.65}/>}
-    <group ref={vehicle}>
+    <group ref={vehicle} scale={1.3}>
       <mesh rotation={[-Math.PI/2,0,0]} position={[0,.015,0]} raycast={()=>null}><ringGeometry args={[.62,.68,48]}/><meshBasicMaterial color="#c4d884" transparent opacity={.8}/></mesh>
       <group position={[0,.26,0]}>
         <mesh castShadow><boxGeometry args={[.7,.35,1.45]}/><meshStandardMaterial color="#ad432f" roughness={.48} metalness={.2}/></mesh>
@@ -59,7 +61,7 @@ export function CrewVehicle({ plan, tick, playing, speed, spraying, portal }: { 
           </group>))}
         </group>
       </group>
-      <Html portal={portal} position={[0,1.35,0]} center zIndexRange={[22,1]}><div className="map-label ranger-label"><Truck size={13}/>Crew 01 · {spraying?"Suppressing":arrived?"On site":"En route"}</div></Html>
+      <Html portal={portal} position={[0,1.35,0]} center zIndexRange={[22,1]}><div className="map-label ranger-label"><Truck size={13}/>Crew 01 · {spraying?"Water response":arrived?"On site":"En route"}</div></Html>
     </group>
   </>;
 }

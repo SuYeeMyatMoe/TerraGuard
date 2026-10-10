@@ -14,6 +14,7 @@ export function ControlsPanel() {
   const setOverride = useStore((s) => s.setOverride);
   const resetOverride = useStore((s) => s.resetOverride);
   const responseDelay = useStore((s) => s.responseDelay);
+  const burnDuration = useStore((s) => s.burnDuration);
   const steps = useStore((s) => s.steps);
   const setParam = useStore((s) => s.setParam);
   const run = useStore((s) => s.runSimulation);
@@ -106,6 +107,8 @@ export function ControlsPanel() {
           <div className="space-y-3.5">
             <Slider icon={<Timer size={14} />} label="Response delay" value={responseDelay} min={0} max={16} step={1}
               display={`${responseDelay} steps · ${(responseDelay * mps / 60).toFixed(1)} h`} onChange={(v) => setParam("responseDelay", v)} />
+            <Slider icon={<Timer size={14} />} label="Burn time per cell" value={burnDuration} min={2} max={24} step={1}
+              display={`${(burnDuration * mps / 60).toFixed(1)} h`} onChange={(v) => setParam("burnDuration", v)} />
             <Slider icon={<Timer size={14} />} label="Test horizon" value={steps} min={24} max={72} step={4}
               display={`${steps} steps`} onChange={(v) => setParam("steps", v)} />
             <p className="text-[11px] leading-snug text-[var(--ink-3)]">
@@ -126,6 +129,7 @@ export function ControlsPanel() {
             const st = useStore.getState();
             Object.keys(st.overrides).forEach((k) => st.resetOverride(k));
             st.setParam("responseDelay", 4);
+            st.setParam("burnDuration", 8);
             st.setParam("steps", 48);
           }}
         >
