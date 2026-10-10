@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from ml.config import MODEL_DIR, PROCESSED_DIR, PROTECTED_AREAS, RAW_DIR
-from ml import anomaly, reference
+from ml import anomaly, footprint, reference
 from ml.explain import explain
 from ml.geo import haversine_km
 from ml.fetch_weather import load_weather
@@ -379,6 +379,8 @@ class Store:
             "anomaly": pattern,
             # straight-line crew feasibility (no routing); the investigation priority itself is unchanged
             "feasibility": feasibility.assess(self.incident(incident_id, att={})),
+            # 48 h satellite-detected footprint forecast (quantile model; not mapped burned area)
+            "footprint": footprint.forecast(row, self.inc_index[incident_id][1]["candidate_id"]),
             "explained_factors": views,
             "ranking_explanation": ranking,
             "confidence_guidance": gaps,

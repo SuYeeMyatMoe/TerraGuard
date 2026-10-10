@@ -1,5 +1,5 @@
 "use client";
-import { Layers, Ruler, Satellite } from "lucide-react";
+import { Layers, MapPin, Ruler, Satellite } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -52,7 +52,8 @@ export function EarthView() {
   const [latitude, setLatitude] = useState(""),
     [longitude, setLongitude] = useState("");
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"context" | "compare">("context"),
+  // Earth View shows the pre-incident period only; the before/after toggle was removed from the UI.
+  const [mode] = useState<"context" | "compare">("context"),
     [divider, setDivider] = useState(50);
   const [visibility, setVisibility] = useState<LayerVisibility>({
     imagery: true,
@@ -186,7 +187,6 @@ export function EarthView() {
         setOpacity={setOpacity}
         tileError={tileError}
         mode={mode}
-        setMode={setMode}
         overview={!selectedId || !inIncidentArea || state.data?.incident_id !== id}
         manual
         automatic
@@ -195,8 +195,9 @@ export function EarthView() {
         anchor={id}
         retry={retry}
       >
-        <details className="border-b border-[var(--line-2)] py-2.5 last:border-0">
-          <summary className="cursor-pointer text-[12.5px] font-semibold text-[var(--ink)]">
+        <details>
+          <summary>
+            <MapPin size={14} />
             Go to a location
           </summary>
           <form
@@ -252,9 +253,9 @@ export function EarthView() {
             World view
           </button>
         </details>
-        <details className="border-b border-[var(--line-2)] py-2.5 last:border-0" open>
-          <summary className="flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-[var(--ink)]">
-            <Layers size={13} />
+        <details>
+          <summary>
+            <Layers size={14} />
             Map layers
           </summary>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -278,9 +279,9 @@ export function EarthView() {
             )}
           </div>
         </details>
-        <details className="border-b border-[var(--line-2)] py-2.5 last:border-0">
-          <summary className="flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-[var(--ink)]">
-            <Ruler size={13} />
+        <details>
+          <summary>
+            <Ruler size={14} />
             Measure distance / area
           </summary>
           <div className="mt-2 flex gap-2">

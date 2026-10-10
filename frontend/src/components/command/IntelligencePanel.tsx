@@ -108,6 +108,17 @@ function AttendanceLine({ inc, prob, compact }: { inc: Incident; prob?: number; 
         <Truck size={13} className="shrink-0" /> Crew assigned · en route from {team.base.split(",")[0]}
       </span>
     );
+  if (inc.status === "Coordination requested" || inc.status === "Monitoring")
+    return (
+      <span className={`${base} block bg-[var(--blue-50)] text-[var(--blue-700)] ring-1 ring-inset ring-[var(--blue-200)]`}>
+        <b>{inc.status}</b> · no crew on site
+        {prob != null && (
+          <>
+            {" "}· 48 h follow-up risk <b className="tnum">{pct(prob)}</b>
+          </>
+        )}
+      </span>
+    );
   if (inc.attendance === "unattended")
     return (
       <span className={`${base} block bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200`}>

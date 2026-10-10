@@ -102,6 +102,30 @@ def build(store, incident_id: str, req: SimulateRequest | None = None) -> dict:
         w["simulated_crew_benefit_cells"] = benefit[w["incident_id"]]
     best_sim = max(benefit, key=benefit.get)
 
+    # one matched run of this incident's plot for playback: the run (among the first seeds) whose no-crew AND crew-here
+    # outcomes are closest to the all-runs averages, so the preview neither understates nor exaggerates the consequence.
+    # Seed s's first run equals a single-seed run at s, so each candidate is one cheap simulation.
+    plot_index = next(k for k, p in enumerate(sim["plots"]) if p["incident_id"] == incident_id)
+    def _burned(frames: list[str]) -> int:
+        return sum(ch in "23" for ch in frames[-1])
+    best = None
+    for s in range(base_req.seed, base_req.seed + min(base_req.n_seeds, 12)):
+        one = store.simulate(base_req.model_copy(update={"scenario_id": scenario["scenario_id"], "coordinator_assignment": incident_id,
+                                                         "teams": 1, "seed": s, "n_seeds": 1}))
+        nf = [f[plot_index] for f in one["policies"]["none"]["frames"]]
+        cf = [f[plot_index] for f in one["policies"]["coordinator"]["frames"]]
+        gap = abs(_burned(nf) - unattended["mean"]) + abs(_burned(cf) - attended["mean"])
+        if best is None or gap < best[0]:
+            best = (gap, s, cf, nf)
+    _, replay_seed, crew_frames, none_frames = best
+    replay = {"plot_index": plot_index, "h": sim["grid"]["h"], "w": sim["grid"]["w"], "steps": len(crew_frames) - 1,
+              "response_delay": base_req.response_delay, "seed": replay_seed,
+              "crew_here": crew_frames, "no_crew": none_frames,
+              "crew_here_burned": _burned(crew_frames), "no_crew_burned": _burned(none_frames),
+              "states": {"0": "no fuel", "1": "forest", "2": "burning", "3": "burned", "4": "crew intervention"},
+              "note": (f"Replay of one matched run (seed {replay_seed}), chosen because its outcomes with and without the crew "
+                       f"are closest to the averages of {base_req.n_seeds} runs. Hypothetical spread on a procedural plot, not a forecast.")}
+
     # ---------------- recommended action ----------------
     if rec == "INSPECT":
         action = "SEND_CREW" if feas["status"] == "FEASIBLE" else "ESCALATE"
@@ -163,6 +187,7 @@ def build(store, incident_id: str, req: SimulateRequest | None = None) -> dict:
         },
         "anomaly": pred["anomaly"],
         "heat_signal": pred["heat_signal"],
+        "footprint": pred.get("footprint"),
         "proof": [f"{f['name']}: {f['value_text']}{(' · ' + f['comparison_text']) if f.get('comparison') else ''} — {f['effect_text']}."
                   for f in pred["explained_factors"]] + pred["anomaly"]["proof"],
         "reliability": {
@@ -205,7 +230,7 @@ def build(store, incident_id: str, req: SimulateRequest | None = None) -> dict:
             "simulation": {"crew_here": _stat(attended), "no_crew_here": _stat(unattended), "difference_cells": gain,
                            "runs": base_req.n_seeds, "response_delay_steps": base_req.response_delay,
                            "crew_benefit_by_incident": [{"incident_id": k, "label": short(k), "cells": v} for k, v in benefit.items()],
-                           "tradeoff": sim_tradeoff,
+                           "tradeoff": sim_tradeoff, "replay": replay,
                            "note": "Hypothetical simulation on a procedural plot under stated assumptions; not a forecast of real damage."},
         },
         "waiting": waiting,

@@ -318,3 +318,22 @@ input[type="range"].tg-range::-moz-range-thumb {
 @media (max-height: 500px) and (max-width: 1023px) {
   .command-viewport { min-height: 240px; height: 65dvh; }
 }
+
+/* Earth View tool accordion (Go to a location · Map layers · Measure) */
+.tool-stack > details { border-top: 1px solid var(--line-2); }
+.tool-stack > details > summary {
+  list-style: none; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 16px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; user-select: none;
+}
+.tool-stack > details > summary::-webkit-details-marker { display: none; }
+.tool-stack > details > summary > svg { color: var(--ink-2); flex-shrink: 0; }
+.tool-stack > details > summary::after {
+  content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3); transform: translateY(-2px) rotate(45deg); transition: transform 0.15s ease;
+}
+.tool-stack > details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.tool-stack > details > summary:hover { background: #f8fafc; }
+.tool-stack > details > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.tool-stack > details > :not(summary) { margin-left: 16px; margin-right: 16px; }
+.tool-stack > details > :last-child:not(summary) { margin-bottom: 14px; }
+@media (prefers-reduced-motion: reduce) { .tool-stack > details > summary::after { transition: none; } }

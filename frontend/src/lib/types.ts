@@ -115,6 +115,7 @@ export interface Prediction {
   heat_signal?: HeatSignal;
   anomaly?: AnomalyAssessment;
   feasibility?: Feasibility;
+  footprint?: Footprint | null;
   explained_factors: ExplainedFactor[];
   ranking_explanation: RankingExplanation;
   confidence_guidance: EvidenceGap[];
@@ -195,6 +196,38 @@ export interface Feasibility {
   actionable: boolean;
 }
 
+export interface Footprint {
+  probability_any: number;
+  expected_km2: number;
+  median_km2: number;
+  p10_km2: number;
+  p90_km2: number;
+  cells_median: number;
+  past_cells_24h: number;
+  past_km2: number;
+  horizon_h: number;
+  radius_km: number;
+  note: string;
+  eval: {
+    mae_km2: number; persistence_mae_km2: number; spearman: number; persistence_spearman: number; auc_any: number;
+    coverage_10_90: number; beats_persistence: boolean; n_test: number;
+  };
+}
+
+export interface BurnReplay {
+  plot_index: number;
+  h: number;
+  w: number;
+  steps: number;
+  response_delay: number;
+  seed: number;
+  crew_here: string[];
+  no_crew: string[];
+  crew_here_burned: number;
+  no_crew_burned: number;
+  note: string;
+}
+
 export type ReportAction = "SEND_CREW" | "ESCALATE" | "RECHECK" | "MONITOR";
 
 export interface MeanCI {
@@ -217,6 +250,7 @@ export interface PredictionReport {
   };
   anomaly: AnomalyAssessment;
   heat_signal: HeatSignal;
+  footprint: Footprint | null;
   proof: string[];
   reliability: {
     missing_weather: boolean; unusual_inputs: boolean; satellite_evidence: string; confidence_note: string;
@@ -247,7 +281,7 @@ export interface RecommendationReport {
     simulation: {
       crew_here: MeanCI; no_crew_here: MeanCI; difference_cells: number; runs: number; response_delay_steps: number;
       crew_benefit_by_incident: { incident_id: string; label: string; cells: number }[];
-      tradeoff: string | null; note: string;
+      tradeoff: string | null; note: string; replay: BurnReplay;
     };
   };
   waiting: { incident_id: string; label: string; region: string; rank: number; probability: number; recommendation: Recommendation;
@@ -458,6 +492,7 @@ export interface SimulateRequest {
   seed: number;
   n_seeds: number;
   per_incident: Record<string, IncidentOverride>;
+  coordinator_assignment?: string | null;
 }
 
 export interface WaitingIncident {

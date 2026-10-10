@@ -342,12 +342,12 @@ def urgency(rec: str, prob: float, threshold: float, hours_since: float, corrobo
     elif (rec == "INSPECT" and above and recent and corroborated and not high_concerns
           and (evidence_quality == "High" or heat == "Strong")):
         tier = "CRITICAL_REVIEW"
-        reasons += ["Recommended for the available crew.", "Model estimate is above the validated alert threshold.",
+        reasons += ["Highest investigation priority.", "Model estimate is above the validated alert threshold.",
                     f"Detected {hours_since:.1f} hours before the review time.", "Supported by earlier or second-satellite detections."]
         reasons.append("Strong satellite heat signal." if heat == "Strong" else "Evidence quality is high.")
     elif rec == "INSPECT" or above:
         tier = "PRIORITY_REVIEW"
-        reasons.append("Recommended for the available crew." if rec == "INSPECT" else "Model estimate is above the validated alert threshold.")
+        reasons.append("Highest investigation priority." if rec == "INSPECT" else "Model estimate is above the validated alert threshold.")
         if not above:
             reasons.append("Model estimate is below the validated alert threshold.")
         if not recent:

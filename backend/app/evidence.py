@@ -52,6 +52,13 @@ def build_package(incident: dict, prediction: dict, teams: int, simulation: dict
     add("SUMMARY", "Deterministic decision summary", prediction["decision_summary"], "TerraGuard explanation rules")
     add("URGENCY", "Operational urgency tier (rule-based)", prediction["urgency"]["label"], "TerraGuard rules")
     add("PRED_THRESHOLD", "Alert threshold chosen on validation data", _pct(prediction["threshold"]), "TerraGuard ML")
+    fp = prediction.get("footprint")
+    if fp:
+        add("FOOTPRINT", f"Forecast satellite-detected fire footprint, next {fp['horizon_h']} h, if activity continues "
+                         "(median, 10–90% range; VIIRS pixel area, not mapped burned area)",
+            f"{fp['median_km2']} km² ({fp['p10_km2']}–{fp['p90_km2']} km²)", "TerraGuard ML (footprint model)")
+        add("FOOTPRINT_ANY", "Chance of any further detected footprint within 5 km in 48 h", _pct(fp["probability_any"]),
+            "TerraGuard ML (footprint model)")
     for k, f in enumerate(prediction.get("explained_factors") or [], start=1):
         cmp = f" ({f['comparison_text']})" if f.get("comparison") else ""
         add(f"FACTOR_{k}", f"Model factor ({f['influence_label'].lower()} influence)",

@@ -75,7 +75,10 @@ interface State {
   setOverride: (id: string, o: IncidentOverride) => void;
   resetOverride: (id: string) => void;
   setPickingIgnition: (v: boolean) => void;
-  runSimulation: (opts?: { autoplay?: boolean }) => Promise<void>;
+  runSimulation: (opts?: { autoplay?: boolean; openReport?: boolean; coordinator?: string | null }) => Promise<void>;
+  consequence: { incidentId: string; action: ActionType; crewHere: boolean } | null;
+  watchConsequence: (incidentId: string, action: ActionType) => Promise<void>;
+  clearConsequence: () => void;
   report: { open: boolean; loading: boolean; incidentId: string | null; data: IncidentReports | null; error: string | null; tab: "prediction" | "recommendation" };
   openReport: (incidentId?: string | null, tab?: "prediction" | "recommendation") => Promise<void>;
   setReportTab: (tab: "prediction" | "recommendation") => void;
@@ -226,11 +229,12 @@ export const useStore = create<State>((set, get) => ({
         seed: s.seed,
         n_seeds: s.nSeeds,
         per_incident: s.overrides,
+        ...(opts?.coordinator !== undefined ? { coordinator_assignment: opts.coordinator } : {}),
       });
       const policy: PolicyKey = sim.policies.coordinator ? "coordinator" : get().policy === "coordinator" ? "ai_priority" : get().policy;
       set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy });
       // a user-run response test ends with the Prediction Report for the selected (or top-ranked) incident
-      if (opts?.autoplay ?? true) {
+      if (opts?.openReport ?? opts?.autoplay ?? true) {
         const target = get().selectedId ?? sim.ai_order[0] ?? null;
         if (target) setTimeout(() => get().openReport(target, "prediction"), 1800);
       }
@@ -239,16 +243,29 @@ export const useStore = create<State>((set, get) => ({
       get().toast({ tone: "error", title: "Response test failed", body: errMsg(e) });
     }
   },
+  consequence: null,
+  // Play the consequence of a choice in the 3D test: the crew goes here (send crew) or stays where it is recorded
+  // (any other choice), so this incident's plot burns without a crew. Hypothetical simulation, same seeds.
+  watchConsequence: async (incidentId, action) => {
+    const s = get();
+    const crewHere = action === "ASSIGN_INSPECTION";
+    const elsewhere = s.data?.team.assigned_incident_id && s.data.team.assigned_incident_id !== incidentId ? s.data.team.assigned_incident_id : null;
+    set((st) => ({ report: { ...st.report, open: false }, view: "sim", selectedId: incidentId, pickingIgnition: false,
+      consequence: { incidentId, action, crewHere } }));
+    await get().runSimulation({ autoplay: true, openReport: false, coordinator: crewHere ? incidentId : elsewhere });
+    if (get().sim) set({ policy: crewHere || elsewhere ? "coordinator" : "none", step: 0, playing: true });
+  },
+  clearConsequence: () => set({ consequence: null }),
   report: { open: false, loading: false, incidentId: null, data: null, error: null, tab: "prediction" },
   openReport: async (incidentId, tab = "prediction") => {
     const s = get();
     const id = incidentId ?? s.selectedId ?? s.sim?.ai_order[0] ?? s.data?.incidents[0]?.id ?? null;
     if (!id) return;
     if (s.report.data?.incident_id === id && !s.simStale) {
-      set({ report: { ...s.report, open: true, tab } });
+      set({ consequence: null, report: { ...s.report, open: true, tab } });
       return;
     }
-    set({ report: { open: true, loading: true, incidentId: id, data: null, error: null, tab } });
+    set({ consequence: null, report: { open: true, loading: true, incidentId: id, data: null, error: null, tab } });
     try {
       const data = await api.reports(id, { response_delay: s.responseDelay, steps: s.steps, seed: s.seed, n_seeds: s.nSeeds, per_incident: s.overrides });
       if (get().report.incidentId === id) set((st) => ({ report: { ...st.report, loading: false, data } }));

@@ -55,3 +55,15 @@ Body: an optional `SimulateRequest` (`response_delay`, `steps`, `seed`, `n_seeds
 | `recommendation_report.consequences` | Under- and over-response statements tied to the estimate and to matched-seed simulation runs (crew here vs not), the per-incident crew benefit, and a `tradeoff` disclosure when the simulation favours another incident. |
 
 `/api/predict` also returns `heat_signal`, `anomaly` and `feasibility`. `POST /api/incidents/{id}/action` accepts `CONTINUE_MONITORING` and `ESCALATE_COORDINATION` (Supabase: run `schema.sql` Part 5; SQLite migrates itself).
+
+### Footprint forecast and consequence replay
+- **`/api/predict` → `footprint`:**
+  - `probability_any`: chance of any further detected footprint within 5 km in 48 h;
+  - `expected_km2`;
+  - `median_km2` / `p10_km2` / `p90_km2`: size *if activity continues*;
+  - `past_km2`;
+  - `eval`: held-out 2025 MAE, Spearman, AUC and coverage, each against repeating the last 24 h.
+  The `note` states it is a VIIRS detected-pixel footprint, not mapped burned area.
+- **`/api/reports/{id}` → `recommendation_report.consequences.simulation.replay`:** per-step frames (`crew_here`, `no_crew`) of this incident's plot.
+  - Each frame is an H×W digit string: 0 no fuel · 1 forest · 2 burning · 3 burned · 4 crew intervention.
+  - The replayed run is the matched seed whose outcomes with and without the crew are closest to the all-runs averages.

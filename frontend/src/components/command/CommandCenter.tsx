@@ -9,7 +9,7 @@ import { DecisionPanel } from "./DecisionPanel";
 import { IntelligencePanel } from "./IntelligencePanel";
 import { DecisionRecord } from "./DecisionRecord";
 import { MethodologyDrawer } from "./MethodologyDrawer";
-import { ReportCanvas } from "./ReportCanvas";
+import { ConsequenceBanner, ReportCanvas } from "./ReportCanvas";
 import { FieldBriefModal, MapControls, Toasts } from "./Overlays";
 import { StatCards } from "./StatCards";
 import { Timeline } from "./Timeline";
@@ -129,6 +129,7 @@ export function CommandCenter() {
           </div>
         )}
 
+        <ConsequenceBanner />
         {view === "sim" && sim && (
           <div className="order-4 px-4 pb-4 text-center text-[11px] font-medium text-[var(--ink-3)] lg:pointer-events-none lg:absolute lg:bottom-[160px] lg:left-1/2 lg:z-[5] lg:-translate-x-1/2 lg:p-0">
             Hypothetical scenario on procedurally generated plots · not a reconstruction of the real sites

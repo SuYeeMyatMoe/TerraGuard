@@ -242,6 +242,7 @@ class PredictResponse(BaseModel):
     heat_signal: HeatSignal
     anomaly: AnomalyAssessment
     feasibility: Optional[dict[str, Any]] = None
+    footprint: Optional[dict[str, Any]] = None
     explained_factors: list[ExplainedFactor]
     ranking_explanation: dict[str, Any]
     confidence_guidance: list[EvidenceGap]
