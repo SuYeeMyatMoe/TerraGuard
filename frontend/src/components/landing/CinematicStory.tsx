@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowUpRight, Leaf, X } from "lucide-react";
 import { CHAPTERS, CAPABILITIES, STEPS, TECHNOLOGY, EVIDENCE_NOTE, STORY_TIMING, clamp, ramp, sceneAt } from "./story";
 import { ForestEnvironment } from "./ForestEnvironment";
+import { ShaderBackground } from "@/components/ui/waves-shader";
 import styles from "./cinematic.module.css";
 const sceneIds=["forest-life","forest-fire","forest-ash"];
 
@@ -19,7 +20,8 @@ function ForestChapter({ index, sceneRef, active, navigate, showDetails }: { ind
         <nav aria-label={`${item.label} navigation`}><button onClick={showDetails} className={styles.aboutLink}>Our approach</button><Link href="/simulation" className={styles.navCta}>Launch simulation <ArrowUpRight size={15}/></Link></nav>
       </header>
       <div className={styles.edition}><span>FOREST INTELLIGENCE</span><span>MALAYSIA & INDONESIA</span></div>
-      <div className={styles.copyArea}>
+      <div className={`${styles.copyArea} ${index===0 ? styles.orbArea : ""}`}>
+        {index===0 && <div className={styles.fireOrb} aria-hidden="true"><ShaderBackground/><div className={styles.orbShade}/></div>}
         <div className={`${styles.copy} ${styles[`copy${index}`]}`}>
           <p className={styles.eyebrow}><span className={styles.statusDot}/> CHAPTER 0{index+1} / {item.label.toUpperCase()}</p>
           {index===0 ? <h1 id={`${sceneIds[index]}-title`}>{item.title[0]}<br/><em>{item.title[1]}</em></h1> : <h2 id={`${sceneIds[index]}-title`}>{item.title[0]}<br/><em>{item.title[1]}</em></h2>}
@@ -58,6 +60,9 @@ export function CinematicStory() {
       const rect=el.getBoundingClientRect();
       const p=clamp(-rect.top/Math.max(1,el.offsetHeight-viewport.offsetHeight));
       const fades=[ramp(p,...STORY_TIMING.firstFade),ramp(p,...STORY_TIMING.secondFade)];
+      el.style.setProperty("--dust-fire",String(fades[0]));
+      el.style.setProperty("--dust-ash",String(fades[1]));
+      window.dispatchEvent(new CustomEvent("terraguard:scene-colors",{detail:fades}));
       const next=fades[0]<.5?0:fades[1]<.5?1:2;
       if(next!==previous){previous=next;setActive(next);}
       scenes.forEach((scene,i)=>{
@@ -88,7 +93,7 @@ export function CinematicStory() {
     if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){[first,second,third][index].current?.scrollIntoView({behavior:"instant"});return;}
     window.scrollTo({top:window.scrollY+el.getBoundingClientRect().top+STORY_TIMING.chapterStops[index]*(el.offsetHeight-viewport.offsetHeight),behavior:"smooth"});
   };
-  return <div ref={root} className={styles.story} style={{"--story-screens":STORY_TIMING.scrollScreens} as CSSProperties}>
+  return <div ref={root} data-forest-story className={styles.story} style={{"--story-screens":STORY_TIMING.scrollScreens} as CSSProperties}>
     <div ref={stage} className={styles.storyStage}>
       {[first,second,third].map((ref,i)=><ForestChapter key={i} sceneRef={ref} index={i} active={reduced||active===i} navigate={navigate} showDetails={()=>details.current?.showModal()}/>)}
       <div className={styles.progressTrack} aria-hidden="true"><div/></div>
