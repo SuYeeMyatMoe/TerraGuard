@@ -2,7 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import { api } from "@/lib/api";
 import { shortId } from "@/lib/format";
@@ -12,11 +12,13 @@ import {
   rasterInsertionPoint,
   isReferenceLabel,
   syncCamera,
-  syncRaster,
+  syncRasterLayers,
+  rasterSourceReady,
+  cameraKey,
+  camerasAligned,
 } from "@/lib/map-style";
 import {
   analysisCircle,
-  STUDY_BOUNDS,
   type Bounds,
   type Position,
 } from "@/lib/map-geometry";
@@ -37,6 +39,7 @@ export type Measurement = {
   points: Position[];
   drawing: boolean;
 };
+export type RasterState = { before: boolean; after: boolean; detail: boolean };
 const COLORS: Record<string, string> = {
   INSPECT: "#ff8a35",
   RECHECK: "#2563eb",
@@ -54,6 +57,7 @@ type Props = {
   onPoint: (point: Position) => void;
   onViewport: (bounds: Bounds) => void;
   onTileError: (url: string) => void;
+  onRasterState: (state: RasterState) => void;
   destination: { center: Position; zoom: number } | null;
 };
 
@@ -247,6 +251,11 @@ function ensureBasemap(map: maplibregl.Map) {
     },
     rasterInsertionPoint(map.getStyle()?.layers ?? []),
   );
+  map.addLayer({
+    id: "scientific-background", type: "background",
+    layout: { visibility: "none" },
+    paint: { "background-color": "#eceff2" },
+  }, "world-imagery");
 }
 
 /** One interactive camera; the after map mirrors it and is clipped by the slider. */
@@ -263,6 +272,11 @@ export function EarthMap(props: Props) {
     selectedId = useStore((s) => s.selectedId),
     select = useStore((s) => s.select);
   const [pas, setPas] = useState<FeatureCollection | null>(null);
+  const [detail, setDetail] = useState(false);
+  const tileFailures = useRef(new Set<string>());
+  const rasterState = useRef<RasterState>({ before: false, after: false, detail: false });
+  const prewarmed = useRef(new WeakMap<maplibregl.Map, string>());
+  const renderedFrames = useRef(new WeakMap<maplibregl.Map, string>());
   const first = data?.incidents[0]?.id;
   useEffect(() => {
     current.current = props;
@@ -291,7 +305,9 @@ export function EarthMap(props: Props) {
       const p = map.project([inc.lon, inc.lat]);
       result[inc.id] = [p.x, p.y];
     });
-    setPositions(result);
+    setPositions((previous) => Object.keys(result).every((id) => previous[id] &&
+      Math.abs(previous[id][0] - result[id][0]) < 0.5 && Math.abs(previous[id][1] - result[id][1]) < 0.5)
+      ? previous : result);
   }, [data]);
   useEffect(() => {
     if (!beforeDiv.current || !afterDiv.current) return;
@@ -301,17 +317,11 @@ export function EarthMap(props: Props) {
         import.meta.url,
       ).toString(),
     );
-    const bounds: [[number, number], [number, number]] = [
-      [STUDY_BOUNDS[0], STUDY_BOUNDS[1]],
-      [STUDY_BOUNDS[2], STUDY_BOUNDS[3]],
-    ];
     const before = new maplibregl.Map({
       container: beforeDiv.current,
       style: "https://tiles.openfreemap.org/styles/positron",
-      bounds,
-      fitBoundsOptions: {
-        padding: { top: 60, bottom: 60, left: 340, right: 440 },
-      },
+      center: [20, 15],
+      zoom: 2,
       attributionControl: false,
     });
     maps.current = [before];
@@ -326,10 +336,11 @@ export function EarthMap(props: Props) {
     if (controls) controls.style.bottom = "70px";
     const sync = () => {
       const after = maps.current[1];
-      if (after) syncCamera(before, after);
+      if (after && current.current.compare) syncCamera(before, after);
     };
     const viewport = () => {
       const b = before.getBounds();
+      setDetail(before.getZoom() >= 6);
       current.current.onViewport([
         b.getWest(),
         b.getSouth(),
@@ -368,6 +379,7 @@ export function EarthMap(props: Props) {
     observer.observe(beforeDiv.current);
     return () => {
       observer.disconnect();
+      maps.current[1]?.remove();
       before.remove();
       maps.current = [];
     };
@@ -382,19 +394,21 @@ export function EarthMap(props: Props) {
     };
   }, [projectMarkers, ready]);
 
-  const imagery = props.imagery,
-    bounds = imagery?.bounds;
-  const rasterBefore = imagery?.layers.find((l) => l.id === props.layer);
-  const rasterAfter = imagery?.layers.find(
+  // Polling statistics must not resynchronize raster sources with identical URLs.
+  const layersKey = JSON.stringify(props.imagery?.layers ?? []);
+  const boundsKey = JSON.stringify(props.imagery?.bounds ?? null);
+  const layers = useMemo(() => JSON.parse(layersKey) as EarthEngineImagery["layers"], [layersKey]);
+  const bounds = useMemo(() => JSON.parse(boundsKey) as Bounds | null, [boundsKey]);
+  const rasterBefore = layers.find((l) => l.id === props.layer);
+  const rasterAfter = layers.find(
     (l) => l.id === `${props.layer}_after`,
   );
-  const beforeUrl = rasterBefore?.tile_url,
-    afterUrl = rasterAfter?.tile_url;
-  const needsAfter =
-    props.compare && props.visibility.historical && Boolean(afterUrl);
+  const afterUrl = rasterAfter?.tile_url;
   useEffect(() => {
     const before = maps.current[0];
-    if (!needsAfter || !before || !afterDiv.current) return;
+    // Prepare once when the post-period recipe arrives, even before the user
+    // opens comparison. Keep the map instance through all subsequent toggles.
+    if (!afterUrl || !before || !afterDiv.current || maps.current[1]) return;
     const after = new maplibregl.Map({
       container: afterDiv.current,
       style: "https://tiles.openfreemap.org/styles/positron",
@@ -409,11 +423,8 @@ export function EarthMap(props: Props) {
       setReady((n) => n + 1);
       syncCamera(before, after);
     });
-    return () => {
-      if (maps.current[1] === after) maps.current.pop();
-      after.remove();
-    };
-  }, [needsAfter]);
+    // Both instances are disposed only by the parent map's unmount cleanup.
+  }, [afterUrl]);
   useEffect(() => {
     if (props.destination)
       maps.current[0]?.jumpTo({
@@ -423,36 +434,86 @@ export function EarthMap(props: Props) {
   }, [props.destination]);
   useEffect(() => {
     const cancels = maps.current.map((map, i) => {
-      const raster = i === 0 ? rasterBefore : rasterAfter;
+      const resources = layers.filter((resource) => resource.id.endsWith("_after") === (i === 1));
+      const selected = `${props.layer}${i === 1 ? "_after" : ""}`;
       const apply = () => {
-        syncRaster(map, "earth-engine", raster ?? null, bounds ?? null);
-        if (map.getLayer("earth-engine")) {
-          map.setPaintProperty(
-            "earth-engine",
-            "raster-opacity",
-            current.current.opacity,
-          );
-          map.setLayoutProperty(
-            "earth-engine",
-            "visibility",
-            current.current.visibility.historical ? "visible" : "none",
-          );
-        }
+        syncRasterLayers(map, resources, bounds ?? null, selected,
+          current.current.visibility.historical, current.current.opacity);
       };
       const error = (e: maplibregl.ErrorEvent) => {
-        if ("sourceId" in e && e.sourceId === "earth-engine" && raster)
-          current.current.onTileError(raster.tile_url);
+        const sourceId = "sourceId" in e ? e.sourceId : null;
+        const resource = resources.find((item) => `earth-engine-${item.id}` === sourceId);
+        if (resource) {
+          tileFailures.current.add(resource.tile_url);
+          current.current.onTileError(resource.tile_url);
+        }
+        report();
+      };
+      const report = () => {
+        const beforeMap = maps.current[0], afterMap = maps.current[1];
+        const v = current.current;
+        const beforeLayer = v.imagery?.layers.find((item) => item.id === v.layer);
+        const afterLayer = v.imagery?.layers.find((item) => item.id === `${v.layer}_after`);
+        const detailed = Boolean(beforeMap && beforeMap.getZoom() >= 6);
+        const next = {
+          detail: detailed,
+          before: Boolean(detailed && v.visibility.historical && beforeMap && beforeLayer &&
+            renderedFrames.current.get(beforeMap) === beforeLayer.tile_url + cameraKey(beforeMap) &&
+            rasterSourceReady(beforeMap, `earth-engine-${v.layer}`, tileFailures.current.has(beforeLayer.tile_url))),
+          after: Boolean(detailed && v.visibility.historical && afterMap && afterLayer &&
+            camerasAligned(beforeMap, afterMap) &&
+            renderedFrames.current.get(afterMap) === afterLayer.tile_url + cameraKey(afterMap) &&
+            rasterSourceReady(afterMap, `earth-engine-${v.layer}_after`, tileFailures.current.has(afterLayer.tile_url))),
+        };
+        if (next.before !== rasterState.current.before || next.after !== rasterState.current.after || next.detail !== rasterState.current.detail) {
+          rasterState.current = next;
+          v.onRasterState(next);
+        }
+        // In ordinary browsing, warm the hidden after map only after the
+        // foreground tiles finish. Avoid doubling work throughout a pan/flyTo.
+        if (i === 0 && next.before && afterMap && !v.compare && !beforeMap.isMoving() &&
+            !camerasAligned(beforeMap, afterMap)) syncCamera(beforeMap, afterMap);
+        // Warm the other display layer after the active one has loaded. It
+        // stays transparent, but its tile pyramid is ready for a quick toggle.
+        const warmKey = resources.map((resource) => resource.tile_url).join(":") + selected;
+        if (detailed && v.visibility.historical && prewarmed.current.get(map) !== warmKey &&
+            rasterSourceReady(map, `earth-engine-${selected}`, false)) {
+          prewarmed.current.set(map, warmKey);
+          syncRasterLayers(map, resources, bounds ?? null, selected, v.visibility.historical, v.opacity, true);
+        }
+      };
+      const rendered = () => {
+        const v = current.current;
+        const active = v.imagery?.layers.find((item) => item.id === `${v.layer}${i === 1 ? "_after" : ""}`);
+        if (active) renderedFrames.current.set(map, active.tile_url + cameraKey(map));
+        report();
       };
       map.on("error", error);
+      map.on("sourcedata", report);
+      map.on("sourcedataloading", report);
+      map.on("idle", report);
+      map.on("moveend", report);
+      map.on("render", rendered);
       const cancel = afterStyleReady(map, apply);
+      report();
       return () => {
         cancel();
         map.off("error", error);
+        map.off("sourcedata", report);
+        map.off("sourcedataloading", report);
+        map.off("idle", report);
+        map.off("moveend", report);
+        map.off("render", rendered);
       };
     });
     return () => cancels.forEach((cancel) => cancel());
     // URLs identify the map resources; toggles and opacity are handled independently.
-  }, [beforeUrl, afterUrl, bounds, ready, rasterBefore, rasterAfter]);
+  }, [bounds, ready, layers, props.layer]);
+
+  useEffect(() => {
+    if (props.compare && maps.current[0] && maps.current[1])
+      syncCamera(maps.current[0], maps.current[1]);
+  }, [props.compare, ready]);
 
   useEffect(() => {
     const cancels = maps.current.map((map) =>
@@ -474,13 +535,26 @@ export function EarthMap(props: Props) {
           inc ? analysisCircle([inc.lon, inc.lat], 1000) : EMPTY,
         );
         setSource(map, "measure", measureFeatures(props.measurement));
+      }),
+    );
+    return () => cancels.forEach((cancel) => cancel());
+  }, [data, pas, selectedId, props.measurement, ready]);
+
+  useEffect(() => {
+    const cancels = maps.current.map((map, i) =>
+      afterStyleReady(map, () => {
         const v = props.visibility;
+        const resource = i === 0 ? rasterBefore : rasterAfter;
+        // Scientific gaps must never reveal imagery from unrelated dates.
+        const scientific = v.historical && ((Boolean(resource) && detail) || props.layer === "ndvi" || props.compare);
         for (const l of map.getStyle()?.layers ?? []) {
           const show =
             l.id === "world-imagery"
-              ? v.imagery
-              : l.id === "earth-engine"
-                ? v.historical
+              ? v.imagery && !scientific
+              : l.id === "scientific-background"
+                ? scientific
+              : l.id.startsWith("earth-engine-")
+                ? undefined
                 : l.id.startsWith("pas-")
                   ? v.protected
                   : l.id === "ctx-dots"
@@ -497,8 +571,11 @@ export function EarthMap(props: Props) {
               show ? "visible" : "none",
             );
         }
-        if (map.getLayer("earth-engine"))
-          map.setPaintProperty("earth-engine", "raster-opacity", props.opacity);
+        if (map.getLayer("pas-fill"))
+          map.setPaintProperty("pas-fill", "fill-opacity", props.layer === "ndvi" ? 0 : 0.12);
+        const selected = `${props.layer}${i === 1 ? "_after" : ""}`;
+        syncRasterLayers(map, layers.filter((item) => item.id.endsWith("_after") === (i === 1)), bounds,
+          selected, v.historical, props.opacity, detail && rasterSourceReady(map, `earth-engine-${selected}`, false));
       }),
     );
     const map = maps.current[0];
@@ -508,12 +585,16 @@ export function EarthMap(props: Props) {
         : "";
     return () => cancels.forEach((cancel) => cancel());
   }, [
-    data,
-    pas,
-    selectedId,
     props.visibility,
     props.opacity,
-    props.measurement,
+    props.layer,
+    detail,
+    props.compare,
+    props.measurement.drawing,
+    rasterBefore,
+    rasterAfter,
+    layers,
+    bounds,
     ready,
   ]);
 
@@ -532,11 +613,7 @@ export function EarthMap(props: Props) {
         essential: true,
       });
   }, [selectedId, selectedLon, selectedLat]);
-  const comparing =
-    props.compare &&
-    props.visibility.historical &&
-    imagery?.comparison?.status === "ready" &&
-    Boolean(afterUrl);
+  const comparing = props.compare && props.visibility.historical;
   return (
     <>
       <div
@@ -552,6 +629,7 @@ export function EarthMap(props: Props) {
         style={{
           position: "absolute",
           visibility: comparing ? "visible" : "hidden",
+          backgroundColor: "#eceff2",
           clipPath: `inset(0 0 0 ${props.divider}%)`,
         }}
       />

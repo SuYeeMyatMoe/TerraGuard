@@ -4,13 +4,14 @@ export type ImageryOptions = {
   bounds?: Bounds;
   mode?: "context" | "compare";
   signal?: AbortSignal;
+  background?: boolean;
 };
 export const imageryKey = (
   id: string | undefined,
   days: number,
   options: ImageryOptions = {},
 ) =>
-  `${id ?? ""}:${days}:${options.mode ?? "context"}:${options.bounds?.join(",") ?? ""}`;
+  `${id ?? ""}:${days}:${options.background ? `period-${options.mode ?? "context"}` : `${options.mode ?? "context"}:${options.bounds?.join(",") ?? ""}`}`;
 
 export type ImagerySnapshot = {
   key: string;
@@ -116,8 +117,8 @@ export class EarthEngineController {
     const abort = new AbortController();
     this.abort = abort;
     const key = imageryKey(id, days, options);
-    const identity = `${id ?? ""}:${days}:${options.mode ?? "context"}`;
-    const retained = this.identity === identity ? this.snapshot.data : null;
+    const identity = `${id ?? ""}:${days}`;
+    const retained = options.background || this.identity === identity ? this.snapshot.data : null;
     this.identity = identity;
     const cached = this.cache.get(key);
     if (!refresh && cached && cached.expires > Date.now()) {
@@ -128,24 +129,43 @@ export class EarthEngineController {
     }
     this.publish({ key, loading: true, data: retained, error: null });
     try {
-      const data = await this.request(id, days, refresh, {
-        ...options,
-        signal: abort.signal,
-      });
-      if (sequence === this.sequence) {
-        if (data.status === "ready") {
-          this.cache.set(key, { expires: Date.now() + 480000, data });
-          while (this.cache.size > 8)
-            this.cache.delete(this.cache.keys().next().value!);
+      const deadline = Date.now() + 180000;
+      let first = true;
+      while (!abort.signal.aborted && sequence === this.sequence) {
+        const data = await this.request(id, days, first && refresh, {
+          ...options,
+          signal: abort.signal,
+        });
+        first = false;
+        if (sequence !== this.sequence) return;
+        const preparing = data.status === "preparing" || data.comparison?.status === "preparing";
+        const pendingStats = data.analysis_status === "preparing" || data.comparison?.analysis_status === "preparing";
+        const waitingPair = data.comparison?.status === "preparing" && retained?.comparison?.status === "ready";
+        const visible = data.status === "preparing" || waitingPair ? retained ?? data : data;
+        this.publish({ key, loading: preparing, data: visible, error: null });
+        if (!options.background || (!preparing && !pendingStats)) {
+          if (data.status === "ready") {
+            this.cache.set(key, { expires: Date.now() + 480000, data });
+            while (this.cache.size > 8)
+              this.cache.delete(this.cache.keys().next().value!);
+          }
+          return;
         }
-        this.publish({ key, loading: false, data, error: null });
+        if (Date.now() >= deadline) throw new Error("Imagery preparation is taking longer than expected. Retry imagery.");
+        // Stop polling immediately on unmount/settings changes; old replies cannot win.
+        await new Promise<void>((resolve) => {
+          const finish = () => { clearTimeout(timer); abort.signal.removeEventListener("abort", finish); resolve(); };
+          const timer = setTimeout(finish, 750);
+          abort.signal.addEventListener("abort", finish, { once: true });
+          if (abort.signal.aborted) finish();
+        });
       }
     } catch (error) {
       if (sequence === this.sequence)
         this.publish({
           key,
           loading: false,
-          data: retained,
+          data: this.snapshot.key === key ? this.snapshot.data : retained,
           error:
             error instanceof Error
               ? error.message

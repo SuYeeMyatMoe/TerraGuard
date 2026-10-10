@@ -3,6 +3,8 @@
 Run:  .venv/Scripts/python -m uvicorn app.main:app --port 8010 --reload
 """
 from __future__ import annotations
+import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
@@ -17,7 +19,20 @@ from .schemas import (ActionRequest, ActionResponse, ExplainRequest, FieldBriefR
 from .service import store
 from .operational_store import OperationalStoreError
 
-app = FastAPI(title="TerraGuard AI", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_app):
+    store()
+    imagery = earth_engine.service()
+    imagery.warm()
+    try:
+        yield
+    finally:
+        await asyncio.to_thread(imagery.close)
+        if hasattr(earth_engine.service, "cache_clear"):
+            earth_engine.service.cache_clear()
+
+
+app = FastAPI(title="TerraGuard AI", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
                    allow_methods=["*"], allow_headers=["*"])
 
@@ -25,11 +40,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http
 @app.exception_handler(OperationalStoreError)
 async def operational_error(_request, _exc):
     return JSONResponse(status_code=503, content={"detail": "Operational records are unavailable. Please try again."})
-
-
-@app.on_event("startup")
-def _startup() -> None:
-    store()
 
 
 def _known(incident_id: str) -> None:
@@ -111,16 +121,14 @@ def earth_engine_status():
 
 
 @app.get("/api/earth-engine/tiles/{handle}/{z}/{x}/{y}")
-def earth_engine_tile(handle: str, z: int, x: int, y: int):
+async def earth_engine_tile(handle: str, z: int, x: int, y: int):
     service = earth_engine.service()
-    try:
-        url = service.tile_url(handle, z, x, y)
-    except KeyError:
-        raise HTTPException(410, "Satellite layer expired. Refresh the imagery.")
-    except ValueError:
+    if not (0 <= z <= 18 and 0 <= x < 2**z and 0 <= y < 2**z):
         raise HTTPException(422, "Invalid tile coordinates.")
     try:
-        image = service.fetch_tile(handle, z, x, y)
+        image = await asyncio.get_running_loop().run_in_executor(service.delivery.tile_io, service.fetch_tile, handle, z, x, y)
+    except KeyError:
+        raise HTTPException(410, "Satellite layer expired. Refresh the imagery.")
     except Exception:
         raise HTTPException(503, "Satellite tile is unavailable. Refresh the imagery.")
     # Earth Engine can optimize an opaque RGB tile as JPEG.
@@ -135,14 +143,15 @@ def earth_engine_tile(handle: str, z: int, x: int, y: int):
 
 @app.get("/api/earth-engine/{incident_id}")
 def earth_engine_imagery(incident_id: str, days: int = Query(30, ge=14, le=60), refresh: bool = False,
-                         bbox: str | None = None, mode: str = "context"):
+                         bbox: str | None = None, mode: str = "context", async_load: bool = False):
     _known(incident_id)
     if days not in (14, 30, 60):
         raise HTTPException(422, "Choose a 14, 30 or 60 day window.")
     # Imagery remains available even if operational storage is down.
     incident = store().incident(incident_id, statuses={})
     try:
-        return earth_engine.service().describe(incident, days, refresh, bbox=bbox, mode=mode)
+        result = earth_engine.service().describe(incident, days, refresh, bbox=bbox, mode=mode, background=async_load)
+        return JSONResponse(result, headers={"Cache-Control": "no-store"})
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from None
 

@@ -98,7 +98,7 @@ test('comparison cameras preserve asymmetric panel padding and align geographic 
   assert.equal(camera.center.lng,111);
 });
 
-test('viewport refresh retains useful imagery but comparison changes clear it and stale extents cannot win', async () => {
+test('comparison retains before imagery and stale extents cannot win', async () => {
   const waits = [];
   const state = controller(() => new Promise(resolve => waits.push(resolve)));
   const a = state.load('A',30,false,{bounds:[110,1,112,3],mode:'context'});
@@ -106,10 +106,23 @@ test('viewport refresh retains useful imagery but comparison changes clear it an
   const b = state.load('A',30,false,{bounds:[111,2,113,4],mode:'context'});
   assert.equal(state.getSnapshot().data.incident_id,'A');
   const c = state.load('A',30,false,{bounds:[111,2,113,4],mode:'compare'});
-  assert.equal(state.getSnapshot().data,null);
+  assert.equal(state.getSnapshot().data.incident_id,'A');
   waits[2]({status:'ready',comparison:{status:'ready'}}); await c;
   waits[1]({status:'ready',incident_id:'wrong'}); await b;
   assert.equal(state.getSnapshot().data.comparison.status,'ready');
+});
+
+test('RGB and NDVI sources survive switching the selected layer', () => {
+  const {syncRasterLayers}=loadModule('src/lib/map-style.ts');
+  const sources=new Map(),layers=new Map();let removes=0;
+  const map={getSource:id=>sources.get(id),getLayer:id=>layers.get(id),getStyle:()=>({layers:[]}),
+    addSource:(id,s)=>sources.set(id,s),addLayer:l=>layers.set(l.id,l),
+    removeSource:id=>{removes++;sources.delete(id);},removeLayer:id=>layers.delete(id),
+    setLayoutProperty(){},setPaintProperty(){}};
+  const resources=['rgb','ndvi'].map(id=>({id,tile_url:`/api/earth-engine/tiles/${id}/{z}/{x}/{y}`,attribution:'test'}));
+  syncRasterLayers(map,resources,[-180,-85,180,85],'rgb',true,1);
+  syncRasterLayers(map,resources,[-180,-85,180,85],'ndvi',true,1);
+  assert.equal(sources.size,2);assert.equal(removes,0);
 });
 
 test('the view retains a compatible extent while its next request is being scheduled',()=>{
@@ -158,12 +171,47 @@ test("imagery panel distinguishes missing data from numeric vegetation evidence"
   assert.match(ready, /Limited clear coverage/);
   assert.match(ready, /Satellite opacity/);
   assert.match(ready, /0–0\.2 · low NDVI/);
-  assert.match(ready, /Transparent gaps show the basemap, not NDVI/);
+  assert.match(ready, /Gray gaps have no clear observations/);
   const empty = renderToStaticMarkup(createElement(EarthEnginePanel, { ...props, state: {
     loading: false, error: null, data: { status: "no_data", reason: "No clear satellite pixels", analysis: { ndvi_mean: null, valid_coverage_pct: 0 } },
   }}));
   assert.match(empty, /No clear satellite pixels/);
   assert.doesNotMatch(empty, /Mean NDVI|Connected/);
+});
+
+test('background preparation publishes before imagery while after and statistics finish', async () => {
+  let calls=0;
+  const {EarthEngineController}=loadModule('src/lib/earth-engine.ts',{}, {Error,
+    setTimeout:fn=>setImmediate(fn),clearTimeout:clearImmediate});
+  const state=new EarthEngineController(async()=>{
+    calls++;
+    return {status:'ready',incident_id:'A',layers:[{id:'rgb',tile_url:'before'}],
+      comparison:{status:calls===1?'preparing':'ready'},analysis_status:calls===1?'preparing':'ready'};
+  });
+  const updates=[];state.subscribe(()=>updates.push(state.getSnapshot()));
+  await state.load('A',30,false,{background:true,mode:'compare'});
+  assert.equal(calls,2);
+  assert.ok(updates.some(value=>value.loading&&value.data?.layers?.[0].tile_url==='before'));
+  assert.equal(state.getSnapshot().loading,false);
+});
+
+test('source readiness distinguishes pending and failed image tiles', () => {
+  const {rasterSourceReady}=loadModule('src/lib/map-style.ts');
+  const map={getSource:()=>({}),isSourceLoaded:()=>false};
+  assert.equal(rasterSourceReady(map,'rgb',false),false);
+  map.isSourceLoaded=()=>true;
+  assert.equal(rasterSourceReady(map,'rgb',true),false);
+  assert.equal(rasterSourceReady(map,'rgb',false),true);
+});
+
+test('comparison readiness requires matching cameras and a frame for the current layer', () => {
+  const {cameraKey,camerasAligned}=loadModule('src/lib/map-style.ts');
+  const camera=(lon)=>({getCenter:()=>({lng:lon,lat:3}),getZoom:()=>10,getPitch:()=>0,getBearing:()=>0,
+    getPadding:()=>({left:300,right:420,top:0,bottom:0}),getCanvas:()=>({width:1200,height:800})});
+  assert.equal(camerasAligned(camera(113),camera(112)),false);
+  assert.equal(camerasAligned(camera(113),camera(113)),true);
+  assert.equal(cameraKey(camera(113)),cameraKey(camera(113)));
+  assert.notEqual(cameraKey(camera(113)),cameraKey(camera(112)));
 });
 
 test('overview hides incident statistics and comparison exposes independent retrospective dates', () => {

@@ -14,6 +14,7 @@ from threading import RLock
 from time import monotonic
 from urllib.parse import urlsplit
 from uuid import uuid4
+from .imagery_delivery import ImageryDelivery, WORLD
 
 SENTINEL = "COPERNICUS/S2_SR_HARMONIZED"
 CLOUD_SCORE = "GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED"
@@ -52,8 +53,13 @@ class EarthEngineProvider:
     def __init__(self, project: str, key_path: str = ""):
         self.project, self.key_path = project, key_path
         self.ee = None
+        self.initialization_lock = RLock()
 
     def initialize(self):
+        with self.initialization_lock:
+            return self._initialize()
+
+    def _initialize(self):
         if self.ee is None:
             import ee
             if self.key_path:
@@ -70,6 +76,43 @@ class EarthEngineProvider:
             ee.data.setDeadline(60000)
             self.ee = ee
         return self.ee
+
+    def _collection(self, start, end, region=None):
+        ee = self.initialize()
+        collection = ee.ImageCollection(SENTINEL).filterDate(start, end)
+        if region is not None:
+            collection = collection.filterBounds(region)
+        return (collection.linkCollection(ee.ImageCollection(CLOUD_SCORE), ["cs_cdf"])
+                .map(lambda image: image.updateMask(image.select("cs_cdf").gte(0.60))))
+
+    def imagery(self, start, end):
+        # A global *recipe*, not a global reduceRegion/computation. Earth Engine
+        # evaluates the pixels of the requested z/x/y tiles lazily. Never clip
+        # this recipe to a camera extent or wait for incident statistics here.
+        collection = self._collection(start, end)
+        rgb = collection.select(["B4", "B3", "B2"]).median()
+        ndvi = collection.map(lambda image: image.normalizedDifference(["B8", "B4"]).rename("ndvi")).median()
+        return {kind: image.getMapId(params)["tile_fetcher"].url_format
+                for kind, image, params in (
+                    ("rgb", rgb, {"bands": ["B4", "B3", "B2"], "min": 0, "max": 4500, "gamma": 1.15}),
+                    ("ndvi", ndvi, {"min": -1, "max": 1, "palette": NDVI_PALETTE}))}
+
+    def statistics(self, incident, start, end):
+        ee = self.initialize()
+        region = ee.Geometry.Point([incident["lon"], incident["lat"]]).buffer(1000)
+        images = self._collection(start, end, region)
+        info = ee.Dictionary({"count": images.size(), "first": images.aggregate_min("system:time_start"),
+                              "last": images.aggregate_max("system:time_start")}).getInfo()
+        result = {"scene_count": int(info["count"]), "ndvi_mean": None, "valid_coverage_pct": 0.0,
+                  **{name: None if info.get(field) is None else iso(datetime.fromtimestamp(info[field] / 1000, timezone.utc))
+                     for name, field in (("acquisition_start", "first"), ("acquisition_end", "last"))}}
+        if result["scene_count"]:
+            ndvi = images.map(lambda image: image.normalizedDifference(["B8", "B4"]).rename("ndvi")).median()
+            coverage = ndvi.mask().unmask(0, sameFootprint=False).rename("valid_fraction")
+            values = ndvi.addBands(coverage).reduceRegion(ee.Reducer.mean(), region, 20, maxPixels=100000).getInfo()
+            result["ndvi_mean"] = None if values.get("ndvi") is None else round(values["ndvi"], 3)
+            result["valid_coverage_pct"] = round(100 * (values.get("valid_fraction") or 0), 1)
+        return result
 
     def analyze(self, incident: dict, start: str, end: str, display_bounds=None) -> dict:
         ee = self.initialize()
@@ -127,7 +170,7 @@ class EarthEngineProvider:
 
 
 class EarthEngineService:
-    def __init__(self, project: str, provider=None, clock=monotonic, utcnow=None):
+    def __init__(self, project: str, provider=None, clock=monotonic, utcnow=None, cache_dir=None):
         self.project = project.strip()
         self.provider = provider or EarthEngineProvider(self.project, os.getenv("GEE_SERVICE_ACCOUNT_JSON", "").strip())
         self.clock, self.lock = clock, RLock()
@@ -136,6 +179,14 @@ class EarthEngineService:
         self.cache, self.tiles = OrderedDict(), OrderedDict()
         self.tile_cache, self.tile_pending = OrderedDict(), {}
         self.tile_bytes, self.max_tile_bytes = 0, 32 * 1024 * 1024
+        root = cache_dir or os.getenv("GEE_TILE_CACHE_DIR") or Path(__file__).resolve().parents[1] / "data" / "earth-cache"
+        self.delivery = ImageryDelivery(self.project, self.provider, root, clock)
+
+    def close(self):
+        self.delivery.close()
+
+    def warm(self):
+        self.delivery.warm()
 
     def status(self) -> dict:
         return {"status": "select_incident" if self.project else "not_configured", "available": False,
@@ -168,6 +219,8 @@ class EarthEngineService:
         return url.format(z=z, x=x, y=y)
 
     def fetch_tile(self, handle: str, z: int, x: int, y: int) -> bytes:
+        if handle.startswith("g"):
+            return self.delivery.fetch_tile(handle, z, x, y)
         url = self.tile_url(handle, z, x, y)
         with self.lock:
             cached = self.tile_cache.get(url)
@@ -211,11 +264,15 @@ class EarthEngineService:
                 return cached[1]
         return None
 
-    def describe(self, incident: dict, days: int, refresh: bool = False, bbox=None, mode: str = "context") -> dict:
+    def describe(self, incident: dict, days: int, refresh: bool = False, bbox=None, mode: str = "context", background=False) -> dict:
         if days not in (14, 30, 60):
             raise ValueError("Choose a 14, 30 or 60 day window")
         if mode not in ("context", "compare"):
             raise ValueError("Choose context or compare mode")
+        if background:
+            if bbox is not None:
+                display_extent(incident, bbox)  # Validate compatibility input; recipes remain global.
+            return self._manifest(incident, days, mode, refresh)
         bounds = display_extent(incident, bbox)
         if bounds[2] - bounds[0] > 8 or bounds[3] - bounds[1] > 8:
             raise ValueError('Zoom in to analyze a view no wider or taller than 8 degrees. Global browsing stays available.')
@@ -279,6 +336,42 @@ class EarthEngineService:
                 while len(self.cache) > 64:
                     self.cache.popitem(last=False)
             return result
+
+    def _manifest(self, incident, days, mode, refresh):
+        end = datetime.fromisoformat(incident["observed_at"].replace("Z", "+00:00")).astimezone(timezone.utc)
+        now = self.utcnow()
+        before = {"start": iso(end - timedelta(days=days)), "end": iso(end), "days": days}
+        # The open post period advances on five-minute snapshots, not every poll.
+        snapshot_now = now.replace(minute=now.minute // 5 * 5, second=0, microsecond=0)
+        after_end = min(end + timedelta(days=days), snapshot_now)
+        after = {"start": iso(end), "end": iso(max(end, after_end)), "days": days}
+        base = {**self.status(), "incident_id": incident["id"], "window": before, "bounds": WORLD.copy(),
+                "display": None, "analysis": None, "analysis_status": "preparing",
+                "analysis_region": {"center": [incident["lon"], incident["lat"]], "radius_m": 1000},
+                "generated_at": iso(now), "refresh_after_seconds": 540,
+                "method": "Sentinel-2; Cloud Score+ ≥ 0.60; period median; NDVI per scene. Incident statistics: 1 km at 20 m.",
+                "limitations": "Gray pixels have no clear observations. Period composites are not single-date photographs. NDVI is not proof of fire or forest loss."}
+        if not self.project:
+            return {**base, "analysis_status": "unavailable"}
+        spec = self.delivery.specification(before, now, refresh)
+        period = self.delivery.period(spec, "", ATTRIBUTION)
+        base.update(period, available=period["status"] == "ready",
+                    reason="Preparing dated imagery…" if period["status"] == "preparing" else
+                           "Satellite imagery is temporarily unavailable. Try again." if period["status"] == "unavailable" else None)
+        base["analysis_status"], base["analysis"] = self.delivery.statistics(incident, before, refresh)
+        if mode == "compare":
+            comparison = {"status": "no_data", "window": after, "analysis": None, "display": None,
+                          "analysis_status": "unavailable", "reason": "No post-incident period is available yet."}
+            if after_end > end:
+                after_spec = self.delivery.specification(after, now, refresh)
+                post = self.delivery.period(after_spec, "_after", ATTRIBUTION)
+                comparison.update({key: value for key, value in post.items() if key != "layers"},
+                                  reason="Preparing after imagery…" if post["status"] == "preparing" else
+                                         "After imagery is temporarily unavailable." if post["status"] == "unavailable" else None)
+                base["layers"].extend(post["layers"])
+                comparison["analysis_status"], comparison["analysis"] = self.delivery.statistics(incident, after, refresh)
+            base["comparison"] = comparison
+        return base
 
 
 @lru_cache(maxsize=1)

@@ -66,14 +66,15 @@ function earthView() {
   return {
     calls, render,
     map: () => props(Map), panel: () => props(Panel),
+    store,
     async flush() { render(); await new Promise(setImmediate); render(); },
   };
 }
 
-test('automatic analysis follows controls, while initial browsing and camera movement never request imagery', async () => {
+test('period resources load automatically and global panning or layer switches never regenerate them', async () => {
   const view = earthView();
   view.map().onViewport([110, 1, 110.4, 1.4]); await view.flush();
-  assert.equal(view.calls.length, 0);
+  assert.equal(view.calls.length, 1);
   view.panel().setLayer('ndvi'); await view.flush();
   assert.equal(view.calls.length, 1);
   assert.equal(view.panel().state.data.status, 'ready');
@@ -81,28 +82,38 @@ test('automatic analysis follows controls, while initial browsing and camera mov
   view.map().onViewport([46.4, 24.4, 47, 25]); await view.flush();
   assert.equal(view.calls.length, 1, 'panning must not start another analysis');
   view.panel().setMode('compare'); await view.flush();
-  assert.equal(view.calls.length, 2);
-  assert.equal(view.calls[1].mode, 'compare');
-  assert.ok(view.calls[1].bounds[0] < 47 && view.calls[1].bounds[0] > 40);
+  assert.equal(view.calls.length, 1);
+  assert.equal(view.calls[0].mode, 'compare');
+  assert.equal(view.calls[0].background, true);
+  assert.equal(view.calls[0].bounds, undefined);
   assert.equal(view.panel().state.data.comparison.status, 'ready');
   view.panel().setDays(14); await view.flush();
-  assert.equal(view.calls.length, 3);
-  assert.equal(view.calls[2].days, 14);
-  assert.equal(view.calls[2].signal.aborted, false, 'new settings must not reset their own request');
+  assert.equal(view.calls.length, 2);
+  assert.equal(view.calls[1].days, 14);
+  assert.equal(view.calls[1].signal.aborted, false, 'new settings must not reset their own request');
   view.panel().setOpacity(0.5); await view.flush();
-  assert.equal(view.calls.length, 3);
+  assert.equal(view.calls.length, 2);
 });
 
-test('automatic analysis waits for the first viewport and rejects world-scale aggregation', async () => {
+test('incident statistics disappear when browsing a different region', async () => {
+  const view=earthView();view.store.data.incidents[0]={id:'A',lat:3.5,lon:113};
+  view.map().onViewport([112,3,114,4]);await view.flush();
+  assert.equal(view.panel().overview,false);
+  view.map().onViewport([46,24,47,25]);await view.flush();
+  assert.equal(view.panel().overview,true);
+  assert.equal(view.calls.length,1);
+});
+
+test('world-scale viewing keeps the same on-demand period resources', async () => {
   const view = earthView();
   view.panel().setLayer('ndvi'); await view.flush();
-  assert.equal(view.calls.length, 0);
+  assert.equal(view.calls.length, 1);
   view.map().onViewport([110, 1, 110.4, 1.4]); await view.flush();
   assert.equal(view.calls.length, 1);
-  assert.equal(view.panel().analysisError, null);
+  assert.equal(view.panel().analysisError, undefined);
   view.map().onViewport([-180, -70, 180, 70]); await view.flush();
   assert.equal(view.calls.length, 1);
   view.panel().setMode('compare'); await view.flush();
   assert.equal(view.calls.length, 1);
-  assert.match(view.panel().analysisError, /Zoom in/);
+  assert.equal(view.panel().analysisError, undefined);
 });

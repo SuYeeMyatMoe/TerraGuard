@@ -13,15 +13,12 @@ import { EarthEngineController } from "@/lib/earth-engine";
 import {
   areaKm2,
   distanceKm,
-  coverViewport,
-  analysisViewError,
-  analysisOverlayVisible,
   polygonError,
   type Bounds,
   type Position,
 } from "@/lib/map-geometry";
 import { EarthEnginePanel, type EarthLayer } from "./EarthEnginePanel";
-import { EarthMap, type LayerVisibility, type Measurement } from "./EarthMap";
+import { EarthMap, type RasterState, type LayerVisibility, type Measurement } from "./EarthMap";
 
 const LAYER_NAMES: Record<keyof LayerVisibility, string> = {
   imagery: "Global satellite basemap",
@@ -47,15 +44,7 @@ export function EarthView() {
     [layer, setLayer] = useState<EarthLayer>("rgb"),
     [opacity, setOpacity] = useState(1);
   const [bounds, setBounds] = useState<Bounds | null>(null);
-  // Captured by a control choice, never replaced by ordinary camera movement.
-  const [analysisRequest, setAnalysisRequest] = useState<{
-    bounds: Bounds | null;
-    refresh: boolean;
-  } | null>(null);
-  const [viewError, setViewError] = useState<{
-    key: string;
-    message: string;
-  } | null>(null);
+  const [rasterState, setRasterState] = useState<RasterState>({ before: false, after: false, detail: false });
   const [destination, setDestination] = useState<{
     center: Position;
     zoom: number;
@@ -83,56 +72,38 @@ export function EarthView() {
     [measureError, setMeasureError] = useState<string | null>(null);
   const id = selectedId ?? data?.incidents[0]?.id;
   const state = snapshot;
-  const inAnalysis = analysisOverlayVisible(bounds, state.data?.bounds);
-  const showHistorical = visibility.historical && inAnalysis;
+  const showHistorical = visibility.historical;
   const mapVisibility = useMemo(
     () => ({ ...visibility, historical: showHistorical }),
     [visibility, showHistorical],
   );
   const onViewport = useCallback(
     (raw: Bounds) => {
-      const next = coverViewport(raw);
-      if (!next) return;
       setBounds((current) =>
-        current?.every((value, i) => value === next[i]) ? current : next,
+        current?.every((value, i) => value === raw[i]) ? current : raw,
       );
-      // A selection made before map load waits for its first viewport only.
-      if (analysisRequest && !analysisRequest.bounds) {
-        setAnalysisRequest({ ...analysisRequest, bounds: next });
-        const error = analysisViewError(next);
-        setViewError(
-          error ? { key: `${id}:${days}:${mode}`, message: error } : null,
-        );
-      }
     },
-    [analysisRequest, id, days, mode],
+    [],
   );
   useEffect(() => {
     return () => controller.cancel();
   }, [controller]);
   useEffect(() => {
-    if (
-      !analysisRequest?.bounds ||
-      !id ||
-      analysisViewError(analysisRequest.bounds)
-    ) {
+    if (!id) {
       controller.reset();
       return;
     }
-    void controller.load(id, days, analysisRequest.refresh, {
-      bounds: analysisRequest.bounds,
-      mode,
-    });
-  }, [controller, id, days, mode, analysisRequest]);
-  const analyzeView = (refresh = false, nextDays = days, nextMode = mode) => {
-    const error = analysisViewError(bounds);
-    setViewError(
-      error ? { key: `${id}:${nextDays}:${nextMode}`, message: error } : null,
-    );
-    setAnalysisRequest({ bounds, refresh });
+    // Prepare one reusable period pair. The map requests z/x/y tiles for any
+    // location; camera movement and display controls never recreate recipes.
+    void controller.load(id, days, false, { mode: "compare", background: true });
+  }, [controller, id, days]);
+  const retry = () => {
     setFailedTiles([]);
-    setVisibility((v) => (v.historical ? v : { ...v, historical: true }));
+    void controller.load(id, days, true, { mode: "compare", background: true });
   };
+  const incident = data?.incidents.find((item) => item.id === selectedId);
+  const inIncidentArea = Boolean(incident && bounds && incident.lat >= bounds[1] && incident.lat <= bounds[3] &&
+    incident.lon >= bounds[0] && incident.lon <= bounds[2]);
   const navigate = () => {
     const lat = Number(latitude),
       lon = Number(longitude);
@@ -202,48 +173,28 @@ export function EarthView() {
         onPoint={onPoint}
         onViewport={onViewport}
         onTileError={onTileError}
+        onRasterState={setRasterState}
         destination={destination}
       />
       <EarthEnginePanel
         state={state}
         layer={layer}
-        setLayer={(next) => {
-          setLayer(next);
-          if (next === "ndvi") analyzeView();
-        }}
+        setLayer={setLayer}
         days={days}
-        setDays={(next) => {
-          setDays(next);
-          analyzeView(false, next);
-        }}
+        setDays={setDays}
         opacity={opacity}
         setOpacity={setOpacity}
         tileError={tileError}
         mode={mode}
-        setMode={(next) => {
-          setMode(next);
-          analyzeView(false, days, next);
-        }}
-        overview={!selectedId}
+        setMode={setMode}
+        overview={!selectedId || !inIncidentArea || state.data?.incident_id !== id}
         manual
         automatic
-        analysisError={
-          viewError?.key === `${id}:${days}:${mode}` ? viewError.message : null
-        }
+        rasterState={rasterState}
+        historicalVisible={visibility.historical}
         anchor={id}
-        retry={() => analyzeView(true)}
+        retry={retry}
       >
-        {visibility.historical &&
-          state.data?.status === "ready" &&
-          !inAnalysis && (
-            <p
-              role="status"
-              className="mt-3 rounded bg-slate-50 p-2 text-[11px]"
-            >
-              Global basemap only here. Zoom into the loaded analysis footprint
-              or update imagery for this location.
-            </p>
-          )}
         <details className="mt-3 border-t border-slate-200 pt-3">
           <summary className="cursor-pointer text-xs font-bold">
             Go to a location
@@ -398,9 +349,7 @@ export function EarthView() {
           </p>
         </details>
       </EarthEnginePanel>
-      {mode === "compare" &&
-        showHistorical &&
-        state.data?.comparison?.status === "ready" && (
+      {mode === "compare" && showHistorical && (
           <div className="panel-float absolute bottom-5 left-1/2 z-10 w-[280px] -translate-x-1/2 p-3">
             <div className="flex justify-between text-[11px] font-bold">
               <span>Before · left</span>
@@ -412,11 +361,17 @@ export function EarthView() {
               min={0}
               max={100}
               value={divider}
+              disabled={!rasterState.before || !rasterState.after}
               onChange={(e) => setDivider(Number(e.target.value))}
               className="mt-2 w-full accent-blue-600"
             />
             <p className="text-center text-[10px] text-amber-700">
-              Retrospective · not used for prediction
+              {!rasterState.detail ? "Zoom in for detailed comparison, anywhere in the world"
+                : !rasterState.before || !rasterState.after
+                ? state.data?.comparison?.status === "unavailable" || state.data?.comparison?.status === "no_data"
+                  ? state.data.comparison.reason
+                  : "Preparing comparison imagery…"
+                : "Retrospective · not used for prediction"}
             </p>
           </div>
         )}
@@ -434,7 +389,7 @@ export function EarthView() {
             Global basemap: Esri World Imagery (mixed acquisition dates; not the
             replay date). Roads / places: OpenFreeMap / OpenStreetMap. Dated
             Sentinel-2 and NDVI: Earth Engine. Cloud gaps in the scientific
-            overlay show the basemap.
+            overlay are gray, not a replacement from another date.
           </p>
           {data?.provenance.is_synthetic && (
             <p className="mt-1 text-[10px] font-semibold text-amber-700">

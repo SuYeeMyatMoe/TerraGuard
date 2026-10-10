@@ -301,7 +301,7 @@ export interface EarthEngineAnalysis {
 export interface EarthEngineDisplay {
   bounds: [number, number, number, number];
   study_bounds: [number, number, number, number];
-  scene_count: number;
+  scene_count: number | null;
   acquisition_start: string | null;
   acquisition_end: string | null;
 }
@@ -310,6 +310,7 @@ export interface EarthEngineImagery {
     | "not_configured"
     | "select_incident"
     | "ready"
+    | "preparing"
     | "no_data"
     | "unavailable";
   available: boolean;
@@ -323,13 +324,15 @@ export interface EarthEngineImagery {
     attribution: string;
   }[];
   analysis: EarthEngineAnalysis | null;
+  analysis_status?: "preparing" | "ready" | "unavailable";
   display?: EarthEngineDisplay | null;
   analysis_region?: { center: [number, number]; radius_m: number };
   comparison?: {
-    status: "ready" | "no_data" | "unavailable";
+    status: "preparing" | "ready" | "no_data" | "unavailable";
     reason: string | null;
     window: { start: string; end: string; days: number };
     analysis: EarthEngineAnalysis | null;
+    analysis_status?: "preparing" | "ready" | "unavailable";
     display: EarthEngineDisplay | null;
   };
   generated_at?: string;

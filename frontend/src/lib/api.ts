@@ -104,12 +104,13 @@ export const api = {
     if (refresh) query.set("refresh", "true");
     if (options.bounds) query.set("bbox", options.bounds.join(","));
     if (options.mode) query.set("mode", options.mode);
+    if (options.background) query.set("async_load", "true");
     return call<EarthEngineImagery>(
       incident_id
         ? `/api/earth-engine/${encodeURIComponent(incident_id)}?${query}`
         : "/api/earth-engine",
       {
-        timeoutMs: options.mode === "compare" ? 540000 : 300000,
+        timeoutMs: options.background ? 15000 : 60000,
         signal: options.signal,
       },
     );

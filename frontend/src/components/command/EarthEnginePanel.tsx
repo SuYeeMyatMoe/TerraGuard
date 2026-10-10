@@ -3,6 +3,7 @@
 import { Info, Leaf, Loader2, RefreshCw, Satellite } from "lucide-react";
 import type { ImagerySnapshot } from "@/lib/earth-engine";
 import type { ReactNode } from "react";
+import type { RasterState } from "./EarthMap";
 
 export type EarthLayer = "rgb" | "ndvi";
 
@@ -24,7 +25,8 @@ export function EarthEnginePanel({
   automatic = false,
   analysisError,
   anchor,
-  loadView,
+  rasterState,
+  historicalVisible = true,
 }: {
   state: ImagerySnapshot;
   layer: EarthLayer;
@@ -43,7 +45,8 @@ export function EarthEnginePanel({
   automatic?: boolean;
   analysisError?: string | null;
   anchor?: string;
-  loadView?: () => void;
+  rasterState?: RasterState;
+  historicalVisible?: boolean;
 }) {
   const data = state.data;
   const analysis = data?.analysis;
@@ -64,7 +67,7 @@ export function EarthEnginePanel({
         <span
           className={`rounded-full px-2 py-1 text-[10px] font-semibold ${ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
         >
-          {manual && !ready
+          {manual && !rasterState?.before
             ? "Worldwide"
             : ready
               ? "Connected"
@@ -75,7 +78,7 @@ export function EarthEnginePanel({
       </div>
       <p className="mt-1 text-[11px] text-[var(--ink-2)]">
         {manual
-          ? "Global satellite basemap · browse without recalculating"
+          ? "Worldwide imagery · historical layers follow your view"
           : overview
             ? "Replay overview · select an incident for statistics"
             : "Imagery follows the visible region"}
@@ -134,19 +137,9 @@ export function EarthEnginePanel({
       )}
       {manual && (
         <div className="mt-3">
-          {!automatic && (
-            <button
-              disabled={state.loading}
-              onClick={loadView}
-              className="w-full rounded bg-blue-600 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
-            >
-              {state.loading ? "Analyzing view…" : "Analyze this view"}
-            </button>
-          )}
           <p className="mt-1 text-[10px] text-slate-500">
-            {automatic
-              ? "Historical imagery loads automatically when you select NDVI or change the period/view. Pan freely; imagery keeps its loaded footprint."
-              : "Earth Engine runs when requested. Pan freely; the completed overlay keeps its loaded footprint."}
+            Historical imagery loads automatically. Pan freely anywhere;
+            switching Satellite / NDVI keeps your comparison.
           </p>
           {analysisError && (
             <p role="alert" className="mt-2 text-[11px] text-amber-700">
@@ -155,7 +148,7 @@ export function EarthEnginePanel({
           )}
         </div>
       )}
-      {ready && (state.error || tileError) && (
+      {ready && (state.error || (historicalVisible && tileError)) && (
         <div
           role="alert"
           className="mt-3 rounded-lg bg-amber-50 p-3 text-[11px] text-amber-800"
@@ -164,15 +157,27 @@ export function EarthEnginePanel({
             "Satellite tiles could not load. Refresh the imagery."}
         </div>
       )}
-      {state.loading ? (
+      {state.loading && (
         <div
           role="status"
           className="mt-3 flex items-center gap-2 text-[12px] text-[var(--ink-2)]"
         >
-          <Loader2 size={14} className="animate-spin" /> Loading satellite
-          context…
+          <Loader2 size={14} className="animate-spin" /> Preparing dated imagery…
         </div>
-      ) : !ready &&
+      )}
+      {rasterState && !rasterState.detail && (
+        <p role="status" className="mt-3 rounded-lg bg-slate-50 p-2.5 text-[11px] text-slate-600">
+          Zoom in for detailed Sentinel-2 / NDVI, anywhere in the world.
+          Satellite overview uses the global basemap.
+        </p>
+      )}
+      {!historicalVisible && (
+        <p className="mt-2 text-[11px] text-slate-500">Dated overlay hidden · showing the reference basemap.</p>
+      )}
+      {historicalVisible && rasterState?.detail && ready && !tileError && !rasterState.before && (
+        <p role="status" className="mt-2 text-[11px] text-slate-500">Loading before tiles…</p>
+      )}
+      {!ready &&
         (state.error || data?.status === "unavailable" || tileError) ? (
         <div
           role="alert"
@@ -188,11 +193,7 @@ export function EarthEnginePanel({
           <Info size={14} className="mt-0.5 shrink-0" />
           <span>
             {data?.reason ??
-              (automatic
-                ? "Select NDVI or change the period/view to load dated Sentinel-2 imagery."
-                : manual
-                  ? "Zoom to any location and choose Analyze this view for dated Sentinel-2 / NDVI."
-                  : "Select an incident to load imagery.")}{" "}
+              (state.loading ? "Preparing the selected periods." : "Select an incident to load imagery." )}{" "}
             {data?.status === "not_configured" &&
               "The reference map stays available."}
           </span>
@@ -202,31 +203,33 @@ export function EarthEnginePanel({
           <div className="rounded-lg bg-slate-50 p-2.5 leading-relaxed">
             <b>Sentinel-2 · cloud-masked composite</b>
             <br />
-            Before acquisitions: {date(display.acquisition_start)} –{" "}
-            {date(display.acquisition_end)}
+            {display.scene_count == null ? (
+              <>Before period: {date(data?.window?.start)} – {date(data?.window?.end)}</>
+            ) : (
+              <>Before acquisitions: {date(display.acquisition_start)} – {date(display.acquisition_end)}</>
+            )}
             <br />
-            {display.scene_count} candidate scenes · viewport coverage
+            {display.scene_count == null ? "Gray: clouds or no clear observations" : `${display.scene_count} candidate scenes · viewport coverage`}
           </div>
           {!overview && analysis && (
             <>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg border border-[var(--line)] p-2.5">
-                  <span className="text-[var(--ink-2)]">Mean NDVI</span>
+                  <span className="text-[var(--ink-2)]">Mean NDVI · incident 1 km</span>
                   <div className="mt-1 text-[17px] font-bold">
                     {analysis.ndvi_mean?.toFixed(2) ?? "—"}
                   </div>
                 </div>
                 <div className="rounded-lg border border-[var(--line)] p-2.5">
-                  <span className="text-[var(--ink-2)]">Valid coverage</span>
+                  <span className="text-[var(--ink-2)]">Incident valid coverage</span>
                   <div className="mt-1 text-[17px] font-bold">
                     {analysis.valid_coverage_pct.toFixed(1)}%
                   </div>
                 </div>
               </div>
               <p className="text-[10px] text-[var(--ink-2)]">
-                Incident statistics within 1 km · sampled at 20 m. These
-                describe the selected incident, even when browsing elsewhere.
-                Cloud gaps remain transparent.
+                {data?.incident_id ?? anchor}: statistics within 1 km · sampled at 20 m.
+                These describe this incident, not the whole map.
               </p>
               {analysis.valid_coverage_pct < 50 && (
                 <p className="text-amber-700">
@@ -252,8 +255,8 @@ export function EarthEnginePanel({
               </div>
               <p className="mt-2 text-[10px] text-[var(--ink-2)]">
                 Sand tones: low NDVI; green: higher NDVI. This is a continuous
-                index, not a land-cover classification. Transparent gaps show
-                the basemap, not NDVI.
+                index, not a land-cover classification. Gray gaps have no clear
+                observations; they are not low NDVI.
               </p>
             </div>
           )}
@@ -278,10 +281,13 @@ export function EarthEnginePanel({
           <br />
           {data.comparison.status === "ready" && data.comparison.display ? (
             <>
-              Acquisitions: {date(data.comparison.display.acquisition_start)} –{" "}
-              {date(data.comparison.display.acquisition_end)}
+              {data.comparison.display.scene_count == null ? (
+                <>After period: {date(data.comparison.window.start)} – {date(data.comparison.window.end)}</>
+              ) : (
+                <>Acquisitions: {date(data.comparison.display.acquisition_start)} – {date(data.comparison.display.acquisition_end)}</>
+              )}
               <br />
-              {data.comparison.display.scene_count} candidate scenes
+              {data.comparison.display.scene_count == null ? "Worldwide period composite" : `${data.comparison.display.scene_count} candidate scenes`}
               <br />
               {!overview && data.comparison.analysis && (
                 <>
@@ -295,6 +301,9 @@ export function EarthEnginePanel({
             </>
           ) : (
             data.comparison.reason
+          )}
+          {historicalVisible && rasterState?.detail && data.comparison.status === "ready" && !rasterState.after && (
+            <p role="status" className="mt-1">Loading after tiles…</p>
           )}
           <div>
             Window: {date(data.comparison.window.start)} –{" "}
@@ -320,7 +329,7 @@ export function EarthEnginePanel({
         >
           <RefreshCw size={12} />{" "}
           {automatic
-            ? "Update imagery for this view"
+            ? "Retry imagery"
             : manual
               ? "Refresh analysis for this view"
               : "Refresh imagery"}
