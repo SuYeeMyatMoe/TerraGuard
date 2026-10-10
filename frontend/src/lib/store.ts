@@ -18,8 +18,9 @@ import type {
 
 export type View = "earth" | "sim";
 
-/** One named crew is the scarce resource; the model and simulation are always run for a single team. */
+/** The operational map has one crew; the 3D response test gives each incident its own crew. */
 export const TEAMS = 1;
+export const SIMULATION_TEAMS = 3;
 
 export interface Toast {
   id: number;
@@ -103,7 +104,7 @@ export const useStore = create<State>((set, get) => ({
   predictionErrors: {},
   selectedId: null,
   view: "earth",
-  responseDelay: 4,
+  responseDelay: 1,
   burnDuration: 8,
   steps: 48,
   seed: 7,
@@ -203,7 +204,7 @@ export const useStore = create<State>((set, get) => ({
     try {
       const sim = await api.simulate({
         scenario_id: s.data.scenario.id,
-        teams: TEAMS,
+        teams: SIMULATION_TEAMS,
         response_delay: s.responseDelay,
         burn_duration_steps: s.burnDuration,
         steps: s.steps,
@@ -211,7 +212,7 @@ export const useStore = create<State>((set, get) => ({
         n_seeds: s.nSeeds,
         per_incident: s.overrides,
       });
-      const policy: PolicyKey = sim.policies.coordinator ? "coordinator" : get().policy === "coordinator" ? "ai_priority" : get().policy;
+      const policy: PolicyKey = get().policy === "coordinator" ? "ai_priority" : get().policy;
       set({ sim, simLoading: false, simStale: false, step: 0, playing: opts?.autoplay ?? true, policy });
     } catch (e) {
       set({ simLoading: false, simError: errMsg(e) });

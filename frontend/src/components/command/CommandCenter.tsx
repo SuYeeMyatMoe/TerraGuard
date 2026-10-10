@@ -69,7 +69,7 @@ export function CommandCenter() {
       useStore.setState({
         playing: false,
         ...(Number.isFinite(st) ? { step: st } : {}),
-        ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" || pol === "coordinator" ? { policy: pol } : {}),
+        ...(pol === "none" || pol === "first_alert" || pol === "ai_priority" || (pol === "coordinator" && sim.teams === 1) ? { policy: pol } : {}),
       });
   }, [sim]);
 
@@ -100,7 +100,7 @@ export function CommandCenter() {
             </div>
             <div hidden={leftTab !== "incidents"}><IncidentRoster/></div>
             <div className="studio-control-content" hidden={leftTab !== "conditions"}><ControlsPanel/></div>
-            <div className="studio-workflow-note"><span>01 / SELECT AN INCIDENT</span><p>Compare policies on the same forest. Review the outcome before assigning your crew.</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
+            <div className="studio-workflow-note"><span>01 / COMPARE THE INCIDENTS</span><p>Watch a dedicated crew respond to each of A, B and C. Select an incident to review its evidence and live response.</p><button onClick={() => { setLeftTab("conditions"); useStore.getState().setControlsOpen(true); }}>Adjust test conditions →</button></div>
           </aside>
           <div className="studio-center"><ForestStudio expanded={expanded} onExpand={() => setExpanded(!expanded)}/><div className="studio-timeline"><Timeline/></div></div>
           <aside className="studio-intelligence" aria-label="Recommendations and decision">

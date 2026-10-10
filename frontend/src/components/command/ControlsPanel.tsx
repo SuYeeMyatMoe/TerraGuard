@@ -112,7 +112,7 @@ export function ControlsPanel() {
             <Slider icon={<Timer size={14} />} label="Test horizon" value={steps} min={24} max={72} step={4}
               display={`${steps} steps`} onChange={(v) => setParam("steps", v)} />
             <p className="text-[11px] leading-snug text-[var(--ink-3)]">
-              One crew, as in the command map. 1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). The crew is assumed to carry initial suppression kit.
+              Three response crews, one per incident. 1 step = {mps} min and 1 cell = 1 ha (stated scenario assumptions). Each crew carries initial suppression kit.
             </p>
           </div>
         </div>
@@ -128,7 +128,7 @@ export function ControlsPanel() {
           onClick={() => {
             const st = useStore.getState();
             Object.keys(st.overrides).forEach((k) => st.resetOverride(k));
-            st.setParam("responseDelay", 4);
+            st.setParam("responseDelay", 1);
             st.setParam("burnDuration", 8);
             st.setParam("steps", 48);
           }}

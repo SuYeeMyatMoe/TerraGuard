@@ -12,8 +12,8 @@ export function IncidentRoster() {
   const select = useStore(s => s.select);
   return <section className="incident-roster">
     <div className="roster-heading"><Radio size={15}/><span>INCIDENT QUEUE</span><b>{data?.incidents.length ?? "—"}</b></div>
-    <h2>Three incidents.<br/>One available crew.</h2>
-    <p className="roster-intro">Compare the consequences. Choose where to act.</p>
+    <h2>Three incidents.<br/>Three response crews.</h2>
+    <p className="roster-intro">A dedicated vehicle and suppression crew for A, B and C.</p>
     <div className="roster-cards">{data?.incidents.map(inc => {
       const prediction = predictions[inc.id];
       return <button key={inc.id} className="roster-card" aria-pressed={selectedId === inc.id} onClick={() => select(inc.id)}>
@@ -22,6 +22,6 @@ export function IncidentRoster() {
         <div className="roster-card-bottom"><span><b>{prediction ? pct(prediction.probability) : "—"}</b><small>48 h follow-up</small></span>{prediction && <RecPill rec={prediction.priority.recommendation} size="sm"/>}</div>
       </button>;
     }) ?? <p>Loading incidents…</p>}</div>
-    <div className="roster-resource"><Truck size={15}/><span>{data?.team?.assigned_incident_id ? "Crew assigned · review alternatives" : "One crew ready for inspection"}</span></div>
+    <div className="roster-resource"><Truck size={15}/><span>3D response test · one crew per incident</span></div>
   </section>;
 }

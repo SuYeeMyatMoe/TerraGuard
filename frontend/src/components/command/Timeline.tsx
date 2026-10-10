@@ -19,8 +19,11 @@ export function Timeline() {
   const loading = useStore(s => s.simLoading);
   const steps = sim?.steps ?? 48;
   const minutesPerStep = Number(sim?.assumptions.minutes_per_step ?? 30);
-  const assigned = sim?.policies[policy]?.assigned[0];
-  const destination = assigned ? sim?.plots.findIndex(plot => plot.incident_id === assigned) : -1;
+  const assigned = sim?.policies[policy]?.assigned ?? [];
+  const destinations = sim?.plots.filter(plot => assigned.includes(plot.incident_id)).map((plot) => {
+    const index = sim.plots.indexOf(plot);
+    return String.fromCharCode(65 + index);
+  }) ?? [];
 
   useEffect(() => {
     if (!playing || !sim) return;
@@ -36,7 +39,7 @@ export function Timeline() {
     { value: "none" as const, label: "No intervention" },
     { value: "first_alert" as const, label: "First-alert-first" },
     { value: "ai_priority" as const, label: "AI-prioritized" },
-    ...(sim?.policies.coordinator ? [{ value: "coordinator" as const, label: "Your assignment" }] : []),
+    ...(sim?.teams === 1 && sim.policies.coordinator ? [{ value: "coordinator" as const, label: "Your assignment" }] : []),
   ];
   return <section className="forest-playback" aria-label="Simulation timeline">
     <div className="playback-policy-row"><span className="eyebrow">COMPARE POLICIES</span><div className="playback-policies">{policies.map(p => <button key={p.value} aria-pressed={policy === p.value} disabled={!sim || loading} onClick={() => setPolicy(p.value)}>{p.label}</button>)}</div><span className="playback-test-tag">Hypothetical test</span></div>
@@ -46,6 +49,6 @@ export function Timeline() {
       <div className="playback-track"><div><span>Fire progression</span><b className="tnum">Step {step} / {steps} <small>· ≈{(step * minutesPerStep / 60).toFixed(1)} h</small></b></div><input type="range" className="tg-range" min={0} max={steps} value={step} disabled={!sim} onChange={e => { setStep(Number(e.target.value)); setPlaying(false); }} style={{ ["--fill" as string]: `${step / steps * 100}%` }} aria-label="Simulation step"/></div>
       <label className="playback-speed"><span>Speed</span><select aria-label="Playback speed" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[1,2,4].map(v => <option key={v} value={v}>{v}×</option>)}</select></label>
     </div>
-    <p className="playback-clock-note">{assigned && destination != null && destination >= 0 ? `Crew → Incident ${String.fromCharCode(65 + destination)}` : "No crew dispatched"} · {minutesPerStep} simulated min/step · Burn time {(Number(sim?.assumptions.burn_duration_steps ?? 8) * minutesPerStep / 60).toFixed(1)} h/cell</p>
+    <p className="playback-clock-note">{destinations.length ? `${destinations.length} crews → ${destinations.join(" + ")}` : "No crews dispatched"} · {minutesPerStep} simulated min/step · Burn time {(Number(sim?.assumptions.burn_duration_steps ?? 8) * minutesPerStep / 60).toFixed(1)} h/cell</p>
   </section>;
 }

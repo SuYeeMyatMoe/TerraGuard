@@ -9,7 +9,7 @@ import { seed, worldPosition } from "./forestGeometry";
 export function waterNozzlePosition(target: [number, number], source?: [number, number] | null): [number, number, number] {
   if (source) {
     const base=worldPosition(source[0],source[1],.04),dx=target[0]-source[0],dz=target[1]-source[1],distance=Math.hypot(dx,dz)||1;
-    return [base[0]+dx/distance*.85,base[1],base[2]+dz/distance*.85];
+    return [base[0]+dx/distance*1.65,base[1],base[2]+dz/distance*1.65];
   }
   const x = target[0] > 4 ? target[0] - 3.8 : target[0] + 3.8;
   return worldPosition(x, Math.min(19, target[1] + 1.5), .04);
@@ -32,7 +32,7 @@ export function WaterEffects({ target, source, playing }: { target: [number, num
     const end = new Vector3(...worldPosition(x, z, .25));
     const mid = start.clone().lerp(end, .5); mid.y += 1.7;
     const curve = new CatmullRomCurve3([start, mid, end]);
-    const geometry = new TubeGeometry(curve, 48, .055, 8, false);
+    const geometry = new TubeGeometry(curve, 48, .085, 8, false);
     const truck=sourceX!=null&&sourceZ!=null?new Vector3(...worldPosition(sourceX,sourceZ,.1)):new Vector3(base[0]-.8,base[1]+.06,base[2]+1.3);
     const hose = [truck, new Vector3(base[0],base[1]+.1,base[2]), start];
     return { base, start, end, curve, geometry, hose, angle: Math.atan2(end.x - start.x, end.z - start.z) };

@@ -242,7 +242,10 @@ function Comparison({ sim, stale }: { sim: SimulateResponse; stale: boolean }) {
   const c = sim.comparison;
   const fa = sim.policies.first_alert.metrics;
   const ai = sim.policies.ai_priority.metrics;
-  const yours = sim.policies.coordinator?.metrics;
+  const yours = sim.teams === 1 ? sim.policies.coordinator?.metrics : undefined;
+  const firstAssignments = sim.policies.first_alert.assigned;
+  const aiAssignments = sim.policies.ai_priority.assigned;
+  const sameAllocation = firstAssignments.length === aiAssignments.length && firstAssignments.every(id => aiAssignments.includes(id));
   const rows: { label: string; m?: ComparisonMetric; b: number; a: number; y?: number; digits?: number }[] = [
     { label: "Burned cells", m: c.burned_cells, b: c.burned_cells.first_alert_mean, a: c.burned_cells.ai_priority_mean, y: yours?.burned_cells.mean, digits: 1 },
     { label: "Protected cells burned", m: c.protected_cells_burned, b: c.protected_cells_burned.first_alert_mean, a: c.protected_cells_burned.ai_priority_mean, y: yours?.protected_cells_burned.mean, digits: 1 },
@@ -282,7 +285,7 @@ function Comparison({ sim, stale }: { sim: SimulateResponse; stale: boolean }) {
         {more ? "Hide crew-hours & cost" : "Show crew-hours & cost"}
       </button>
       <p className="mt-1 text-[11.5px] leading-snug text-[var(--ink-2)]">
-        {c.coordinator ? (
+        {sim.teams === 1 && c.coordinator ? (
           c.coordinator.matches ? (
             <>Your assignment matches the {c.coordinator.matches === "ai_priority" ? "AI-priority" : "first-alert"} choice in this test.</>
           ) : (
@@ -291,8 +294,8 @@ function Comparison({ sim, stale }: { sim: SimulateResponse; stale: boolean }) {
               {c.coordinator.loss_index.vs_ai_priority >= 0 ? "lower" : "higher"} by {num(Math.abs(c.coordinator.loss_index.vs_ai_priority), 1)}.
             </>
           )
-        ) : c.same_allocation ? (
-          "Both policies send the crew to the same incident, so the outcomes are identical by construction."
+        ) : sameAllocation ? (
+          `Both policies send ${sim.teams === 1 ? "the crew to the same incident" : "a crew to each incident"}, so the outcomes are identical by construction.`
         ) : (
           <>
             Lower loss with AI-priority in <b>{c.loss_index.seeds_ai_better}</b>/{c.loss_index.n_seeds} runs (first-alert{" "}
