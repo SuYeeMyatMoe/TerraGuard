@@ -149,7 +149,16 @@ def test_scenario_f_close_scores_use_tie_rule_and_alert_order():
     r = _recs(t)
     assert r["INC-1-A"]["rank"] == 1  # earlier alert wins the tie
     e = X.ranking_explanation("INC-1-A", t, r, {})
-    assert e["close"] and "tie-breaking" in e["text"] and e["tie_rule"]
+    assert e["close"] and e["tied"] and "tie-breaking" in e["text"] and e["tie_rule"]
+
+
+def test_close_but_unequal_scores_do_not_invoke_the_tie_rule():
+    t = _table(**{"INC-1-A": dict(prediction=0.20, exposure=0.05, recency=0.10, evidence=0.10),
+                  "INC-1-B": dict(prediction=0.21, exposure=0.05, recency=0.10, evidence=0.10)})
+    r = _recs(t)
+    e = X.ranking_explanation("INC-1-A", t, r, {})
+    assert e["close"] and not e["tied"] and e["tie_rule"] is None
+    assert "tie-breaking" not in e["text"] and "small margin" in e["text"]
 
 
 def test_scenario_b_high_prediction_far_from_protected_area_does_not_cite_exposure():
