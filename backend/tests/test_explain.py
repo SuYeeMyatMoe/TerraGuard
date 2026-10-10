@@ -1,7 +1,5 @@
 import json
 import re
-import tempfile
-from pathlib import Path
 
 import joblib
 import numpy as np
@@ -10,9 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import explanations as X
-from app import records
 from app.main import app
-from app.records import Records, SqliteStore
 from ml import reference
 from ml.config import MODEL_DIR, PROCESSED_DIR
 from ml.explain import explain
@@ -33,12 +29,10 @@ def cand():
     return pd.read_parquet(PROCESSED_DIR / "candidates.parquet")
 
 
-@pytest.fixture(scope="module")
-def client():
-    records.set_records(Records(SqliteStore(Path(tempfile.mkdtemp()) / "r.db")))
+@pytest.fixture
+def client(isolated_records_and_cache):
     with TestClient(app) as c:
         yield c
-    records.set_records(None)
 
 
 # ----------------------------------------------------------------------------- model reasoning

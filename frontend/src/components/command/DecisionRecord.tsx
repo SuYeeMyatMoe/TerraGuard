@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Cloud, Download, HardDrive, History, Truck, X } from "lucide-react";
+import { AlertTriangle, Cloud, Download, HardDrive, History, RefreshCw, Truck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RecPill } from "@/components/ui";
 import { pct, shortId, utc } from "@/lib/format";
@@ -18,6 +18,9 @@ export function DecisionRecord() {
   const setOpen = useStore((s) => s.setRecordOpen);
   const actions = useStore((s) => s.actions);
   const archived = useStore((s) => s.archivedActions);
+  const loading = useStore((s) => s.actionsLoading);
+  const error = useStore((s) => s.actionsError);
+  const loadActions = useStore((s) => s.loadActions);
   const data = useStore((s) => s.data);
   const [reveal, setReveal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -77,7 +80,14 @@ export function DecisionRecord() {
           </label>
         </div>
         <div className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
-          {actions.length === 0 && (
+          {loading && <div role="status" className="text-[12.5px] text-[var(--ink-2)]">Loading decision record…</div>}
+          {error && (
+            <div role="alert" className="rounded-lg bg-red-50 p-3 text-[12.5px] text-red-700">
+              <p>Could not load the decision record. {error}</p>
+              <button className="btn btn-ghost mt-2 h-8" disabled={loading} onClick={() => loadActions()}><RefreshCw size={13} /> Retry</button>
+            </div>
+          )}
+          {!loading && !error && actions.length === 0 && (
             <div className="rounded-[12px] border border-dashed border-[var(--line)] p-6 text-center text-[12.5px] text-[var(--ink-2)]">
               No decisions recorded for this replay yet. Select an incident and send the crew.
             </div>

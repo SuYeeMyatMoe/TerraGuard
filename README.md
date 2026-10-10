@@ -7,11 +7,11 @@ TerraGuard is a two-page MVP:
 
 - `/`: landing page.
 - `/simulation`: Forest Command Center with two modes:
-  - **Command map** (the default): real coordinates, protected areas, past-24 h detections, and the crew.
+  - **Earth View**: real coordinates, protected areas and past-24 h detections, with a worldwide satellite basemap and automatically prepared Sentinel-2 RGB/NDVI, roads/place labels, retrospective before/after comparison, independent layer controls and distance/area measurement from Earth Engine when configured.
   - **Test the response (3D)**: React Three Fiber forest, driven by a Python cellular automaton.
 
 The default path:
-1. Open the command map: real coordinates, the past 24 h, and three competing incidents.
+1. Open Earth View: real coordinates, the past 24 h, and three competing incidents.
 2. Pick the incident.
 3. Send the only crew (the hypothetical Borneo Field Verification Crew) with a reason.
 4. The other incidents are shown as unattended, with their 48 h risk.
@@ -28,7 +28,7 @@ NASA FIRMS VIIRS + Open-Meteo ──► incidents, labels, past-only features �
                                    │
       evidence package ──► OpenAI briefing / Grafilab field brief ──► validator ──► UI
                                    │
-                    human decision ──► SQLite audit log ──► notification
+                    human decision ──► Supabase audit log + status ──► notification
 ```
 LLMs explain verified outputs only. They never produce probabilities, rankings or simulation results.
 
@@ -38,17 +38,17 @@ LLMs explain verified outputs only. They never produce probabilities, rankings o
 # backend (Python 3.11)
 cd backend
 py -3.11 -m venv .venv && .venv/Scripts/pip install -r requirements.txt
-cp .env.example .env        # add OPENAI_API_KEY / GRAFILAB_API_KEY (optional: FIRMS_MAP_KEY, GEE_*)
+cp .env.example .env        # optional: Supabase, AI and Earth Engine keys
 .venv/Scripts/python -m uvicorn app.main:app --port 8010
 
 # frontend (Node 22)
 cd frontend
 npm install
-cp .env.local.example .env.local   # optional: NEXT_PUBLIC_GOOGLE_MAPS_KEY for satellite imagery
+cp .env.local.example .env.local   # Earth Engine credentials belong in backend/.env
 npm run dev                        # http://localhost:3000  (proxies /api → :8010)
 ```
 
-The committed data snapshot (`backend/data`) lets the demo run offline. Only the basemap tiles and the LLM calls need the internet, and both degrade gracefully.
+The committed data snapshot (`backend/data`) supplies detections, model artifacts, and simulation inputs locally. Operational statuses and audit history use the current decision-record store: SQLite locally, or Supabase when configured, with explicitly labelled local fallback. Basemap tiles and LLM calls use the internet and degrade gracefully.
 
 ## Decision record: SQLite locally, Supabase for deployment
 
@@ -72,6 +72,8 @@ cd backend
 .venv/Scripts/python -m app.records --reset-local           # wipe local SQLite records (development only)
 ```
 
+Earth View uses MapLibre with Esri World Imagery for stable worldwide navigation, then prepares reusable Earth Engine imagery for the selected replay period. Panning, layer switches and comparison use the same tile resources; Retry imagery recreates them only on request. No Google Maps browser API key is required. Register a Google Cloud project for Earth Engine, configure `GEE_PROJECT` in `backend/.env`, and authenticate locally or use a backend service account. See [docs/EARTH_ENGINE.md](docs/EARTH_ENGINE.md). Missing credentials retain worldwide browsing and report the missing Earth Engine configuration when analysis is requested; images/statistics are never fabricated.
+
 ## Rebuild the data and model
 
 ```bash
@@ -82,7 +84,7 @@ cd backend
 .venv/Scripts/python -m ml.build_scenarios   # replay days (outcome-blind rule)
 .venv/Scripts/python -m ml.policy_backtest   # 361-day policy backtest
 .venv/Scripts/python -m ml.fetch_gee         # optional, needs Earth Engine credentials
-.venv/Scripts/python -m pytest tests         # 29 tests: sim fairness, leakage, AI validator, API, records (SQLite + mocked Supabase)
+.venv/Scripts/python -m pytest tests         # isolated tests: persistence, sim fairness, leakage, AI validator, API
 ```
 
 > **Data status:** the current snapshot is **real** NASA FIRMS VIIRS data (S-NPP + NOAA-20, 570,840 detections, 2023-2025) with Open-Meteo weather. On the held-out 2025 test the Random Forest reaches PR-AUC 0.623 against 0.535 for the baseline, a modest gain. In a one-team backtest on 361 days, the AI-priority choice was followed by another detection within 48 h 32.8% of the time, against 16.4% for first-alert. Detections are not confirmed fires. Without a FIRMS key the pipeline falls back to a labelled synthetic dataset; get a free key at https://firms.modaps.eosdis.nasa.gov/api/map_key/.
@@ -92,3 +94,5 @@ cd backend
 - [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md): prioritisation weights and simulation assumptions
 - [docs/API.md](docs/API.md): endpoints and contracts
 - [docs/AI_SAFETY.md](docs/AI_SAFETY.md): LLM grounding, validation and fallback rules
+- [docs/SUPABASE.md](docs/SUPABASE.md): operational persistence, server-only credentials, migration and verification
+- [docs/EARTH_ENGINE.md](docs/EARTH_ENGINE.md): Earth View imagery, cloud masking, account setup and verification

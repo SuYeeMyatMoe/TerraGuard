@@ -185,19 +185,22 @@ function ModelTab({ ev }: { ev: Evaluation }) {
   );
 }
 
-function PolicyTab({ ev }: { ev: Evaluation }) {
-  const bt = ev.policy_backtest;
-  if (!bt) return <div className="text-[13px] text-[var(--ink-2)]">Policy backtest not available. Run python -m ml.policy_backtest.</div>;
-  const r = bt.retrospective.all_days;
-  const d = bt.retrospective.disagreement_days;
-  const s = bt.simulation;
-  const Bar = ({ label, v, color }: { label: string; v: number; color: string }) => (
+function PolicyBar({ label, v, color }: { label: string; v: number; color: string }) {
+  return (
     <div className="flex items-center gap-3 text-[12.5px]">
       <span className="w-40 text-[var(--ink-2)]">{label}</span>
       <div className="h-3 flex-1 rounded-full bg-[#eef2f7]"><div className="h-3 rounded-full" style={{ width: `${Math.min(v / 0.3, 1) * 100}%`, background: color }} /></div>
       <b className="w-12 text-right tnum">{pct(v, 1)}</b>
     </div>
   );
+}
+
+function PolicyTab({ ev }: { ev: Evaluation }) {
+  const bt = ev.policy_backtest;
+  if (!bt) return <div className="text-[13px] text-[var(--ink-2)]">Policy backtest not available. Run python -m ml.policy_backtest.</div>;
+  const r = bt.retrospective.all_days;
+  const d = bt.retrospective.disagreement_days;
+  const s = bt.simulation;
   return (
     <div className="space-y-6">
       <p className="text-[13px] leading-relaxed text-[var(--ink-2)]">
@@ -208,9 +211,9 @@ function PolicyTab({ ev }: { ev: Evaluation }) {
         <div className="eyebrow mb-2">Retrospective check on real labels · all days</div>
         <p className="mb-3 text-[12px] text-[var(--ink-2)]">How often did the incident each policy chose actually show follow-up satellite activity within 48 h?</p>
         <div className="space-y-2">
-          <Bar label="AI-priority pick" v={r.ai_pick_followup_rate} color="#22a06b" />
-          <Bar label="First-alert pick" v={r.first_alert_pick_followup_rate} color="#94a3b8" />
-          <Bar label="Random pick (expected)" v={r.random_pick_followup_rate} color="#cbd5e1" />
+          <PolicyBar label="AI-priority pick" v={r.ai_pick_followup_rate} color="#22a06b" />
+          <PolicyBar label="First-alert pick" v={r.first_alert_pick_followup_rate} color="#94a3b8" />
+          <PolicyBar label="Random pick (expected)" v={r.random_pick_followup_rate} color="#cbd5e1" />
         </div>
         <p className="mt-2 text-[12px] text-[var(--ink-2)]">
           Difference (AI − first-alert): 95% bootstrap CI {pct(r.difference_ai_minus_first_alert_ci95[0], 1)} to {pct(r.difference_ai_minus_first_alert_ci95[1], 1)}.

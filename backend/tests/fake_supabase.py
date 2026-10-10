@@ -9,11 +9,12 @@ import httpx
 
 
 class FakeSupabase:
-    def __init__(self, snapshot_columns: bool = True) -> None:
+    def __init__(self, snapshot_columns: bool = True, teams_column: bool = True) -> None:
         self.tables: dict[str, list[dict]] = {"actions": [], "incident_status": [], "team_assignments": []}
         self.ids = {"actions": 0, "team_assignments": 0}
         self.fail = False
         self.snapshot_columns = snapshot_columns
+        self.teams_column = teams_column
         self.requests: list[tuple[str, str]] = []
 
     def transport(self) -> httpx.MockTransport:
@@ -51,6 +52,8 @@ class FakeSupabase:
             items = body if isinstance(body, list) else [body]
             if table == "actions" and not self.snapshot_columns and any("left_waiting" in i for i in items):
                 return httpx.Response(400, json={"code": "PGRST204", "message": "Could not find the 'left_waiting' column"})
+            if table == "actions" and not self.teams_column and any("teams" in i for i in items):
+                return httpx.Response(400, json={"code": "PGRST204", "message": "Could not find the 'teams' column"})
             created = []
             for it in items:
                 if table == "incident_status":

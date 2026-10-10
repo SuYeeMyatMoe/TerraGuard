@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ArrowRight, CheckCircle2, Eye, FileText, RefreshCw, Send, Truck, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { RecPill } from "@/components/ui";
 import { num, pct, shortId, utc } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -18,7 +18,11 @@ export function DecisionPanel() {
   const openFieldBrief = useStore((s) => s.openFieldBrief);
   const toast = useStore((s) => s.toast);
   const [sheet, setSheet] = useState<ActionType | null>(null);
-  useEffect(() => setSheet(null), [selectedId]);
+  const [sheetIncidentId, setSheetIncidentId] = useState(selectedId);
+  if (sheetIncidentId !== selectedId) {
+    setSheetIncidentId(selectedId);
+    setSheet(null);
+  }
 
   const inc = data?.incidents.find((i) => i.id === selectedId);
   const pred = selectedId ? predictions[selectedId] : undefined;

@@ -460,6 +460,56 @@ export interface GeoContext {
   boundary_status: string;
 }
 
+export interface EarthEngineAnalysis {
+  scene_count: number;
+  acquisition_start: string | null;
+  acquisition_end: string | null;
+  ndvi_mean: number | null;
+  valid_coverage_pct: number;
+}
+export interface EarthEngineDisplay {
+  bounds: [number, number, number, number];
+  study_bounds: [number, number, number, number];
+  scene_count: number | null;
+  acquisition_start: string | null;
+  acquisition_end: string | null;
+}
+export interface EarthEngineImagery {
+  status:
+    | "not_configured"
+    | "select_incident"
+    | "ready"
+    | "preparing"
+    | "no_data"
+    | "unavailable";
+  available: boolean;
+  incident_id: string | null;
+  reason: string | null;
+  window: { start: string; end: string; days: number } | null;
+  bounds: [number, number, number, number] | null;
+  layers: {
+    id: "rgb" | "ndvi" | "rgb_after" | "ndvi_after";
+    tile_url: string;
+    attribution: string;
+  }[];
+  analysis: EarthEngineAnalysis | null;
+  analysis_status?: "preparing" | "ready" | "unavailable";
+  display?: EarthEngineDisplay | null;
+  analysis_region?: { center: [number, number]; radius_m: number };
+  comparison?: {
+    status: "preparing" | "ready" | "no_data" | "unavailable";
+    reason: string | null;
+    window: { start: string; end: string; days: number };
+    analysis: EarthEngineAnalysis | null;
+    analysis_status?: "preparing" | "ready" | "unavailable";
+    display: EarthEngineDisplay | null;
+  };
+  generated_at?: string;
+  refresh_after_seconds?: number;
+  method?: string;
+  limitations?: string;
+}
+
 export interface SplitMetrics {
   n: number;
   positive_rate: number;
@@ -544,4 +594,5 @@ export interface Health {
   providers: { openai: boolean; openai_model: string | null; grafilab: boolean };
   record_backend: RecordBackend;
   earth_engine: boolean;
+  operational_database: { status: "ready" | "unavailable" };
 }

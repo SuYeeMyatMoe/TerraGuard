@@ -134,3 +134,57 @@ def test_simulation_adds_coordinator_policy(sqlite_client):
     s = c.post("/api/simulate", json={"n_seeds": 3, "steps": 16}).json()
     assert s["coordinator_assignment"] == cc and s["policies"]["coordinator"]["assigned"] == [cc]
     assert "coordinator" in s["comparison"]
+
+
+@pytest.mark.parametrize("key,bearer", [("sb_secret_test", False), ("legacy-service-role-jwt", True)])
+def test_records_auth_header_matches_key_format(key, bearer):
+    import httpx
+    requests = []
+    def handle(req):
+        requests.append(req)
+        return httpx.Response(200, json=[])
+    remote = SupabaseStore("https://example.supabase.co", key, transport=httpx.MockTransport(handle))
+    try:
+        assert remote.list_actions() == []
+        assert requests[0].headers["apikey"] == key
+        assert ("authorization" in requests[0].headers) is bearer
+        if bearer:
+            assert requests[0].headers["authorization"] == f"Bearer {key}"
+    finally:
+        remote.client.close()
+
+
+def test_supabase_without_team_count_column_preserves_rich_snapshot():
+    fake = FakeSupabase(teams_column=False)
+    remote = SupabaseStore("https://example.supabase.co", "sb_secret_test", transport=fake.transport())
+    row = {"scenario_id": "S", "incident_id": "I", "action": "ASSIGN_INSPECTION", "reason": "review",
+           "recommendation_at_time": "INSPECT", "teams": 3, "team_name": "Alpha", "left_waiting": [],
+           "priority_rank": 1, "priority_score": 0.5, "probability": 0.4,
+           "followed_recommendation": True, "reassigned_from": None}
+    try:
+        out = remote.record_action(row, {"I": "Crew assigned"})
+        assert out["snapshot_stored"] is False
+        assert out["teams"] == 3
+        stored = fake.tables["actions"][0]
+        assert "teams" not in stored
+        assert stored["team_name"] == "Alpha"
+        assert stored["priority_rank"] == 1 and stored["probability"] == 0.4
+        assert stored["left_waiting"] == []
+        assert remote.snapshot_columns is True
+        assert len(fake.tables["team_assignments"]) == 1
+    finally:
+        remote.client.close()
+
+
+def test_health_discloses_supabase_outage_and_local_fallback(supa):
+    c, fake = supa
+    fake.fail = True
+    response = c.get("/api/health")
+    assert response.status_code == 503
+    assert response.json()["status"] == "degraded"
+    assert response.json()["record_backend"] == "sqlite_fallback"
+    assert response.json()["supabase"]["supabase_reachable"] is False
+    fake.fail = False
+    response = c.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["record_backend"] == "supabase"

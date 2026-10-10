@@ -55,6 +55,8 @@ interface State {
 
   actions: ActionRecord[];
   archivedActions: ActionRecord[];
+  actionsLoading: boolean;
+  actionsError: string | null;
   toasts: Toast[];
   briefings: Record<string, AIResult<IncidentBriefing>>;
   briefingLoading: Record<string, boolean>;
@@ -65,7 +67,7 @@ interface State {
   cameraCommand: { kind: "zoomIn" | "zoomOut" | "rotateL" | "rotateR" | "reset"; n: number } | null;
 
   load: (scenario?: string) => Promise<void>;
-  loadActions: () => Promise<void>;
+  loadActions: (scenario?: string) => Promise<void>;
   select: (id: string | null) => void;
   setView: (v: View) => void;
   setParam: (k: "responseDelay" | "steps", v: number) => void;
@@ -90,6 +92,7 @@ interface State {
 }
 
 let toastId = 0;
+let actionsRequestId = 0;
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
 
 export const useStore = create<State>((set, get) => ({
@@ -116,6 +119,8 @@ export const useStore = create<State>((set, get) => ({
   speed: 1,
   actions: [],
   archivedActions: [],
+  actionsLoading: false,
+  actionsError: null,
   toasts: [],
   briefings: {},
   briefingLoading: {},
@@ -127,11 +132,15 @@ export const useStore = create<State>((set, get) => ({
 
   load: async (scenario) => {
     set({ loading: true, loadError: null });
+    const activeScenario = scenario ?? get().data?.scenario.id;
+    const actionsRequest = get().loadActions(activeScenario);
     try {
-      const data = await api.incidents(scenario);
+      const data = await api.incidents(activeScenario);
       const keep = get().selectedId;
       set({
         data,
+        actions: get().actions.filter((a) => a.scenario_id === data.scenario.id),
+        archivedActions: get().archivedActions.filter((a) => a.scenario_id === data.scenario.id),
         loading: false,
         predictions: {},
         predictionErrors: {},
@@ -142,7 +151,6 @@ export const useStore = create<State>((set, get) => ({
         playing: false,
         selectedId: keep && data.incidents.some((i) => i.id === keep) ? keep : null,
       });
-      get().loadActions();
       await Promise.all(
         data.incidents.map(async (inc) => {
           try {
@@ -156,19 +164,28 @@ export const useStore = create<State>((set, get) => ({
       if (get().view === "sim") get().runSimulation({ autoplay: false });
     } catch (e) {
       set({ loading: false, loadError: errMsg(e) });
+    } finally {
+      await actionsRequest;
     }
   },
 
-  loadActions: async () => {
-    const scen = get().data?.scenario.id;
+  loadActions: async (scenario) => {
+    const scen = scenario ?? get().data?.scenario.id;
+    const requestId = ++actionsRequestId;
+    set({ actionsLoading: true, actionsError: null });
     try {
       const all = await api.actions(scen, true);
+      if (requestId !== actionsRequestId) return;
+      const currentScenario = scen ?? get().data?.scenario.id;
+      const records = all.actions.filter((a) => !currentScenario || a.scenario_id === currentScenario);
       set({
-        actions: all.actions.filter((a) => !a.archived_at),
-        archivedActions: all.actions.filter((a) => !!a.archived_at),
+        actions: records.filter((a) => !a.archived_at),
+        archivedActions: records.filter((a) => !!a.archived_at),
+        actionsLoading: false,
       });
-    } catch {
-      /* the record drawer shows its own error state */
+    } catch (error) {
+      if (requestId !== actionsRequestId) return;
+      set({ actionsLoading: false, actionsError: errMsg(error) });
     }
   },
 
@@ -223,7 +240,7 @@ export const useStore = create<State>((set, get) => ({
 
   decide: async (id, action, reason) => {
     try {
-      const r = await api.action(id, action, reason);
+      const r = await api.action(id, action, reason, TEAMS);
       set((s) => ({
         actions: [r.action, ...s.actions],
         simStale: !!s.sim,

@@ -114,11 +114,11 @@ function CameraRig({ selectedIndex }: { selectedIndex: number }) {
     c.update();
   }, [cmd, camera]);
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     const c = controls.current;
     const g = goal.current;
     if (!c || !g) return;
-    const cam = camera as THREE.OrthographicCamera;
+    const cam = state.camera as THREE.OrthographicCamera;
     const k = 1 - Math.exp(-dt * 5);
     const delta = g.target.clone().sub(c.target).multiplyScalar(k);
     c.target.add(delta);

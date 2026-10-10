@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import json
 import math
+import sqlite3
 from functools import lru_cache
+
+import httpx
 
 import joblib
 import numpy as np
@@ -19,6 +22,7 @@ from sim.policies import simulate_policies
 from . import db, records
 from .records import DEFAULT_STATUS, STATUS_TEXT, WAITING_STATUS, team_state
 from .team import TEAM
+from .operational_store import OperationalStoreError
 from . import explanations as X
 from .priority import (CATEGORY_TEXT, PRIORITY_POLICY_VERSION, allocation_order, categorise, evidence_quality,
                        exposure_score, priority_score, recency_score, recommend)
@@ -232,22 +236,22 @@ class Store:
         }
 
     # ------------------------------------------------------------------ decisions
-    def decide(self, incident_id: str, action: str, reason: str) -> dict:
+    def decide(self, incident_id: str, action: str, reason: str, teams: int = 1, team_name: str | None = None) -> dict:
         scenario, _ = self.inc_index[incident_id]
         team, att = self.operational_state(scenario)
-        pred = self.predict(incident_id, 1)
+        pred = self.predict(incident_id, teams)
         rec = pred["priority"]["recommendation"]
         others = [c for c in pred["competing"] if c["incident_id"] != incident_id]
         followed = {"ASSIGN_INSPECTION": rec == "INSPECT", "REQUEST_RECHECK": rec == "RECHECK"}.get(action)
         row = {
-            "scenario_id": scenario["scenario_id"], "incident_id": incident_id, "action": action, "reason": reason,
+            "scenario_id": scenario["scenario_id"], "incident_id": incident_id, "action": action, "reason": reason, "teams": teams,
             "recommendation_at_time": rec, "priority_rank": pred["priority"]["rank"],
             "priority_score": pred["priority"]["score"], "probability": pred["probability"],
             "followed_recommendation": followed, "team_name": None, "reassigned_from": None, "left_waiting": None,
         }
         updates = {incident_id: STATUS_TEXT[action]}
         if action == "ASSIGN_INSPECTION":
-            row["team_name"] = TEAM["name"]
+            row["team_name"] = team_name or TEAM["name"]
             prev = team["assigned_incident_id"]
             row["reassigned_from"] = prev if prev and prev != incident_id else None
             row["left_waiting"] = [{"incident_id": c["incident_id"], "region": c["region"], "probability": c["probability"],
@@ -433,11 +437,17 @@ class Store:
         ids = [i["incident_id"] for i in scenario["incidents"]]
         _, recs, ai_order = self.prioritise(scenario, req.teams)
         arrival_order = [i["incident_id"] for i in sorted(scenario["incidents"], key=lambda x: x["arrival_order"])]
-        team, att = self.operational_state(scenario)
-        coordinator = req.coordinator_assignment or team["assigned_incident_id"]
+        coordinator = req.coordinator_assignment
+        if coordinator is None:
+            try:
+                team, _ = self.operational_state(scenario)
+                coordinator = team["assigned_incident_id"]
+            except (records.RecordError, OperationalStoreError, sqlite3.Error, httpx.HTTPError):
+                # File-backed simulations remain available when record reads fail.
+                coordinator = None
         if coordinator not in ids:
             coordinator = None
-        plots, infos = self.build_plots([self.incident(iid, att) for iid in ids], req.per_incident)
+        plots, infos = self.build_plots([self.incident(iid, att={}) for iid in ids], req.per_incident)
         res = simulate_policies(plots, arrival_order, ai_order, req.teams, req.response_delay, req.steps,
                                 req.seed, req.n_seeds, coordinator=coordinator)
         return {

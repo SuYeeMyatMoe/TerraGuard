@@ -41,7 +41,7 @@ WAITING_STATUS = "Unattended — waiting"
 DEFAULT_STATUS = "Awaiting decision"
 
 BASE_COLUMNS = ["scenario_id", "incident_id", "action", "reason", "recommendation_at_time"]
-SNAPSHOT_COLUMNS = ["team_name", "priority_rank", "priority_score", "probability", "followed_recommendation",
+SNAPSHOT_COLUMNS = ["teams", "team_name", "priority_rank", "priority_score", "probability", "followed_recommendation",
                     "reassigned_from", "left_waiting"]
 
 
@@ -100,7 +100,7 @@ class SqliteStore:
             );
             """)
             have = {r["name"] for r in c.execute("PRAGMA table_info(actions)")}
-            extra = {"team_name": "TEXT", "priority_rank": "INTEGER", "priority_score": "REAL", "probability": "REAL",
+            extra = {"teams": "INTEGER", "team_name": "TEXT", "priority_rank": "INTEGER", "priority_score": "REAL", "probability": "REAL",
                      "followed_recommendation": "INTEGER", "reassigned_from": "TEXT", "left_waiting": "TEXT",
                      "archived_at": "TEXT", "stored_in": "TEXT DEFAULT 'sqlite'", "remote_id": "INTEGER",
                      "fallback_reason": "TEXT"}
@@ -124,12 +124,12 @@ class SqliteStore:
             cur = c.execute(
                 "INSERT INTO actions (scenario_id, incident_id, action, reason, recommendation_at_time, created_at, "
                 "team_name, priority_rank, priority_score, probability, followed_recommendation, reassigned_from, "
-                "left_waiting, stored_in, fallback_reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "left_waiting, stored_in, fallback_reason, teams) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (row["scenario_id"], row["incident_id"], row["action"], row.get("reason"), row.get("recommendation_at_time"),
                  ts, row.get("team_name"), row.get("priority_rank"), row.get("priority_score"), row.get("probability"),
                  None if row.get("followed_recommendation") is None else int(row["followed_recommendation"]),
                  row.get("reassigned_from"), json.dumps(row["left_waiting"]) if row.get("left_waiting") is not None else None,
-                 stored_in, fallback_reason))
+                 stored_in, fallback_reason, row.get("teams")))
             aid = cur.lastrowid
             if row["action"] == "ASSIGN_INSPECTION":
                 c.execute("INSERT INTO team_assignments (action_id, incident_id, scenario_id, team_name, assigned_at) "
@@ -191,10 +191,13 @@ class SupabaseStore:
 
     def __init__(self, url: str, key: str, transport: httpx.BaseTransport | None = None, timeout: float = 6.0) -> None:
         self.base = url.rstrip("/") + "/rest/v1"
-        self.client = httpx.Client(
-            timeout=timeout, transport=transport,
-            headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+        headers = {"apikey": key, "Content-Type": "application/json"}
+        # Modern secret keys are API keys, not JWT bearer tokens.
+        if not key.startswith("sb_secret_"):
+            headers["Authorization"] = f"Bearer {key}"
+        self.client = httpx.Client(timeout=timeout, transport=transport, headers=headers)
         self.snapshot_columns = True  # set False if the optional Part 2 migration has not been applied
+        self.teams_column = True  # additive resource-count column may not yet be deployed
 
     def _req(self, method: str, path: str, **kw) -> Any:
         r = self.client.request(method, self.base + path, **kw)
@@ -213,13 +216,17 @@ class SupabaseStore:
         if row.get("created_at"):
             body["created_at"] = row["created_at"]
         if self.snapshot_columns:
-            body.update({k: row.get(k) for k in SNAPSHOT_COLUMNS})
+            body.update({k: row.get(k) for k in SNAPSHOT_COLUMNS if k != "teams" or self.teams_column})
         try:
             return self._req("POST", "/actions", json=body, headers={"Prefer": "return=representation"})[0]
         except RecordError as e:
             if self.snapshot_columns and ("PGRST204" in str(e) or "column" in str(e).lower()):
-                # Part 2 migration missing: keep the audit row, report that the snapshot was not stored.
-                self.snapshot_columns = False
+                if self.teams_column and ("'teams'" in str(e) or '"teams"' in str(e)):
+                    # Keep the existing rich snapshot when only the new count column is absent.
+                    self.teams_column = False
+                else:
+                    # Part 2 missing: keep the audit row and disclose the incomplete snapshot.
+                    self.snapshot_columns = False
                 return self._insert_action(row)
             raise
 
@@ -235,7 +242,7 @@ class SupabaseStore:
                       json=[{"incident_id": i, "status": s, "updated_at": ts} for i, s in status_updates.items()],
                       headers={"Prefer": "resolution=merge-duplicates"})
         out = self._norm(saved)
-        if not self.snapshot_columns:
+        if not self.snapshot_columns or not self.teams_column:
             out = {**{k: row.get(k) for k in SNAPSHOT_COLUMNS}, **out, "snapshot_stored": False}
         return out
 
@@ -347,11 +354,12 @@ class Records:
         return pushed
 
     def health(self) -> dict:
-        info = {"backend": self.backend, "supabase_configured": bool(self.remote)}
+        with self.local._conn() as c:
+            c.execute("SELECT id FROM actions LIMIT 1").fetchone()
+        info = {"backend": self.backend, "supabase_configured": bool(self.remote), "available": True}
         if self.remote:
             info["supabase_reachable"] = self.remote.ping()
-            if info["supabase_reachable"]:
-                self.last_error = None
+            self.last_error = None if info["supabase_reachable"] else "Supabase is unreachable"
             info["backend"] = self.backend
         return info
 
@@ -370,7 +378,7 @@ def team_state(actions: list[dict]) -> dict:
             if a["incident_id"] in released:
                 return {**TEAM, "status": "available", "assigned_incident_id": None, "since": None,
                         "released_from": a["incident_id"], "action_id": None}
-            return {**TEAM, "status": "assigned", "assigned_incident_id": a["incident_id"], "since": a["created_at"],
+            return {**TEAM, "name": a.get("team_name") or TEAM["name"], "status": "assigned", "assigned_incident_id": a["incident_id"], "since": a["created_at"],
                     "stored_in": a.get("stored_in"),
                     "action_id": a["id"]}
     return {**TEAM, "status": "available", "assigned_incident_id": None, "since": None, "action_id": None}

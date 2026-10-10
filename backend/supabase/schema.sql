@@ -34,6 +34,7 @@ create table if not exists public.team_assignments (
 -- Makes each row a record someone could defend: the recommendation at that moment, the crew, and who was left waiting.
 -- The backend still works without these columns (it keeps the audit row and reports that the snapshot was not stored).
 alter table public.actions add column if not exists team_name text;
+alter table public.actions add column if not exists teams int; -- resource count used for the recorded recommendation
 alter table public.actions add column if not exists priority_rank int;
 alter table public.actions add column if not exists priority_score real;
 alter table public.actions add column if not exists probability real;
