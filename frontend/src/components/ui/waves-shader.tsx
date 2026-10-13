@@ -197,7 +197,7 @@ export function ShaderBackground({ className }: { className?: string }) {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, earthImage)
       requestRender()
     }
-    earthImage.src = "/earth/surface.jpg"
+    earthImage.src = "/earth/surface.webp"
     const start = performance.now()
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)")
     const scene = canvas.closest<HTMLElement>("section")

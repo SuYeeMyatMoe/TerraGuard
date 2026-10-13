@@ -14,7 +14,10 @@ RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 MODEL_DIR = DATA_DIR / "model"
 for _d in (RAW_DIR, PROCESSED_DIR, MODEL_DIR):
-    _d.mkdir(parents=True, exist_ok=True)
+    try:
+        _d.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
 
 # Study area: Malaysia (Peninsular, Sarawak, Sabah) + Indonesia (Sumatra/Riau, Kalimantan)
 BBOX = (95.0, -4.5, 119.5, 7.5)  # west, south, east, north

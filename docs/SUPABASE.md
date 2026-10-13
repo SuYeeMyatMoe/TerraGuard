@@ -16,6 +16,8 @@ FastAPI is the only Supabase client. The frontend continues to call `/api/*` thr
 
 The connected project used for this change is `escaegvzxeotbciyyzec` (moha-r's Project). Its initially empty schema received migration `20261010084842_operational_records.sql` through the Supabase plugin. For another project, apply that migration through the Supabase SQL editor or your migration pipeline before starting FastAPI. Do not apply it a second time to this project.
 
+On Vercel this store is required (no SQLite). Set the same names as Production/Preview secrets; see [DEPLOY.md](DEPLOY.md).
+
 Set these names in the ignored `backend/.env`:
 
 ```dotenv

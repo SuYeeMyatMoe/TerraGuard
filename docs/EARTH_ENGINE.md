@@ -53,7 +53,7 @@ Earth View opens with a worldwide, fixed-URL Esri World Imagery basemap. Panning
 
 ## Deployment
 
-For a backend service account, set `GEE_SERVICE_ACCOUNT_JSON` to a key-file path outside the repository (relative paths resolve from backend). The configured Cloud project must be registered for Earth Engine, with the API enabled and the account granted appropriate Earth Engine and Service Usage permissions. Application Default Credentials also work when no key file is specified. See [authentication](https://developers.google.com/earth-engine/guides/auth) and [service accounts](https://developers.google.com/earth-engine/guides/service_account).
+For a backend service account locally, set `GEE_SERVICE_ACCOUNT_JSON` to a key-file path outside the repository (relative paths resolve from backend). On Vercel there is no key file: set `GEE_SERVICE_ACCOUNT_JSON_B64` (base64 of the JSON) or put the JSON object in `GEE_SERVICE_ACCOUNT_JSON`, plus `GEE_TILE_SIGNING_SECRET` so tile handles work across serverless instances. Tile cache uses `/tmp` on Vercel. See [DEPLOY.md](DEPLOY.md). The configured Cloud project must be registered for Earth Engine, with the API enabled and the account granted appropriate Earth Engine and Service Usage permissions. Application Default Credentials also work when no key file is specified. See [authentication](https://developers.google.com/earth-engine/guides/auth) and [service accounts](https://developers.google.com/earth-engine/guides/service_account).
 
 Choose account/usage configuration according to [Earth Engine plans](https://earthengine.google.com/commercial/). Commercial usage can incur charges. This implementation never creates a Cloud project, selects eligibility or enables billing automatically.
 

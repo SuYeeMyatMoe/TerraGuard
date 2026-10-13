@@ -7,7 +7,6 @@ import { ControlsPanel } from "./ControlsPanel";
 import { DecisionPanel } from "./DecisionPanel";
 import { IntelligencePanel } from "./IntelligencePanel";
 import { DecisionRecord } from "./DecisionRecord";
-import { MethodologyDrawer } from "./MethodologyDrawer";
 import { ConsequenceBanner, ReportCanvas } from "./ReportCanvas";
 import { FieldBriefModal, Toasts } from "./Overlays";
 import { IncidentRoster } from "./IncidentRoster";
@@ -23,6 +22,7 @@ import "./responsive.css";
 
 const ForestStudio = dynamic(() => import("@/components/scene/ForestStudio").then(m => m.ForestStudio), { ssr: false });
 const EarthView = dynamic(() => import("./EarthView").then((m) => m.EarthView), { ssr: false });
+const MethodologyDrawer = dynamic(() => import("./MethodologyDrawer").then((m) => m.MethodologyDrawer), { ssr: false });
 
 export function CommandCenter() {
   const load = useStore((s) => s.load);
@@ -40,6 +40,7 @@ export function CommandCenter() {
   const [leftTab, setLeftTab] = useState<"incidents" | "conditions">("incidents");
   const [rightTab, setRightTab] = useState<"decision" | "evidence">("decision");
   const [expanded, setExpanded] = useState(false);
+  const methodologyOpen = useStore(s => s.methodologyOpen);
   const selectedId = useStore(s => s.selectedId);
   const predictions = useStore(s => s.predictions);
   const predictionErrors = useStore(s => s.predictionErrors);
@@ -129,7 +130,7 @@ export function CommandCenter() {
       </main>
       <Toasts />
       <FieldBriefModal />
-      <MethodologyDrawer />
+      {methodologyOpen ? <MethodologyDrawer /> : null}
       <DecisionRecord />
       <ReportCanvas />
       </div>

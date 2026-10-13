@@ -8,13 +8,14 @@ from functools import lru_cache
 import json
 import math
 import os
-import re
 from pathlib import Path
 from threading import RLock
-from time import monotonic
+from time import monotonic, time as wall_time
 from urllib.parse import urlsplit
 from uuid import uuid4
 from .imagery_delivery import ImageryDelivery, WORLD
+from .runtime import on_vercel
+from .tile_sign import decode_map_url, sign_map_url, valid_map_url
 
 SENTINEL = "COPERNICUS/S2_SR_HARMONIZED"
 CLOUD_SCORE = "GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED"
@@ -59,17 +60,45 @@ class EarthEngineProvider:
         with self.initialization_lock:
             return self._initialize()
 
+    def _account_info(self) -> dict | None:
+        raw_b64 = os.getenv("GEE_SERVICE_ACCOUNT_JSON_B64", "").strip()
+        raw = (self.key_path or os.getenv("GEE_SERVICE_ACCOUNT_JSON", "")).strip()
+        if raw_b64:
+            from base64 import b64decode
+            return json.loads(b64decode(raw_b64))
+        if raw.startswith("{"):
+            return json.loads(raw)
+        if raw:
+            path = Path(raw).expanduser()
+            if not path.is_absolute():
+                path = Path(__file__).resolve().parents[1] / path
+            return json.loads(path.read_text())
+        return None
+
+    def _credentials(self, ee, info: dict | None):
+        if info is None:
+            return ee.data.get_persistent_credentials()
+        try:
+            from google.oauth2 import service_account
+            return service_account.Credentials.from_service_account_info(
+                info, scopes=("https://www.googleapis.com/auth/earthengine",
+                              "https://www.googleapis.com/auth/cloud-platform"))
+        except Exception:
+            try:
+                return ee.ServiceAccountCredentials(info["client_email"], key_data=json.dumps(info))
+            except TypeError:
+                path = Path(os.getenv("TMPDIR") or os.getenv("TEMP") or "/tmp") / "gee-sa.json"
+                path.write_text(json.dumps(info), encoding="utf-8")
+                try:
+                    path.chmod(0o600)
+                except OSError:
+                    pass
+                return ee.ServiceAccountCredentials(info["client_email"], str(path))
+
     def _initialize(self):
         if self.ee is None:
             import ee
-            if self.key_path:
-                path = Path(self.key_path).expanduser()
-                if not path.is_absolute():
-                    path = Path(__file__).resolve().parents[1] / path
-                info = json.loads(path.read_text())
-                credentials = ee.ServiceAccountCredentials(info["client_email"], str(path))
-            else:
-                credentials = ee.data.get_persistent_credentials()
+            credentials = self._credentials(ee, self._account_info())
             ee.data.setMaxRetries(0)
             ee.Initialize(credentials=credentials, project=self.project)
             # setDeadline rebuilds the SDK transport, which Initialize creates.
@@ -170,16 +199,19 @@ class EarthEngineProvider:
 
 
 class EarthEngineService:
-    def __init__(self, project: str, provider=None, clock=monotonic, utcnow=None, cache_dir=None):
+    def __init__(self, project: str, provider=None, clock=monotonic, utcnow=None, cache_dir=None, wall_clock=None):
         self.project = project.strip()
         self.provider = provider or EarthEngineProvider(self.project, os.getenv("GEE_SERVICE_ACCOUNT_JSON", "").strip())
         self.clock, self.lock = clock, RLock()
+        self.wall_clock = wall_clock or wall_time
         self.generation_lock = RLock()
         self.utcnow = utcnow or (lambda: datetime.now(timezone.utc))
         self.cache, self.tiles = OrderedDict(), OrderedDict()
         self.tile_cache, self.tile_pending = OrderedDict(), {}
         self.tile_bytes, self.max_tile_bytes = 0, 32 * 1024 * 1024
-        root = cache_dir or os.getenv("GEE_TILE_CACHE_DIR") or Path(__file__).resolve().parents[1] / "data" / "earth-cache"
+        root = cache_dir or os.getenv("GEE_TILE_CACHE_DIR")
+        if not root:
+            root = "/tmp/earth-cache" if on_vercel() else Path(__file__).resolve().parents[1] / "data" / "earth-cache"
         self.delivery = ImageryDelivery(self.project, self.provider, root, clock)
 
     def close(self):
@@ -195,27 +227,51 @@ class EarthEngineService:
                 "incident_id": None, "window": None, "analysis": None, "layers": [], "bounds": None}
 
     def register_tile(self, url: str) -> str:
-        parsed = urlsplit(url)
-        if (parsed.scheme != "https" or parsed.netloc != "earthengine.googleapis.com" or
-                not re.fullmatch(r"/v1/projects/[A-Za-z0-9_-]+/maps/[A-Za-z0-9_-]+/tiles/\{z\}/\{x\}/\{y\}", parsed.path)
-                or parsed.query or parsed.fragment):
+        if not valid_map_url(url):
             raise ValueError("Invalid Earth Engine tile address")
-        handle = uuid4().hex
+        handle = sign_map_url(url, int(self.wall_clock()) + 1200, uuid4().hex[:8])
         with self.lock:
             self.tiles[handle] = (self.clock() + 1200, url)
             while len(self.tiles) > 128:
                 self.tiles.popitem(last=False)
         return f"/api/earth-engine/tiles/{handle}/{{z}}/{{x}}/{{y}}"
 
+    def handle_valid(self, handle: str) -> bool:
+        if handle.startswith("g"):
+            if not handle.startswith("g."):
+                with self.lock:
+                    cached = self.tiles.get(handle)
+                return bool(cached and cached[0] > self.clock())
+            try:
+                from .tile_sign import decode_recipe
+                decode_recipe(handle)
+                return True
+            except KeyError:
+                return False
+        try:
+            decode_map_url(handle, self.wall_clock())
+            return True
+        except KeyError:
+            with self.lock:
+                cached = self.tiles.get(handle)
+            return bool(cached and cached[0] > self.clock())
+
     def tile_url(self, handle: str, z: int, x: int, y: int) -> str:
         if not (0 <= z <= 18 and 0 <= x < 2**z and 0 <= y < 2**z):
             raise ValueError("Invalid tile coordinates")
         with self.lock:
-            expiry, url = self.tiles[handle]
-            if self.clock() >= expiry:
+            cached = self.tiles.get(handle)
+            if cached:
+                expiry, url = cached
+                if self.clock() < expiry:
+                    self.tiles.move_to_end(handle)
+                    return url.format(z=z, x=x, y=y)
                 del self.tiles[handle]
-                raise KeyError(handle)
-            self.tiles.move_to_end(handle)
+        url = decode_map_url(handle, self.wall_clock())
+        with self.lock:
+            self.tiles[handle] = (self.clock() + 1200, url)
+            while len(self.tiles) > 128:
+                self.tiles.popitem(last=False)
         return url.format(z=z, x=x, y=y)
 
     def fetch_tile(self, handle: str, z: int, x: int, y: int) -> bytes:
@@ -257,11 +313,12 @@ class EarthEngineService:
     def cached_description(self, key, refresh):
         with self.lock:
             cached = self.cache.get(key)
-            valid = cached and all(self.tiles.get(layer['tile_url'].split('/')[4], (0,))[0] > self.clock()
-                                   for layer in cached[1]['layers'])
-            if not refresh and cached and cached[0] > self.clock() and valid:
+        valid = cached and all(self.handle_valid(layer['tile_url'].split('/')[4])
+                               for layer in cached[1]['layers'])
+        if not refresh and cached and cached[0] > self.clock() and valid:
+            with self.lock:
                 self.cache.move_to_end(key)
-                return cached[1]
+            return cached[1]
         return None
 
     def describe(self, incident: dict, days: int, refresh: bool = False, bbox=None, mode: str = "context", background=False) -> dict:

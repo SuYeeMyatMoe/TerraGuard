@@ -85,7 +85,7 @@ export function ForestEnvironment({ progress }: { progress: RefObject<number> })
     };
     const observeMotion=()=>{cancelAnimationFrame(frame);paint(0);if(visible && !motion.matches)frame=requestAnimationFrame(tick);};
     image.onload=()=>{makeLayers();paint(0);};
-    image.src="/forest/lifecycle.png";
+    image.src="/forest/lifecycle.webp";
     const observer=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;observeMotion();});observer.observe(element);
     const resizer=new ResizeObserver(resize);resizer.observe(element);
     motion.addEventListener("change",observeMotion);

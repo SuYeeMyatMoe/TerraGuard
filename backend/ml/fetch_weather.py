@@ -24,7 +24,10 @@ DAILY_VARS = [
     "et0_fao_evapotranspiration",
 ]
 WEATHER_DIR = RAW_DIR / "weather"
-WEATHER_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    WEATHER_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
 
 
 def _tile_path(lat: float, lon: float) -> Path:

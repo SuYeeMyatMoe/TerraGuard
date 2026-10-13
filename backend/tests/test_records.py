@@ -188,3 +188,42 @@ def test_health_discloses_supabase_outage_and_local_fallback(supa):
     response = c.get("/api/health")
     assert response.status_code == 200
     assert response.json()["record_backend"] == "supabase"
+
+
+def test_vercel_does_not_fall_back_to_sqlite():
+    fake = FakeSupabase()
+    remote = SupabaseStore("https://example.supabase.co", "secret", transport=fake.transport())
+    rec = Records(None, remote, allow_sqlite_fallback=False)
+    records.set_records(rec)
+    try:
+        with TestClient(app) as c:
+            fake.fail = True
+            assert c.get("/api/incidents").status_code == 502
+            fake.fail = False
+            inc = c.get("/api/incidents").json()
+            incident_id = inc["incidents"][0]["id"]
+            saved = c.post(f"/api/incidents/{incident_id}/action",
+                           json={"action": "ASSIGN_INSPECTION", "reason": "go"})
+            assert saved.status_code == 200 and saved.json()["action"]["stored_in"] == "supabase"
+            fake.fail = True
+            denied = c.post(f"/api/incidents/{incident_id}/action",
+                            json={"action": "DISMISS", "reason": "stop"})
+            assert denied.status_code == 502
+            assert rec.local is None
+    finally:
+        records.set_records(None)
+
+
+def test_get_on_vercel_skips_sqlite(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    records.set_records(None)
+    try:
+        rec = records.get()
+        assert rec.local is None and rec.allow_sqlite_fallback is False
+        assert rec.backend == "unavailable"
+        assert rec.health()["available"] is False
+    finally:
+        records.set_records(None)

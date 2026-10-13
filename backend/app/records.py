@@ -29,6 +29,7 @@ import httpx
 
 from ml.config import DATA_DIR
 
+from .runtime import on_vercel
 from .team import TEAM
 
 DB_PATH = DATA_DIR / "terraguard.db"
@@ -294,18 +295,26 @@ class SupabaseStore:
 
 # ============================================================================ facade
 class Records:
-    """Chooses Supabase when configured, SQLite otherwise; falls back to SQLite (flagged) if Supabase fails."""
+    """Chooses Supabase when configured, SQLite otherwise; falls back to SQLite (flagged) if Supabase fails.
 
-    def __init__(self, local: SqliteStore, remote: SupabaseStore | None = None) -> None:
+    On Vercel the local SQLite file is not writable, so fallback is disabled and missing remote
+    writes raise RecordError.
+    """
+
+    def __init__(self, local: SqliteStore | None, remote: SupabaseStore | None = None,
+                 allow_sqlite_fallback: bool | None = None) -> None:
         self.local = local
         self.remote = remote
         self.last_error: str | None = None
+        self.allow_sqlite_fallback = (local is not None) if allow_sqlite_fallback is None else bool(allow_sqlite_fallback and local)
 
     @property
     def backend(self) -> str:
         if not self.remote:
-            return "sqlite"
-        return "sqlite_fallback" if self.last_error else "supabase"
+            return "sqlite" if self.local is not None else "unavailable"
+        if self.last_error:
+            return "sqlite_fallback" if self.allow_sqlite_fallback else "unavailable"
+        return "supabase"
 
     def _remote_call(self, fn, *a, **kw):
         try:
@@ -321,23 +330,37 @@ class Records:
             out, err = self._remote_call(self.remote.record_action, row, status_updates)
             if out is not None:
                 return out
+            if not self.allow_sqlite_fallback:
+                raise RecordError(err or "Operational records are unavailable.")
             return self.local.record_action(row, status_updates, stored_in="local_fallback", fallback_reason=err)
+        if self.local is None:
+            raise RecordError("Operational records are unavailable.")
         return self.local.record_action(row, status_updates)
 
     def list_actions(self, scenario_id: Optional[str] = None, include_archived: bool = False) -> list[dict]:
         if self.remote:
-            rows, _ = self._remote_call(self.remote.list_actions, scenario_id, include_archived)
-            pending = [r for r in self.local.pending_sync()
-                       if (not scenario_id or r["scenario_id"] == scenario_id) and (include_archived or not r.get("archived_at"))]
+            rows, err = self._remote_call(self.remote.list_actions, scenario_id, include_archived)
+            pending = []
+            if self.local is not None:
+                pending = [r for r in self.local.pending_sync()
+                           if (not scenario_id or r["scenario_id"] == scenario_id) and (include_archived or not r.get("archived_at"))]
             if rows is not None:
                 return sorted(rows + pending, key=lambda r: r["created_at"], reverse=True)
+            if not self.allow_sqlite_fallback:
+                raise RecordError(err or "Operational records are unavailable.")
+        if self.local is None:
+            raise RecordError("Operational records are unavailable.")
         return self.local.list_actions(scenario_id, include_archived)
 
     def status_map(self) -> dict[str, tuple[str, str]]:
         if self.remote:
-            m, _ = self._remote_call(self.remote.status_map)
+            m, err = self._remote_call(self.remote.status_map)
             if m is not None:
                 return m
+            if not self.allow_sqlite_fallback:
+                raise RecordError(err or "Operational records are unavailable.")
+        if self.local is None:
+            raise RecordError("Operational records are unavailable.")
         return self.local.status_map()
 
     def get_action(self, action_id: int, stored_in: str | None = None) -> Optional[dict]:
@@ -345,10 +368,12 @@ class Records:
             r, _ = self._remote_call(self.remote.get_action, action_id)
             if r is not None:
                 return r
+        if self.local is None:
+            return None
         return self.local.get_action(action_id)
 
     def archive(self, scenario_id: str, incident_ids: list[str]) -> int:
-        n = self.local.archive(scenario_id, incident_ids)
+        n = 0 if self.local is None else self.local.archive(scenario_id, incident_ids)
         if self.remote:
             out, err = self._remote_call(self.remote.archive, scenario_id, incident_ids)
             if err:
@@ -368,13 +393,18 @@ class Records:
         return pushed
 
     def health(self) -> dict:
-        with self.local._conn() as c:
-            c.execute("SELECT id FROM actions LIMIT 1").fetchone()
+        if self.local is not None:
+            with self.local._conn() as c:
+                c.execute("SELECT id FROM actions LIMIT 1").fetchone()
         info = {"backend": self.backend, "supabase_configured": bool(self.remote), "available": True}
         if self.remote:
             info["supabase_reachable"] = self.remote.ping()
             self.last_error = None if info["supabase_reachable"] else "Supabase is unreachable"
             info["backend"] = self.backend
+            if not info["supabase_reachable"] and not self.allow_sqlite_fallback:
+                info["available"] = False
+        elif self.local is None:
+            info["available"] = False
         return info
 
 
@@ -410,7 +440,11 @@ def configured_remote() -> SupabaseStore | None:
 def get() -> Records:
     global _records
     if _records is None:
-        _records = Records(SqliteStore(), configured_remote())
+        remote = configured_remote()
+        if on_vercel():
+            _records = Records(None, remote, allow_sqlite_fallback=False)
+        else:
+            _records = Records(SqliteStore(), remote)
     return _records
 
 

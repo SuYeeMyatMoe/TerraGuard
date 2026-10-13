@@ -9,12 +9,15 @@ import json
 import sqlite3
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 from ml.config import DATA_DIR
 
 from .operational_store import configured_store as _operations
+from .runtime import on_vercel
 
-DB_PATH = DATA_DIR / "terraguard.db"
+# The AI-brief cache is disposable. Vercel's bundle is read-only, so use per-instance /tmp there.
+DB_PATH = (Path("/tmp") / "terraguard.db") if on_vercel() else DATA_DIR / "terraguard.db"
 
 STATUS_TEXT = {
     "ASSIGN_INSPECTION": "Inspection assigned",

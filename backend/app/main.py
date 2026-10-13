@@ -4,10 +4,11 @@ Run:  .venv/Scripts/python -m uvicorn app.main:app --port 8010 --reload
 """
 from __future__ import annotations
 import asyncio
+import os
 import sqlite3
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response as ApiResponse
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -20,11 +21,31 @@ from .schemas import (ActionRequest, ActionResponse, ActionsResponse, ExplainReq
 from .service import store
 from .operational_store import OperationalStoreError
 
+SNAPSHOT_CACHE = "public, s-maxage=300, stale-while-revalidate=3600"
+NO_STORE = "no-store"
+TILE_CACHE = "public, s-maxage=600, stale-while-revalidate=86400"
+
+
+def cors_origins() -> list[str]:
+    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    extra = os.getenv("CORS_ORIGINS", "")
+    if extra:
+        origins.extend(item.strip() for item in extra.split(",") if item.strip())
+    for key in ("VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_BRANCH_URL", "VERCEL_URL"):
+        host = os.getenv(key, "").strip()
+        if host:
+            origins.append(host if host.startswith("http") else f"https://{host}")
+    return list(dict.fromkeys(origins))
+
+
 @asynccontextmanager
 async def lifespan(_app):
     store()
     imagery = earth_engine.service()
-    imagery.warm()
+    try:
+        imagery.warm()
+    except Exception:
+        pass
     try:
         yield
     finally:
@@ -34,7 +55,7 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="TerraGuard AI", version="1.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+app.add_middleware(CORSMiddleware, allow_origins=cors_origins(),
                    allow_methods=["*"], allow_headers=["*"])
 
 
@@ -43,13 +64,19 @@ async def operational_error(_request, _exc):
     return JSONResponse(status_code=503, content={"detail": "Operational records are unavailable. Please try again."})
 
 
+@app.exception_handler(records.RecordError)
+async def record_error(_request, exc):
+    return JSONResponse(status_code=502, content={"detail": str(exc) or "Decision could not be recorded."})
+
+
 def _known(incident_id: str) -> None:
     if incident_id not in store().inc_index:
         raise HTTPException(404, f"Unknown incident {incident_id}")
 
 
 @app.get("/api/health")
-def health():
+def health(response: ApiResponse):
+    response.headers["Cache-Control"] = NO_STORE
     s = store()
     record_store = None
     try:
@@ -71,7 +98,9 @@ def health():
 
 
 @app.get("/api/incidents", response_model=IncidentsResponse)
-def incidents(scenario: str | None = None):
+def incidents(scenario: str | None = None, response: ApiResponse = None):
+    if response is not None:
+        response.headers["Cache-Control"] = NO_STORE
     try:
         return store().incidents(scenario)
     except KeyError:
@@ -111,19 +140,23 @@ def action(incident_id: str, req: ActionRequest):
 
 
 @app.get("/api/actions", response_model=ActionsResponse)
-def actions(scenario: str | None = None, include_archived: bool = False):
+def actions(scenario: str | None = None, include_archived: bool = False, response: ApiResponse = None):
+    if response is not None:
+        response.headers["Cache-Control"] = NO_STORE
     return store().actions(scenario, include_archived)
 
 
 @app.get("/api/evaluation")
-def evaluation():
+def evaluation(response: ApiResponse):
+    response.headers["Cache-Control"] = SNAPSHOT_CACHE
     s = store()
     return {"provenance": s.prov, "audit": s.audit, "policy_backtest": s.backtest, **s.evaluation}
 
 
 @app.get("/api/geospatial/{incident_id}")
-def geo(incident_id: str):
+def geo(incident_id: str, response: ApiResponse):
     _known(incident_id)
+    response.headers["Cache-Control"] = SNAPSHOT_CACHE
     return geospatial.context(store().incident(incident_id, att={}))
 
 
@@ -150,7 +183,7 @@ async def earth_engine_tile(handle: str, z: int, x: int, y: int):
         mime = 'image/jpeg'
     else:
         raise HTTPException(503, "Satellite tile is unavailable. Refresh the imagery.")
-    return Response(content=image, media_type=mime, headers={"Cache-Control": "private, max-age=300"})
+    return Response(content=image, media_type=mime, headers={"Cache-Control": TILE_CACHE})
 
 
 @app.get("/api/earth-engine/{incident_id}")

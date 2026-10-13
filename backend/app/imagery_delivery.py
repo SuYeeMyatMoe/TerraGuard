@@ -16,6 +16,8 @@ from time import monotonic
 from time import sleep
 from uuid import uuid4
 
+from .tile_sign import decode_recipe, sign_recipe
+
 WORLD = [-180, -85.051129, 180, 85.051129]
 VERSION = "s2-cloud060-median-rgb4500-gamma115-ndvi11-v1"
 LOG = logging.getLogger(__name__)
@@ -125,8 +127,8 @@ class ImageryDelivery:
             layers = []
             for kind, url in urls.items():
                 descriptor = {"recipe": spec, "layer": kind}
-                handle = "g" + digest(descriptor)
-                self.disk.write(f"recipes/{handle}.json", json.dumps(descriptor).encode())
+                self.disk.write(f"recipes/{'g' + digest(descriptor)}.json", json.dumps(descriptor).encode())
+                handle = sign_recipe(descriptor)
                 layers.append({"id": kind, "tile_url": f"/api/earth-engine/tiles/{handle}/{{z}}/{{x}}/{{y}}"})
             LOG.info("Earth imagery prepared seconds=%.3f", self.clock() - started)
             return {"status": "ready", "layers": layers, "urls": urls,
@@ -164,9 +166,10 @@ class ImageryDelivery:
             # recipes immediately so disk-cached tiles render during warmup.
             layers = []
             for kind in ("rgb", "ndvi"):
-                handle = "g" + digest({"recipe": spec, "layer": kind})
-                if self.disk.read(f"recipes/{handle}.json") is None:
+                descriptor = {"recipe": spec, "layer": kind}
+                if self.disk.read(f"recipes/{'g' + digest(descriptor)}.json") is None:
                     return {"status": result["status"], "layers": [], "display": None}
+                handle = sign_recipe(descriptor)
                 layers.append({"id": kind, "tile_url": f"/api/earth-engine/tiles/{handle}/{{z}}/{{x}}/{{y}}"})
             result = {"status": "ready", "layers": layers}
         return {"status": result["status"],
@@ -205,12 +208,28 @@ class ImageryDelivery:
         value = future.result()
         return ("ready" if value is not None else "unavailable"), value
 
-    def fetch_tile(self, handle, z, x, y):
-        if not re.fullmatch(r"g[a-f0-9]{64}", handle):
+    def _descriptor(self, handle):
+        if handle.startswith("g."):
+            descriptor = decode_recipe(handle)
+        elif re.fullmatch(r"g[a-f0-9]{64}", handle):
+            raw = self.disk.read(f"recipes/{handle}.json")
+            if raw is None:
+                raise KeyError(handle)
+            descriptor = json.loads(raw)
+            if "g" + digest(descriptor) != handle:
+                raise KeyError(handle)
+        else:
             raise KeyError(handle)
+        spec = descriptor["recipe"]
+        if spec["project"] != self.project or spec["version"] != VERSION:
+            raise KeyError(handle)
+        return descriptor, spec, "g" + digest(descriptor)
+
+    def fetch_tile(self, handle, z, x, y):
+        descriptor, spec, disk_key = self._descriptor(handle)
         if not (0 <= z <= 18 and 0 <= x < 2**z and 0 <= y < 2**z):
             raise ValueError("Invalid tile coordinates")
-        name = f"tiles/{handle}-{z}-{x}-{y}.tile"
+        name = f"tiles/{disk_key}-{z}-{x}-{y}.tile"
         cached = self.disk.read(name)
         if cached and valid_image(cached):
             return cached
@@ -226,13 +245,6 @@ class ImageryDelivery:
         if not producer:
             return pending.result()
         try:
-            raw = self.disk.read(f"recipes/{handle}.json")
-            if raw is None:
-                raise KeyError(handle)
-            descriptor = json.loads(raw)
-            spec = descriptor["recipe"]
-            if spec["project"] != self.project or spec["version"] != VERSION or "g" + digest(descriptor) != handle:
-                raise KeyError(handle)
             for attempt in range(2):
                 future = self.job(spec)
                 if future is None:

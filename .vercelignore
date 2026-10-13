@@ -1,0 +1,14 @@
+.env.local
+.env*.local
+backend/.venv
+backend/.env
+backend/tests
+backend/data/raw/firms_viirs.csv
+backend/data/raw/firms_manual
+backend/data/earth-cache
+backend/data/terraguard.db
+**/.pytest_cache
+**/__pycache__
+docs/verification
+docs/superpowers
+frontend/tests

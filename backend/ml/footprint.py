@@ -28,7 +28,6 @@ from functools import lru_cache
 import joblib
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr
 from sklearn.ensemble import HistGradientBoostingClassifier, HistGradientBoostingRegressor
 from sklearn.metrics import brier_score_loss, roc_auc_score
 
@@ -122,6 +121,7 @@ def main() -> None:
     clim = np.array([clim_tab.get((c, m), float(ytr.mean())) for c, m in zip(te.country, te_month)])
 
     def err(pred):
+        from scipy.stats import spearmanr
         e = pred - y
         return {"mae_km2": round(float(np.mean(np.abs(e)) * PIXEL_KM2), 4),
                 "rmse_km2": round(float(np.sqrt(np.mean(e ** 2)) * PIXEL_KM2), 4),

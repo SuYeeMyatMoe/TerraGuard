@@ -72,7 +72,7 @@ def test_provider_errors_are_sanitized_and_retryable(module):
 def test_cache_and_map_handles_expire(module):
     now = [0]
     p = Provider()
-    s = module.EarthEngineService(project="p", provider=p, clock=lambda: now[0])
+    s = module.EarthEngineService(project="p", provider=p, clock=lambda: now[0], wall_clock=lambda: now[0])
     first = s.describe(INCIDENT, 30)
     assert first == s.describe(INCIDENT, 30) and len(p.calls) == 1
     now[0] = 601
@@ -83,16 +83,16 @@ def test_cache_and_map_handles_expire(module):
         s.tile_url(handle, 3, 1, 1)
 
 
-def test_cache_regenerates_handles_evicted_by_other_incidents(module):
+def test_signed_handles_survive_in_memory_eviction_and_new_instance(module):
     provider = Provider()
     s = module.EarthEngineService(project="p", provider=provider)
     original = s.describe(INCIDENT, 30)
-    for index in range(63):
-        s.describe({**INCIDENT, "id": f"other-{index}"}, 30)
-    s.describe(INCIDENT, 30)  # Touch metadata LRU without renewing handles.
-    s.describe({**INCIDENT, "id": "new"}, 30)
-    renewed = s.describe(INCIDENT, 30)
-    assert renewed["layers"][0]["tile_url"] != original["layers"][0]["tile_url"]
+    handle = original["layers"][0]["tile_url"].split("/")[4]
+    s.tiles.clear()
+    assert s.tile_url(handle, 8, 3, 5).endswith("/tiles/8/3/5")
+    other = module.EarthEngineService(project="p", provider=Provider())
+    assert other.tile_url(handle, 8, 3, 5).endswith("/tiles/8/3/5")
+    assert len(provider.calls) == 1
     assert len(s.tiles) <= 128 and len(s.cache) <= 64
 
 
@@ -241,6 +241,7 @@ def test_tile_endpoint_proxies_bytes_and_hides_provider_failures(module, isolate
         path = result["layers"][0]["tile_url"].format(z=8, x=0, y=0)
         response = client.get(path)
         assert response.content == image and response.headers["content-type"] == "image/png"
+        assert "s-maxage=600" in response.headers.get("cache-control", "")
         def fail(url):
             raise RuntimeError("OAuth token and Google URL must not escape")
         provider.fetch_tile = fail
@@ -363,16 +364,16 @@ def test_compare_full_window_stops_at_requested_horizon(module):
     assert p.calls[1][1:] == (INCIDENT['observed_at'], '2025-08-12T05:30:00Z')
 
 
-def test_cache_regenerates_when_after_handle_is_evicted(module):
+def test_signed_after_handles_remain_valid_after_registry_eviction(module):
     p = Provider()
     s = module.EarthEngineService('p', p)
     first = s.describe(INCIDENT, 30, mode='compare')
     after_handle = next(layer for layer in first['layers'] if layer['id'] == 'rgb_after')['tile_url'].split('/')[4]
     del s.tiles[after_handle]
-    refreshed = s.describe(INCIDENT, 30, mode='compare')
-    assert len(p.calls) == 4 and refreshed['layers'][0]['tile_url'] != first['layers'][0]['tile_url']
-    for layer in refreshed['layers']:
-        assert s.tile_url(layer['tile_url'].split('/')[4], 8, 0, 0)
+    cached = s.describe(INCIDENT, 30, mode='compare')
+    assert cached['layers'][0]['tile_url'] == first['layers'][0]['tile_url']
+    assert s.tile_url(after_handle, 8, 0, 0)
+    assert len(p.calls) == 2
 
 
 def test_tile_cache_preserves_recently_used_handles(module):

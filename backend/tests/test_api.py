@@ -47,6 +47,19 @@ def test_unknown_incident_404(client):
     assert client.post("/api/predict", json={"incident_id": "NOPE"}).status_code == 404
 
 
+def test_snapshot_endpoints_are_cdn_cacheable(client):
+    evaluation = client.get("/api/evaluation")
+    assert evaluation.status_code == 200
+    assert "s-maxage=300" in evaluation.headers.get("cache-control", "")
+    incidents = client.get("/api/incidents")
+    assert incidents.status_code == 200
+    assert "no-store" in incidents.headers.get("cache-control", "")
+    iid = incidents.json()["incidents"][0]["id"]
+    geo = client.get(f"/api/geospatial/{iid}")
+    assert geo.status_code == 200
+    assert "s-maxage=300" in geo.headers.get("cache-control", "")
+
+
 def test_named_assignment_is_optional_and_validated(client):
     iid = client.get("/api/incidents").json()["incidents"][0]["id"]
     path = f"/api/incidents/{iid}/action"

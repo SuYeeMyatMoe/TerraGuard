@@ -7,3 +7,5 @@ backend/data/raw/firms_manual/
 .pytest_cache/
 # Supabase CLI local cache
 supabase/.temp/
+.vercel
+.env.local
